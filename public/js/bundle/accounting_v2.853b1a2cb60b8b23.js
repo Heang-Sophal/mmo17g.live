@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk=self.webpackChunk||[]).push([[4087],{31199:(e,n,t)=>{t.r(n),t.d(n,{default:()=>c});const s={name:"AccountingV2Index"};const c=(0,t(14486).A)(s,function(){var e=this._self._c;return e("div",{staticClass:"main-content"},[e("router-view")],1)},[],!1,null,"e4ea0dbe",null).exports}}]);

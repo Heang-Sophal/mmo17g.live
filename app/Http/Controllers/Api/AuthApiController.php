@@ -1,0 +1,357 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Models\LoginFailedAttempt;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+
+class AuthApiController extends Controller
+{
+    /**
+     * កំណត់រចនាសម្ព័ន្ធ
+     */
+    const MAX_LOGIN_ATTEMPTS = 3;
+    const BLOCK_DURATION_MINUTES = 30; // បិទ ៣០នាទី បើ login ខុស ៣ដង
+
+    /**
+     * Sign In
+     * POST /api/auth/login
+     */
+    public function login(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'email' => 'required|email',
+                'password' => 'required|string',
+            ]);
+
+            $email = $validated['email'];
+            $password = $validated['password'];
+            $ipAddress = $request->ip();
+
+            // ពិនិត្យមើលថាតើអ៊ីមែលនេះកំពុងត្រូវបានបិទឬអត់
+            $blockedUntil = $this->getBlockedUntil($email, $ipAddress);
+            if ($blockedUntil) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Too many failed login attempts. Please try again after ' . $blockedUntil->diffForHumans(),
+                    'blocked_until' => $blockedUntil->toIso8601String(),
+                    'error_type' => 'account_blocked',
+                ], 429);
+            }
+
+            // រក User
+            $user = User::where('email', $email)->with('roles')->first();
+
+            // ពិនិត្យមើលថាតើមាន User ឬអត់
+            if (!$user) {
+                // កត់ត្រាការព្យាយាមខុស
+                $this->recordFailedAttempt($email, $ipAddress);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid credentials or insufficient permissions. Only "Sale" role can access.',
+                    'error_type' => 'invalid_credentials',
+                ], 401);
+            }
+
+            // ពិនិត្យមើលថាតើ Account ត្រូវបាន Lock (statut = 0) ឬអត់
+            if ($user->statut == 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your account has been locked. Please contact administrator.',
+                    'error_type' => 'account_locked',
+                ], 403);
+            }
+
+            // ពិនិត្យមើលថាតើ User មាន Role "Sale" ឬអត់
+            // ពិនិត្យមើល role_id ឬ roles relationship
+            $hasSaleRole = false;
+            
+            // ពិនិត្យមើល role_id (បើមាន column role ក្នុងតារាង)
+            if (isset($user->role) && $user->role === 'Sale') {
+                $hasSaleRole = true;
+            }
+            
+            // ពិនិត្យមើល roles relationship
+            if ($user->roles && $user->roles->count() > 0) {
+                foreach ($user->roles as $role) {
+                    if ($role->name === 'Sale') {
+                        $hasSaleRole = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!$hasSaleRole) {
+                // កត់ត្រាការព្យាយាមខុស
+                $this->recordFailedAttempt($email, $ipAddress);
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid credentials or insufficient permissions. Only "Sale" role can access.',
+                    'error_type' => 'insufficient_permissions',
+                ], 403);
+            }
+
+            // ពិនិត្យមើល Password
+            if (!Hash::check($password, $user->password)) {
+                // កត់ត្រាការព្យាយាមខុស
+                $this->recordFailedAttempt($email, $ipAddress);
+
+                // រាប់ចំនួនដងដែលបានព្យាយាមខុស
+                $attemptsCount = $this->getFailedAttemptsCount($email, $ipAddress);
+                $remainingAttempts = self::MAX_LOGIN_ATTEMPTS - $attemptsCount;
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid password.',
+                    'error_type' => 'invalid_password',
+                    'attempts_remaining' => max(0, $remainingAttempts),
+                    'max_attempts' => self::MAX_LOGIN_ATTEMPTS,
+                ], 401);
+            }
+
+            // លុប Failed Attempts ទាំងអស់បើ login ជោគជ័យ
+            $this->clearFailedAttempts($email, $ipAddress);
+
+            // បង្កើត Token (សម្រាប់ Persistent Login)
+            // សម្រាប់ Development យើងប្រើ simple token
+            // សម្រាប់ Production គួរប្រើ Laravel Passport ឬ Sanctum
+            $customToken = $this->createPersistentToken($user);
+            
+            // Generate Passport token for API routes
+            $passportToken = $user->createToken('MobileApp')->accessToken;
+
+            // Get user's mobile permissions
+            $mobilePermissions = [];
+            foreach ($user->roles as $role) {
+                foreach ($role->permissions as $permission) {
+                    if (str_starts_with($permission->name, 'mobile_products_')) {
+                        $mobilePermissions[] = str_replace('mobile_products_', '', $permission->name);
+                    }
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Login successful',
+                'data' => [
+                    'user' => [
+                        'id' => (string) $user->id,
+                        'name' => $user->name ?? '',
+                        'email' => $user->email ?? '',
+                        'role' => $user->role ?? 'Sale',
+                        'avatar' => $user->avatar ?? null,
+                        'avatar_url' => avatar_image_url($user->avatar),
+                        'mobile_permissions' => $mobilePermissions,
+                    ],
+                    'token' => $passportToken, // Use Passport token for API routes
+                    'custom_token' => $customToken, // Keep custom token for backward compatibility
+                    'token_type' => 'Bearer',
+                    'expires_in' => null, // Persistent (មិនមានផុតកំណត់)
+                ],
+            ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Login failed: ' . $e->getMessage(),
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Logout
+     * POST /api/auth/logout
+     */
+    public function logout(Request $request): JsonResponse
+    {
+        try {
+            // លុប Token (សម្រាប់ Production ត្រូវ revoke token)
+            // សម្រាប់ Development គ្រាន់តែ return success
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Logout successful',
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Logout failed: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Check Auth Status
+     * GET /api/auth/check
+     */
+    public function check(Request $request): JsonResponse
+    {
+        try {
+            $token = $request->bearerToken();
+
+            if (!$token) {
+                return response()->json([
+                    'success' => false,
+                    'authenticated' => false,
+                ], 401);
+            }
+
+            $user = null;
+            
+            // Try to decode as custom base64 token first
+            $decoded = $this->decodeToken($token);
+            
+            if ($decoded && isset($decoded['user_id'])) {
+                $user = User::find($decoded['user_id']);
+            } else {
+                // Try Passport token validation
+                $user = $request->user('api');
+            }
+
+            if (!$user || $user->role !== 'Sale' || !$user->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'authenticated' => false,
+                ], 401);
+            }
+
+            return response()->json([
+                'success' => true,
+                'authenticated' => true,
+                'data' => [
+                    'user' => [
+                        'id' => (string) $user->id,
+                        'name' => $user->name ?? '',
+                        'email' => $user->email ?? '',
+                        'role' => $user->role ?? 'Sale',
+                    ],
+                ],
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'authenticated' => false,
+            ], 401);
+        }
+    }
+
+    /**
+     * ទទួលបានចំនួនដងដែលបានព្យាយាមខុស
+     */
+    private function getFailedAttemptsCount(string $email, ?string $ipAddress): int
+    {
+        $query = LoginFailedAttempt::where('email', $email);
+        
+        if ($ipAddress) {
+            $query->where('ip_address', $ipAddress);
+        }
+
+        // រាប់តែក្នុងរយៈពេល ២៤ម៉ោងចុងក្រោយ
+        $query->where('created_at', '>=', now()->subHours(24));
+
+        return $query->count();
+    }
+
+    /**
+     * កត់ត្រាការព្យាយាម Login ខុស
+     */
+    private function recordFailedAttempt(string $email, ?string $ipAddress): void
+    {
+        LoginFailedAttempt::create([
+            'email' => $email,
+            'ip_address' => $ipAddress,
+        ]);
+
+        // លុបទិន្នន័យចាស់ៗ (រក្សាទុកតែ ២៤ម៉ោងចុងក្រោយ)
+        LoginFailedAttempt::where('created_at', '<', now()->subHours(24))->delete();
+    }
+
+    /**
+     * លុប Failed Attempts
+     */
+    private function clearFailedAttempts(string $email, ?string $ipAddress): void
+    {
+        $query = LoginFailedAttempt::where('email', $email);
+        
+        if ($ipAddress) {
+            $query->where('ip_address', $ipAddress);
+        }
+
+        $query->delete();
+    }
+
+    /**
+     * ពិនិត្យមើលថាតើអ៊ីមែលកំពុងត្រូវបានបិទឬអត់
+     */
+    private function getBlockedUntil(string $email, ?string $ipAddress): ?Carbon
+    {
+        $attemptsCount = $this->getFailedAttemptsCount($email, $ipAddress);
+
+        if ($attemptsCount >= self::MAX_LOGIN_ATTEMPTS) {
+            // រកមើលការព្យាយាមចុងក្រោយ
+            $lastAttempt = LoginFailedAttempt::where('email', $email)
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if ($lastAttempt) {
+                return $lastAttempt->created_at->addMinutes(self::BLOCK_DURATION_MINUTES);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * បង្កើត Persistent Token
+     */
+    private function createPersistentToken(User $user): string
+    {
+        // សម្រាប់ Development: បង្កើត simple JWT-like token
+        // សម្រាប់ Production: ប្រើ Laravel Passport ឬ Sanctum
+        
+        $payload = [
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'role' => $user->role,
+            'iat' => time(), // Issued at
+        ];
+
+        // Simple base64 encoding (សម្រាប់ Development ប៉ុណ្ណោះ)
+        $token = base64_encode(json_encode($payload));
+        
+        return $token;
+    }
+
+    /**
+     * Decode Token
+     */
+    private function decodeToken(string $token): ?array
+    {
+        try {
+            $decoded = json_decode(base64_decode($token), true);
+            
+            if (!$decoded || !isset($decoded['user_id'])) {
+                return null;
+            }
+
+            return $decoded;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+}
