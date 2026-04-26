@@ -1,7 +1,7 @@
 @php
   /** @var \App\Models\Product $p */
   $productSlug = $p->slug ?? (string) $p->id;
-  $imgUrl    = $p->image ? asset('images/products/' . $p->image) : asset('images/products/no-image.png');
+  $imgUrl    = product_image_url($p->image);
   $descShort = \Illuminate\Support\Str::limit(strip_tags($p->note ?? ''), 600);
   $minPrice  = (float) ($p->display_price ?? ($p->price ?? 0));
   $variants  = $p->relationLoaded('variants') ? $p->variants : collect($p->variants ?? []);
@@ -14,7 +14,7 @@
       'price' => (float) ($v->price ?? 0),
       'display_price' => $final,
       'display_price_formatted' => $currency . number_format($final, 2, '.', ','),
-      'image' => !empty($v->image) ? asset('images/products/' . $v->image) : null,
+      'image' => !empty($v->image) ? product_image_url($v->image) : null,
       'stock' => (int) max(0, $v->stock ?? $v->qty ?? 0),
     ];
   })->values();

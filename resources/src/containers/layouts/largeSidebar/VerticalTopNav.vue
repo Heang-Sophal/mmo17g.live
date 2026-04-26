@@ -114,7 +114,7 @@
                 :src="'/images/avatar/' + currentUser.avatar"
                 alt="user"
               />
-              <img v-else src="/images/avatar/avatar-default.jpg" alt="user" />
+              <img v-else src="/images/avatar/no_avatar.png" alt="user" />
             </div>
           </template>
           <div class="user-dropdown-menu">

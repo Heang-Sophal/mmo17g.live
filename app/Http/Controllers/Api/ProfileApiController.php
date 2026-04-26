@@ -38,24 +38,7 @@ class ProfileApiController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => [
-                    'id' => (string) $user->id,
-                    'firstname' => $user->firstname ?? '',
-                    'lastname' => $user->lastname ?? '',
-                    'name' => trim(($user->firstname ?? '') . ' ' . ($user->lastname ?? '')),
-                    'email' => $user->email ?? '',
-                    'phone' => $user->phone ?? '',
-                    'username' => $user->username ?? '',
-                    'avatar' => $user->avatar ?? null,
-                    'avatar_url' => avatar_image_url($user->avatar),
-                    'role' => $user->role ?? 'user',
-                    'is_active' => (bool) ($user->is_active ?? true),
-                    'created_at' => $user->created_at?->toIso8601String(),
-                    'edit_count_this_year' => $editCount,
-                    'edit_limit' => 3,
-                    'can_edit' => $editCount < 3,
-                    'edits_remaining' => max(0, 3 - $editCount),
-                ],
+                'data' => $this->buildProfilePayload($user, $editCount),
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
@@ -188,24 +171,7 @@ class ProfileApiController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Profile updated successfully',
-                'data' => [
-                    'id' => (string) $user->id,
-                    'firstname' => $user->firstname ?? '',
-                    'lastname' => $user->lastname ?? '',
-                    'name' => trim(($user->firstname ?? '') . ' ' . ($user->lastname ?? '')),
-                    'email' => $user->email ?? '',
-                    'phone' => $user->phone ?? '',
-                    'username' => $user->username ?? '',
-                    'avatar' => $user->avatar ?? null,
-                    'avatar_url' => avatar_image_url($user->avatar),
-                    'role' => $user->role ?? 'user',
-                    'is_active' => (bool) $user->is_active,
-                    'created_at' => $user->created_at?->toIso8601String(),
-                    'edit_count_this_year' => $newEditCount,
-                    'edit_limit' => 3,
-                    'can_edit' => $newEditCount < 3,
-                    'edits_remaining' => max(0, 3 - $newEditCount),
-                ],
+                'data' => $this->buildProfilePayload($user, $newEditCount),
                 'changes_made' => count($changes),
             ], 200);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -484,5 +450,35 @@ class ProfileApiController extends Controller
         }
 
         return null;
+    }
+
+    private function buildProfilePayload(User $user, int $editCount): array
+    {
+        $assignedWarehouse = $user->primaryAssignedWarehouse();
+
+        return [
+            'id' => (string) $user->id,
+            'firstname' => $user->firstname ?? '',
+            'lastname' => $user->lastname ?? '',
+            'name' => trim(($user->firstname ?? '') . ' ' . ($user->lastname ?? '')),
+            'email' => $user->email ?? '',
+            'phone' => $user->phone ?? '',
+            'username' => $user->username ?? '',
+            'avatar' => $user->avatar ?? null,
+            'avatar_url' => avatar_image_url($user->avatar),
+            'role' => $user->role ?? 'user',
+            'is_active' => (bool) ($user->is_active ?? true),
+            'created_at' => $user->created_at?->toIso8601String(),
+            'assigned_warehouse' => $assignedWarehouse ? [
+                'id' => (string) $assignedWarehouse->id,
+                'name' => $assignedWarehouse->name ?? '',
+                'city' => $assignedWarehouse->city ?? '',
+            ] : null,
+            'assigned_warehouse_name' => $assignedWarehouse->name ?? null,
+            'edit_count_this_year' => $editCount,
+            'edit_limit' => 3,
+            'can_edit' => $editCount < 3,
+            'edits_remaining' => max(0, 3 - $editCount),
+        ];
     }
 }

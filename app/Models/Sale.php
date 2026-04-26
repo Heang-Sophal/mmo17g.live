@@ -79,8 +79,17 @@ class Sale extends Model
         return $this->hasMany('App\Models\SaleDocument', 'sale_id');
     }
 
+    public function deliveryAlerts()
+    {
+        return $this->hasMany(DeliveryAlert::class);
+    }
+
     protected static function booted()
     {
+        static::created(function ($sale) {
+            app(\App\Services\DeliveryAlertService::class)->createAlertsForSale($sale);
+        });
+
         static::updating(function ($sale) {
             if ($sale->isDirty('quickbooks_invoice_id')) {
                 $original = $sale->getOriginal('quickbooks_invoice_id');

@@ -144,21 +144,35 @@ if (! function_exists('media_exists')) {
     }
 }
 
-if (! function_exists('media_url')) {
-    function media_url(string $category, ?string $filename, ?string $defaultAsset = null): string
+if (! function_exists('media_public_url')) {
+    function media_public_url(string $category, ?string $filename): ?string
     {
+        $relative = media_relative_path($category, $filename);
+        if (! $relative) {
+            return null;
+        }
+
         $remoteUrl = media_remote_url($category, $filename);
         if ($remoteUrl) {
             return $remoteUrl;
         }
 
-        $relative = media_relative_path($category, $filename);
-        if ($relative) {
-            foreach (media_local_paths($category, $filename) as $path) {
-                if (is_file($path)) {
-                    return asset($relative);
-                }
+        foreach (media_local_paths($category, $filename) as $path) {
+            if (is_file($path)) {
+                return asset($relative);
             }
+        }
+
+        return null;
+    }
+}
+
+if (! function_exists('media_url')) {
+    function media_url(string $category, ?string $filename, ?string $defaultAsset = null): string
+    {
+        $publicUrl = media_public_url($category, $filename);
+        if ($publicUrl) {
+            return $publicUrl;
         }
 
         return $defaultAsset ?: asset('images/no-image.png');
@@ -187,6 +201,48 @@ if (! function_exists('media_delete')) {
     }
 }
 
+if (! function_exists('media_normalize_contents')) {
+    function media_normalize_contents(mixed $contents): string|false
+    {
+        if (is_resource($contents)) {
+            return stream_get_contents($contents);
+        }
+
+        if (is_string($contents)) {
+            return $contents;
+        }
+
+        if ($contents instanceof \Stringable) {
+            return (string) $contents;
+        }
+
+        return false;
+    }
+}
+
+if (! function_exists('media_put_local')) {
+    function media_put_local(string $category, string $filename, mixed $contents): bool
+    {
+        $normalizedContents = media_normalize_contents($contents);
+        if ($normalizedContents === false) {
+            return false;
+        }
+
+        foreach (media_local_paths($category, $filename) as $path) {
+            $directory = dirname($path);
+            if (! is_dir($directory) && ! @mkdir($directory, 0755, true) && ! is_dir($directory)) {
+                continue;
+            }
+
+            if (@file_put_contents($path, $normalizedContents) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
 if (! function_exists('media_put')) {
     function media_put(string $category, string $filename, mixed $contents, ?string $mimeType = null): bool
     {
@@ -200,7 +256,14 @@ if (! function_exists('media_put')) {
             $options['ContentType'] = $mimeType;
         }
 
-        return (bool) Storage::disk(media_disk())->put($key, $contents, $options);
+        try {
+            if ((bool) Storage::disk(media_disk())->put($key, $contents, $options)) {
+                return true;
+            }
+        } catch (\Throwable $e) {
+        }
+
+        return media_put_local($category, $filename, $contents);
     }
 }
 

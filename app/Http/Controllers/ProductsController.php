@@ -426,8 +426,12 @@ class ProductsController extends BaseController
                 $Product->code = $request['code'];
                 $Product->Type_barcode = $request['Type_barcode'];
                 $Product->category_id = $request['category_id'];
-                $Product->sub_category_id = $request['sub_category_id'] ?? null;
-                $Product->brand_id = $request['brand_id'];
+                $Product->sub_category_id = $request->filled('sub_category_id') && $request['sub_category_id'] !== 'null'
+                    ? $request['sub_category_id']
+                    : null;
+                $Product->brand_id = $request->filled('brand_id') && $request['brand_id'] !== 'null'
+                    ? $request['brand_id']
+                    : null;
                 $Product->note = $request['note'];
                 $Product->TaxNet = $request['TaxNet'] ? $request['TaxNet'] : 0;
                 $Product->tax_method = $request['tax_method'];
@@ -437,13 +441,17 @@ class ProductsController extends BaseController
                 $Product->points = $request['points'] ? $request['points'] : 0;
 
                 // —————— Warranty & Guarantee ——————
-                $Product->warranty_period = $request['warranty_period'] ?? null;
+                $Product->warranty_period = $request->filled('warranty_period')
+                    ? (int) $request['warranty_period']
+                    : null;
                 $Product->warranty_unit = $request['warranty_unit'] ?? null;
                 $Product->warranty_terms = $request['warranty_terms'] ?? null;
 
                 // casted boolean
                 $Product->has_guarantee = filter_var($request['has_guarantee'], FILTER_VALIDATE_BOOLEAN);
-                $Product->guarantee_period = $request['guarantee_period'] ?? null;
+                $Product->guarantee_period = $request->filled('guarantee_period')
+                    ? (int) $request['guarantee_period']
+                    : null;
                 $Product->guarantee_unit = $request['guarantee_unit'] ?? null;
 
                 // -- check if type is_single

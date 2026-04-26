@@ -75,7 +75,7 @@
 
 <script>
 (function(){
-  const NOIMG = @json(asset('images/products/no-image.png'));
+  const NOIMG = @json(product_image_url('no-image.png'));
   const CURRENCY = @json($currency);
   const ALLOW_OVERSELLING = window.__ALLOW_OVERSELLING__ !== false;
   const OUT_OF_STOCK_MSG = @json(__('messages.OutOfStock'));

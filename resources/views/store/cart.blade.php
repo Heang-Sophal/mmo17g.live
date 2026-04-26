@@ -77,7 +77,7 @@
   const $btnCheckout = document.getElementById('btn-checkout');
 
   const CURRENCY   = document.querySelector('meta[name="currency"]')?.content || '$';
-  const NOIMG      = @json(asset('images/products/no-image.png'));
+  const NOIMG      = @json(product_image_url('no-image.png'));
   const T_REMOVE   = @json(__('messages.Remove'));
   const T_DECR     = @json(__('messages.Decrease'));
   const T_INCR     = @json(__('messages.Increase'));

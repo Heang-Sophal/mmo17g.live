@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Intervention\Image\ImageManagerStatic as Image;
 
 class UserController extends BaseController
@@ -173,9 +174,17 @@ class UserController extends BaseController
                 $filename = 'no_avatar.png';
             }
 
+            $roleId = (int) $request['role'];
+            $isDeliveryRole = $this->isDeliveryRoleId($roleId);
+            $assignedWarehouseIds = $this->normalizeAssignedWarehouses($request, $roleId);
+
             if ($request['is_all_warehouses'] == '1' || $request['is_all_warehouses'] == 'true') {
                 $is_all_warehouses = 1;
             } else {
+                $is_all_warehouses = 0;
+            }
+
+            if ($isDeliveryRole) {
                 $is_all_warehouses = 0;
             }
 
@@ -187,7 +196,7 @@ class UserController extends BaseController
             $User->phone = $request['phone'];
             $User->password = Hash::make($request['password']);
             $User->avatar = $filename;
-            $User->role_id = $request['role'];
+            $User->role_id = $roleId;
             $User->is_all_warehouses = $is_all_warehouses;
             
             // Set record_view from request (default to false if not provided)
@@ -201,11 +210,11 @@ class UserController extends BaseController
 
             $role_user = new role_user;
             $role_user->user_id = $User->id;
-            $role_user->role_id = $request['role'];
+            $role_user->role_id = $roleId;
             $role_user->save();
 
-            if (! $User->is_all_warehouses) {
-                $User->assignedWarehouses()->sync($request['assigned_to']);
+            if ($isDeliveryRole || ! $User->is_all_warehouses) {
+                $User->assignedWarehouses()->sync($assignedWarehouseIds);
             }
 
         }, 10);
@@ -255,6 +264,9 @@ class UserController extends BaseController
         \DB::transaction(function () use ($id, $request) {
             $user = User::findOrFail($id);
             $current = $user->password;
+            $roleId = (int) $request['role'];
+            $isDeliveryRole = $this->isDeliveryRoleId($roleId);
+            $assignedWarehouseIds = $this->normalizeAssignedWarehouses($request, $roleId);
 
             if ($request->NewPassword != 'null') {
                 if ($request->NewPassword != $current) {
@@ -287,6 +299,10 @@ class UserController extends BaseController
                 $is_all_warehouses = 0;
             }
 
+            if ($isDeliveryRole) {
+                $is_all_warehouses = 0;
+            }
+
             // Set record_view from request (default to false if not provided)
             $record_view = 0;
             if (isset($request['record_view'])) {
@@ -304,17 +320,21 @@ class UserController extends BaseController
                 'avatar' => $filename,
                 'statut' => $request['statut'],
                 'is_all_warehouses' => $is_all_warehouses,
-                'role_id' => $request['role'],
+                'role_id' => $roleId,
 
             ]);
 
             role_user::where('user_id', $id)->update([
                 'user_id' => $id,
-                'role_id' => $request['role'],
+                'role_id' => $roleId,
             ]);
 
             $user_saved = User::where('deleted_at', '=', null)->findOrFail($id);
-            $user_saved->assignedWarehouses()->sync($request['assigned_to']);
+            if ($isDeliveryRole || ! $is_all_warehouses) {
+                $user_saved->assignedWarehouses()->sync($assignedWarehouseIds);
+            } else {
+                $user_saved->assignedWarehouses()->sync([]);
+            }
 
         }, 10);
 
@@ -590,5 +610,45 @@ class UserController extends BaseController
         if (! media_put('avatar', $filename, $encoded, $image->getMimeType() ?: 'image/'.$extension)) {
             throw new \RuntimeException('Unable to save avatar image to cloud storage.');
         }
+    }
+
+    private function isDeliveryRoleId($roleId): bool
+    {
+        if (! $roleId) {
+            return false;
+        }
+
+        $role = Role::find($roleId);
+        if (! $role) {
+            return false;
+        }
+
+        return in_array(strtolower((string) $role->name), ['delivery', 'laivrison'], true);
+    }
+
+    private function normalizeAssignedWarehouses(Request $request, $roleId): array
+    {
+        $assignedWarehouseIds = collect((array) $request->input('assigned_to', []))
+            ->flatten()
+            ->filter(function ($warehouseId) {
+                return is_numeric($warehouseId);
+            })
+            ->map(function ($warehouseId) {
+                return (int) $warehouseId;
+            })
+            ->unique()
+            ->values();
+
+        if ($this->isDeliveryRoleId($roleId)) {
+            $assignedWarehouseIds = $assignedWarehouseIds->take(1)->values();
+
+            if ($assignedWarehouseIds->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'assigned_to' => ['Delivery user must be assigned to one warehouse.'],
+                ]);
+            }
+        }
+
+        return $assignedWarehouseIds->all();
     }
 }

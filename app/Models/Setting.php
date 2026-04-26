@@ -9,7 +9,9 @@ class Setting extends Model
     protected $fillable = [
         'currency_id', 'email', 'CompanyName', 'CompanyPhone', 'CompanyAdress', 'quotation_with_stock',
         'logo', 'footer', 'developed_by', 'client_id', 'warehouse_id', 'default_account_id', 'default_payment_method_id', 'default_language', 'show_language',
-        'is_invoice_footer', 'invoice_footer', 'invoice_format', 'app_name', 'mobile_app_name', 'mobile_app_logo', 'favicon', 'page_title_suffix', 'point_to_amount_rate',
+        'is_invoice_footer', 'invoice_footer', 'invoice_format', 'app_name', 'mobile_app_name', 'mobile_app_logo',
+        'seller_mobile_app_name', 'seller_mobile_app_logo', 'delivery_mobile_app_name', 'delivery_mobile_app_logo',
+        'favicon', 'page_title_suffix', 'point_to_amount_rate',
         'vat_number', 'company_name_ar', 'zatca_enabled', 'default_tax', 'date_format',
         'sale_return_prefix', 'purchase_return_prefix',
         'price_format', 'dark_mode', 'rtl', 'sms_gateway',

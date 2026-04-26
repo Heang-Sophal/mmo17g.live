@@ -195,15 +195,24 @@
                   <h6 class="mb-0">{{$t('Assigned_warehouses')}}</h6>
                 </b-card-header>
                 <b-card-body class="pt-3">
-                  <div class="psx-form-check mb-3">
+                  <div class="psx-form-check mb-3" v-if="!isDeliveryRole">
                     <input type="checkbox" v-model="user.is_all_warehouses" class="psx-checkbox psx-form-check-input" id="is_all_warehouses">
                     <label class="psx-form-check-label" for="is_all_warehouses">
                       <span class="font-weight-normal">{{$t('All_Warehouses')}} <i v-b-tooltip.hover.bottom title="If 'All Warehouses' Selected , User Can access all data for the selected Warehouses" class="text-info font-weight-bold i-Speach-BubbleAsking"></i></span>
                     </label>
                   </div>
                   
-                  <b-form-group :label="$t('Some_warehouses')" class="mb-0" v-if="!user.is_all_warehouses">
+                  <b-form-group :label="isDeliveryRole ? 'Assigned warehouse *' : $t('Some_warehouses')" class="mb-0" v-if="isDeliveryRole || !user.is_all_warehouses">
                     <v-select
+                      v-if="isDeliveryRole"
+                      v-model="deliveryWarehouseId"
+                      @input="Selected_Warehouse"
+                      :reduce="label => label.value"
+                      :placeholder="$t('PleaseSelect')"
+                      :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
+                    />
+                    <v-select
+                      v-else
                       multiple
                       v-model="assigned_warehouses"
                       @input="Selected_Warehouse"
@@ -211,6 +220,7 @@
                       :placeholder="$t('PleaseSelect')"
                       :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
                     />
+                    <small v-if="isDeliveryRole" class="text-muted d-block mt-2">Delivery users receive alerts from one assigned warehouse only.</small>
                   </b-form-group>
                 </b-card-body>
               </b-card>
@@ -264,7 +274,84 @@ export default {
     };
   },
 
+  computed: {
+    selectedRole() {
+      return this.roles.find(role => Number(role.id) === Number(this.user.role_id)) || null;
+    },
+
+    isDeliveryRole() {
+      return this.isDeliveryRoleName(this.selectedRole);
+    },
+
+    deliveryWarehouseId: {
+      get() {
+        return this.assigned_warehouses.length ? this.assigned_warehouses[0] : null;
+      },
+      set(value) {
+        this.assigned_warehouses = value ? [value] : [];
+      }
+    }
+  },
+
+  watch: {
+    selectedRole: {
+      immediate: true,
+      handler() {
+        if (this.isDeliveryRole) {
+          this.user.is_all_warehouses = 0;
+          if (this.assigned_warehouses.length > 1) {
+            this.assigned_warehouses = [this.assigned_warehouses[0]];
+          }
+        }
+      }
+    },
+
+    "user.role_id"() {
+      if (this.isDeliveryRole) {
+        this.user.is_all_warehouses = 0;
+        if (this.assigned_warehouses.length > 1) {
+          this.assigned_warehouses = [this.assigned_warehouses[0]];
+        }
+      }
+    },
+
+    "user.is_all_warehouses"(value) {
+      if (this.isDeliveryRole && value) {
+        this.user.is_all_warehouses = 0;
+      }
+    }
+  },
+
   methods: {
+    isDeliveryRoleName(role) {
+      const roleName = String(
+        role && (role.name || role.label) ? (role.name || role.label) : ""
+      )
+        .trim()
+        .toLowerCase();
+
+      return ["delivery", "laivrison"].includes(roleName);
+    },
+
+    getFirstErrorMessage(error) {
+      if (error && error.response && error.response.data) {
+        const data = error.response.data;
+
+        if (data.errors) {
+          const firstField = Object.keys(data.errors)[0];
+          if (firstField && data.errors[firstField] && data.errors[firstField][0]) {
+            return data.errors[firstField][0];
+          }
+        }
+
+        if (data.message) {
+          return data.message;
+        }
+      }
+
+      return this.$t("InvalidData");
+    },
+
     //------------- Submit Validation Edit User
     Submit_User() {
       this.$refs.Create_User.validate().then(success => {
@@ -275,6 +362,14 @@ export default {
             this.$t("Failed")
           );
         } else {
+          if (this.isDeliveryRole && !this.assigned_warehouses.length) {
+            this.makeToast(
+              "danger",
+              "Delivery user must be assigned to one warehouse.",
+              this.$t("Failed")
+            );
+            return;
+          }
           this.Update_User();
         }
       });
@@ -323,7 +418,7 @@ export default {
           if (error.response && error.response.data && error.response.data.errors && error.response.data.errors.email) {
             self.email_exist = error.response.data.errors.email[0];
           }
-          this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
+          this.makeToast("danger", this.getFirstErrorMessage(error), this.$t("Failed"));
           self.SubmitProcessing = false;
         });
     },
@@ -340,6 +435,10 @@ export default {
           this.roles = response.data.roles;
           this.warehouses = response.data.warehouses;
           this.assigned_warehouses = response.data.assigned_warehouses || [];
+          if (this.isDeliveryRole && this.assigned_warehouses.length > 1) {
+            this.assigned_warehouses = [this.assigned_warehouses[0]];
+            this.user.is_all_warehouses = 0;
+          }
           this.user.NewPassword = null;
           NProgress.done();
           this.isLoading = false;
@@ -355,7 +454,16 @@ export default {
     },
 
     Selected_Warehouse(value) {
-      if (!value.length) {
+      if (this.isDeliveryRole) {
+        if (Array.isArray(value)) {
+          this.assigned_warehouses = value.length ? [value[value.length - 1]] : [];
+        } else {
+          this.assigned_warehouses = value ? [value] : [];
+        }
+        return;
+      }
+
+      if (!value || !value.length) {
         this.assigned_warehouses = [];
       }
     },

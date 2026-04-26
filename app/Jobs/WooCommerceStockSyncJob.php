@@ -14,6 +14,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 class WooCommerceStockSyncJob implements ShouldQueue
 {
@@ -190,9 +191,8 @@ class WooCommerceStockSyncJob implements ShouldQueue
                                     try {
                                         $imgName = (string) ($product->image ?? '');
                                         if ($imgName !== '' && strtolower($imgName) !== 'no-image.png') {
-                                            $public = public_path('images/products/'.$imgName);
-                                            if (is_file($public)) {
-                                                $payloadVar['image'] = ['src' => asset('images/products/'.$imgName)];
+                                            if (product_image_exists($imgName)) {
+                                                $payloadVar['image'] = ['src' => product_image_url($imgName)];
                                             }
                                         }
                                     } catch (\Throwable $e) {
@@ -236,9 +236,8 @@ class WooCommerceStockSyncJob implements ShouldQueue
                                 try {
                                     $imgName = (string) ($product->image ?? '');
                                     if ($imgName !== '' && strtolower($imgName) !== 'no-image.png') {
-                                        $public = public_path('images/products/'.$imgName);
-                                        if (is_file($public)) {
-                                            $payload['images'] = [['src' => asset('images/products/'.$imgName)]];
+                                        if (product_image_exists($imgName)) {
+                                            $payload['images'] = [['src' => product_image_url($imgName)]];
                                         }
                                     }
                                 } catch (\Throwable $e) {
@@ -263,9 +262,8 @@ class WooCommerceStockSyncJob implements ShouldQueue
                                 try {
                                     $imgName = (string) ($product->image ?? '');
                                     if ($imgName !== '' && strtolower($imgName) !== 'no-image.png') {
-                                        $public = public_path('images/products/'.$imgName);
-                                        if (is_file($public)) {
-                                            $payload['images'] = [['src' => asset('images/products/'.$imgName)]];
+                                        if (product_image_exists($imgName)) {
+                                            $payload['images'] = [['src' => product_image_url($imgName)]];
                                         }
                                     }
                                 } catch (\Throwable $e) {
@@ -442,9 +440,44 @@ class WooCommerceStockSyncJob implements ShouldQueue
             if ($imgName === '' || strtolower($imgName) === 'no-image.png') {
                 return null;
             }
-            $abs = public_path('images/products/'.$imgName);
-            if (! is_file($abs)) {
-                return null;
+            $disk = Storage::disk(product_images_disk());
+            $key = product_image_storage_key($imgName);
+            $stream = null;
+            $size = null;
+            $mime = 'image/jpeg';
+
+            try {
+                if ($key && $disk->exists($key)) {
+                    $stream = $disk->readStream($key);
+                    $size = $disk->size($key);
+                    $mime = $disk->mimeType($key) ?: $mime;
+                }
+            } catch (\Throwable $e) {
+                $stream = null;
+            }
+
+            if (! is_resource($stream)) {
+                $abs = public_path('images/products/'.$imgName);
+                if (! is_file($abs)) {
+                    $abs = storage_path('app/public/images/products/'.$imgName);
+                }
+                if (! is_file($abs)) {
+                    return null;
+                }
+
+                $stream = fopen($abs, 'r');
+                $size = @filesize($abs);
+
+                if (function_exists('finfo_open')) {
+                    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                    if ($finfo) {
+                        $det = finfo_file($finfo, $abs);
+                        if ($det) {
+                            $mime = $det;
+                        }
+                        finfo_close($finfo);
+                    }
+                }
             }
 
             $filenameBase = pathinfo($imgName, PATHINFO_FILENAME);
@@ -565,6 +598,9 @@ class WooCommerceStockSyncJob implements ShouldQueue
                     $found = $trySlug($filenameBase);
                 }
                 if ($found) {
+                    if (is_resource($stream)) {
+                        fclose($stream);
+                    }
                     return $found;
                 }
             } catch (\Throwable $e) {
@@ -572,17 +608,8 @@ class WooCommerceStockSyncJob implements ShouldQueue
                     WooCommerceLog::create(['action' => 'media.resolve', 'level' => 'error', 'message' => 'WP media search failed (job)', 'context' => ['error' => $e->getMessage()]]);
                 } catch (\Throwable $e2) {
                 }
-            }
-
-            $mime = 'image/jpeg';
-            if (function_exists('finfo_open')) {
-                $finfo = finfo_open(FILEINFO_MIME_TYPE);
-                if ($finfo) {
-                    $det = finfo_file($finfo, $abs);
-                    if ($det) {
-                        $mime = $det;
-                    }
-                    finfo_close($finfo);
+                if (is_resource($stream)) {
+                    fclose($stream);
                 }
             }
 
@@ -596,11 +623,17 @@ class WooCommerceStockSyncJob implements ShouldQueue
             $upload = Http::timeout($uploadTimeout)
                 ->retry($retries, $sleepMs)
                 ->withBasicAuth($username, $appPass)
-                ->attach('file', fopen($abs, 'r'), $imgName)
+                ->attach('file', $stream, $imgName, [
+                    'Content-Type' => $mime,
+                ])
                 ->withHeaders([
                     'Content-Disposition' => 'attachment; filename="'.$imgName.'"',
                 ])
                 ->post($baseUrl.'/wp-json/wp/v2/media');
+
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
 
             if ($upload->successful() || $upload->status() === 201) {
                 $body = $upload->json();

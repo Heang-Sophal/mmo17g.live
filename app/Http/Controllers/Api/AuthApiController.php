@@ -18,12 +18,45 @@ class AuthApiController extends Controller
      */
     const MAX_LOGIN_ATTEMPTS = 3;
     const BLOCK_DURATION_MINUTES = 30; // បិទ ៣០នាទី បើ login ខុស ៣ដង
+    const MOBILE_ALLOWED_ROLES = ['Sale', 'Delivery', 'Laivrison'];
 
     /**
      * Sign In
      * POST /api/auth/login
      */
     public function login(Request $request): JsonResponse
+    {
+        return $this->loginWithRequiredRole($request);
+    }
+
+    /**
+     * Sign In for Delivery App only
+     * POST /api/auth/delivery/login
+     */
+    public function deliveryLogin(Request $request): JsonResponse
+    {
+        return $this->loginWithRequiredRole($request, 'Delivery');
+    }
+
+    /**
+     * Check Auth Status
+     * GET /api/auth/check
+     */
+    public function check(Request $request): JsonResponse
+    {
+        return $this->checkWithRequiredRole($request);
+    }
+
+    /**
+     * Check Auth Status for Delivery App only
+     * GET /api/auth/delivery/check
+     */
+    public function deliveryCheck(Request $request): JsonResponse
+    {
+        return $this->checkWithRequiredRole($request, 'Delivery');
+    }
+
+    private function loginWithRequiredRole(Request $request, ?string $requiredRole = null): JsonResponse
     {
         try {
             $validated = $request->validate([
@@ -56,7 +89,7 @@ class AuthApiController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid credentials or insufficient permissions. Only "Sale" role can access.',
+                    'message' => $this->roleAccessMessage($requiredRole),
                     'error_type' => 'invalid_credentials',
                 ], 401);
             }
@@ -70,32 +103,15 @@ class AuthApiController extends Controller
                 ], 403);
             }
 
-            // ពិនិត្យមើលថាតើ User មាន Role "Sale" ឬអត់
-            // ពិនិត្យមើល role_id ឬ roles relationship
-            $hasSaleRole = false;
-            
-            // ពិនិត្យមើល role_id (បើមាន column role ក្នុងតារាង)
-            if (isset($user->role) && $user->role === 'Sale') {
-                $hasSaleRole = true;
-            }
-            
-            // ពិនិត្យមើល roles relationship
-            if ($user->roles && $user->roles->count() > 0) {
-                foreach ($user->roles as $role) {
-                    if ($role->name === 'Sale') {
-                        $hasSaleRole = true;
-                        break;
-                    }
-                }
-            }
+            $mobileRoleName = $this->resolveMobileRoleName($user, $requiredRole);
 
-            if (!$hasSaleRole) {
+            if (!$mobileRoleName) {
                 // កត់ត្រាការព្យាយាមខុស
                 $this->recordFailedAttempt($email, $ipAddress);
                 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid credentials or insufficient permissions. Only "Sale" role can access.',
+                    'message' => $this->roleAccessMessage($requiredRole),
                     'error_type' => 'insufficient_permissions',
                 ], 403);
             }
@@ -143,15 +159,7 @@ class AuthApiController extends Controller
                 'success' => true,
                 'message' => 'Login successful',
                 'data' => [
-                    'user' => [
-                        'id' => (string) $user->id,
-                        'name' => $user->name ?? '',
-                        'email' => $user->email ?? '',
-                        'role' => $user->role ?? 'Sale',
-                        'avatar' => $user->avatar ?? null,
-                        'avatar_url' => avatar_image_url($user->avatar),
-                        'mobile_permissions' => $mobilePermissions,
-                    ],
+                    'user' => $this->buildMobileUserPayload($user, $mobileRoleName, $mobilePermissions),
                     'token' => $passportToken, // Use Passport token for API routes
                     'custom_token' => $customToken, // Keep custom token for backward compatibility
                     'token_type' => 'Bearer',
@@ -195,11 +203,7 @@ class AuthApiController extends Controller
         }
     }
 
-    /**
-     * Check Auth Status
-     * GET /api/auth/check
-     */
-    public function check(Request $request): JsonResponse
+    private function checkWithRequiredRole(Request $request, ?string $requiredRole = null): JsonResponse
     {
         try {
             $token = $request->bearerToken();
@@ -223,7 +227,17 @@ class AuthApiController extends Controller
                 $user = $request->user('api');
             }
 
-            if (!$user || $user->role !== 'Sale' || !$user->is_active) {
+            if (!$user || !$user->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'authenticated' => false,
+                ], 401);
+            }
+
+            $user->loadMissing('roles');
+            $mobileRoleName = $this->resolveMobileRoleName($user, $requiredRole);
+
+            if (!$mobileRoleName) {
                 return response()->json([
                     'success' => false,
                     'authenticated' => false,
@@ -234,12 +248,7 @@ class AuthApiController extends Controller
                 'success' => true,
                 'authenticated' => true,
                 'data' => [
-                    'user' => [
-                        'id' => (string) $user->id,
-                        'name' => $user->name ?? '',
-                        'email' => $user->email ?? '',
-                        'role' => $user->role ?? 'Sale',
-                    ],
+                    'user' => $this->buildMobileUserPayload($user, $mobileRoleName),
                 ],
             ], 200);
         } catch (\Exception $e) {
@@ -248,6 +257,32 @@ class AuthApiController extends Controller
                 'authenticated' => false,
             ], 401);
         }
+    }
+
+    private function roleAccessMessage(?string $requiredRole = null): string
+    {
+        if ($requiredRole === 'Delivery') {
+            return 'Invalid credentials or insufficient permissions. Only "Delivery" role can access.';
+        }
+
+        return 'Invalid credentials or insufficient permissions. Only "Sale" or "Delivery" role can access.';
+    }
+
+    private function resolveMobileRoleName(User $user, ?string $requiredRole = null): ?string
+    {
+        $mobileRoleName = $this->getAllowedMobileRoleName($user);
+
+        if (!$mobileRoleName) {
+            return null;
+        }
+
+        if (!$requiredRole) {
+            return $mobileRoleName;
+        }
+
+        return strcasecmp($mobileRoleName, $requiredRole) === 0
+            ? $mobileRoleName
+            : null;
     }
 
     /**
@@ -353,5 +388,39 @@ class AuthApiController extends Controller
         } catch (\Exception $e) {
             return null;
         }
+    }
+
+    private function getAllowedMobileRoleName(User $user): ?string
+    {
+        if ($user->isDeliveryUser()) {
+            return 'Delivery';
+        }
+
+        if ($user->isSaleUser()) {
+            return 'Sale';
+        }
+
+        return null;
+    }
+
+    private function buildMobileUserPayload(User $user, string $mobileRoleName, array $mobilePermissions = []): array
+    {
+        $assignedWarehouse = $user->primaryAssignedWarehouse();
+
+        return [
+            'id' => (string) $user->id,
+            'name' => $user->name ?? '',
+            'email' => $user->email ?? '',
+            'role' => $mobileRoleName,
+            'avatar' => $user->avatar ?? null,
+            'avatar_url' => avatar_image_url($user->avatar),
+            'mobile_permissions' => $mobilePermissions,
+            'is_delivery' => $mobileRoleName === 'Delivery',
+            'assigned_warehouse' => $assignedWarehouse ? [
+                'id' => (string) $assignedWarehouse->id,
+                'name' => $assignedWarehouse->name ?? '',
+                'city' => $assignedWarehouse->city ?? '',
+            ] : null,
+        ];
     }
 }

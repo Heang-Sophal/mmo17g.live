@@ -1645,10 +1645,10 @@
               <div class="product-image-wrapper" v-if="pos_settings.show_product_images">
                 <img
                   v-if="product.image"
-                  :src="resolveProductImage(product.image)"
+                  :src="product.image_url || resolveProductImage(product.image)"
                   :alt="product.name"
                   class="product-image"
-                  @error="product.image = null"
+                  @error="product.image_url ? (product.image_url = null) : (product.image = null)"
                 />
                 <div v-else class="product-image-placeholder">{{ product.category ? product.category[0] : 'P' }}</div>
                 <div v-if="product.discount" class="discount-badge">-{{ product.discount }}%</div>

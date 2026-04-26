@@ -105,6 +105,51 @@ class User extends Authenticatable
         return $this->belongsToMany('App\Models\Warehouse');
     }
 
+    public function deliveryAlerts()
+    {
+        return $this->hasMany(DeliveryAlert::class);
+    }
+
+    public function hasAnyRoleNamed(array $roleNames): bool
+    {
+        $normalizedNames = collect($roleNames)
+            ->map(function ($roleName) {
+                return strtolower(trim((string) $roleName));
+            })
+            ->filter()
+            ->values();
+
+        if ($normalizedNames->isEmpty()) {
+            return false;
+        }
+
+        $currentRoleName = strtolower((string) $this->role);
+        if ($normalizedNames->contains($currentRoleName)) {
+            return true;
+        }
+
+        $roles = $this->relationLoaded('roles') ? $this->roles : $this->roles()->get();
+
+        return $roles->contains(function ($role) use ($normalizedNames) {
+            return $normalizedNames->contains(strtolower((string) $role->name));
+        });
+    }
+
+    public function isDeliveryUser(): bool
+    {
+        return $this->hasAnyRoleNamed(['Delivery', 'Laivrison']);
+    }
+
+    public function isSaleUser(): bool
+    {
+        return $this->hasAnyRoleNamed(['Sale']);
+    }
+
+    public function primaryAssignedWarehouse()
+    {
+        return $this->assignedWarehouses()->orderBy('warehouses.id')->first();
+    }
+
     /**
      * Check if user has record_view permission (user-level boolean with backward compatibility)
      * 

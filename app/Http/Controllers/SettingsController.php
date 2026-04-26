@@ -927,11 +927,20 @@ class SettingsController extends Controller
             $item['id'] = $settings->id;
 
             $item['favicon'] = $settings->favicon;
+            $item['favicon_url'] = media_public_url('app', $settings->favicon);
             $item['app_name'] = $settings->app_name;
-            $item['mobile_app_name'] = $settings->mobile_app_name;
-            $item['mobile_app_logo'] = $settings->mobile_app_logo;
+            $item['mobile_app_name'] = $settings->seller_mobile_app_name ?? $settings->mobile_app_name;
+            $item['mobile_app_logo'] = $settings->seller_mobile_app_logo ?? $settings->mobile_app_logo;
+            $item['mobile_app_logo_url'] = media_public_url('app', $item['mobile_app_logo']);
+            $item['seller_mobile_app_name'] = $settings->seller_mobile_app_name ?? $settings->mobile_app_name;
+            $item['seller_mobile_app_logo'] = $settings->seller_mobile_app_logo ?? $settings->mobile_app_logo;
+            $item['seller_mobile_app_logo_url'] = media_public_url('app', $item['seller_mobile_app_logo']);
+            $item['delivery_mobile_app_name'] = $settings->delivery_mobile_app_name;
+            $item['delivery_mobile_app_logo'] = $settings->delivery_mobile_app_logo;
+            $item['delivery_mobile_app_logo_url'] = media_public_url('app', $item['delivery_mobile_app_logo']);
             $item['page_title_suffix'] = $settings->page_title_suffix;
             $item['logo'] = $settings->logo;
+            $item['logo_url'] = media_public_url('app', $settings->logo);
             $item['footer'] = $settings->footer;
             $item['developed_by'] = $settings->developed_by;
             // Login page appearance
@@ -954,13 +963,17 @@ class SettingsController extends Controller
         $this->authorizeForUser($request->user('api'), 'appearance_settings', Setting::class);
 
         $setting = Setting::findOrFail($id);
+        $sellerMobileAppName = $this->normalizeOptionalSettingText($request->input('seller_mobile_app_name'));
+        $deliveryMobileAppName = $this->normalizeOptionalSettingText($request->input('delivery_mobile_app_name'));
         $currentLogo = $setting->logo;
         $currentFavicon = $setting->favicon;
-        $currentMobileAppLogo = $setting->mobile_app_logo;
+        $currentSellerMobileAppLogo = $setting->seller_mobile_app_logo ?: $setting->mobile_app_logo;
+        $currentDeliveryMobileAppLogo = $setting->delivery_mobile_app_logo;
 
         $logoFilename = $currentLogo;
         $faviconFilename = $currentFavicon;
-        $mobileAppLogoFilename = $currentMobileAppLogo;
+        $sellerMobileAppLogoFilename = $currentSellerMobileAppLogo;
+        $deliveryMobileAppLogoFilename = $currentDeliveryMobileAppLogo;
 
         // Handle Logo Upload
         if ($request->hasFile('logo') && $request->file('logo') != $currentLogo) {
@@ -1001,13 +1014,13 @@ class SettingsController extends Controller
             }
         }
 
-        // Handle Mobile App Logo Upload (512x512 recommended for app icons)
-        if ($request->hasFile('mobile_app_logo') && $request->file('mobile_app_logo')->isValid()) {
-            $mobileLogo = $request->file('mobile_app_logo');
+        // Handle Seller App Logo Upload (512x512 recommended for app icons)
+        if ($request->hasFile('seller_mobile_app_logo') && $request->file('seller_mobile_app_logo')->isValid()) {
+            $mobileLogo = $request->file('seller_mobile_app_logo');
             $extension = strtolower($mobileLogo->getClientOriginalExtension());
 
             if (in_array($extension, ['png', 'jpg', 'jpeg', 'webp'])) {
-                $mobileAppLogoFilename = uniqid('mobile_logo_').'.'.$extension;
+                $sellerMobileAppLogoFilename = uniqid('seller_mobile_logo_').'.'.$extension;
 
                 // Resize to 512x512 for app icon standard
                 $encoded = (string) Image::make($mobileLogo->getRealPath())
@@ -1017,14 +1030,38 @@ class SettingsController extends Controller
                     })
                     ->encode($extension);
 
-                if (! media_put('app', $mobileAppLogoFilename, $encoded, $mobileLogo->getMimeType() ?: 'application/octet-stream')) {
-                    throw new \RuntimeException('Unable to save mobile app logo to cloud storage.');
+                if (! media_put('app', $sellerMobileAppLogoFilename, $encoded, $mobileLogo->getMimeType() ?: 'application/octet-stream')) {
+                    throw new \RuntimeException('Unable to save seller mobile app logo to cloud storage.');
                 }
 
-                // Delete old mobile app logo if exists
-                if ($currentMobileAppLogo) {
-                    media_delete('app', $currentMobileAppLogo);
+                $this->deleteMediaIfNotReferenced($currentSellerMobileAppLogo, [
+                    $currentDeliveryMobileAppLogo,
+                ]);
+            }
+        }
+
+        // Handle Delivery App Logo Upload
+        if ($request->hasFile('delivery_mobile_app_logo') && $request->file('delivery_mobile_app_logo')->isValid()) {
+            $mobileLogo = $request->file('delivery_mobile_app_logo');
+            $extension = strtolower($mobileLogo->getClientOriginalExtension());
+
+            if (in_array($extension, ['png', 'jpg', 'jpeg', 'webp'])) {
+                $deliveryMobileAppLogoFilename = uniqid('delivery_mobile_logo_').'.'.$extension;
+
+                $encoded = (string) Image::make($mobileLogo->getRealPath())
+                    ->resize(512, 512, function ($constraint) {
+                        $constraint->aspectRatio();
+                        $constraint->upsize();
+                    })
+                    ->encode($extension);
+
+                if (! media_put('app', $deliveryMobileAppLogoFilename, $encoded, $mobileLogo->getMimeType() ?: 'application/octet-stream')) {
+                    throw new \RuntimeException('Unable to save delivery mobile app logo to cloud storage.');
                 }
+
+                $this->deleteMediaIfNotReferenced($currentDeliveryMobileAppLogo, [
+                    $currentSellerMobileAppLogo,
+                ]);
             }
         }
 
@@ -1033,8 +1070,12 @@ class SettingsController extends Controller
             'footer' => $request->input('footer'),
             'developed_by' => $request->input('developed_by'),
             'app_name' => $request->input('app_name'),
-            'mobile_app_name' => $request->input('mobile_app_name'),
-            'mobile_app_logo' => $mobileAppLogoFilename,
+            'mobile_app_name' => $sellerMobileAppName,
+            'mobile_app_logo' => $sellerMobileAppLogoFilename,
+            'seller_mobile_app_name' => $sellerMobileAppName,
+            'seller_mobile_app_logo' => $sellerMobileAppLogoFilename,
+            'delivery_mobile_app_name' => $deliveryMobileAppName,
+            'delivery_mobile_app_logo' => $deliveryMobileAppLogoFilename,
             'page_title_suffix' => $request->input('page_title_suffix'),
             'logo' => $logoFilename,
             'favicon' => $faviconFilename,
@@ -1046,5 +1087,30 @@ class SettingsController extends Controller
         ]);
 
         return response()->json(['success' => true]);
+    }
+
+    private function deleteMediaIfNotReferenced(?string $filename, array $otherReferences = []): void
+    {
+        $normalizedFilename = trim((string) $filename);
+        if ($normalizedFilename === '' || in_array($normalizedFilename, ['logo-default.png', 'favicon.ico'], true)) {
+            return;
+        }
+
+        $normalizedReferences = array_filter(array_map(static function ($reference) {
+            return trim((string) $reference);
+        }, $otherReferences));
+
+        if (in_array($normalizedFilename, $normalizedReferences, true)) {
+            return;
+        }
+
+        media_delete('app', $normalizedFilename);
+    }
+
+    private function normalizeOptionalSettingText($value): ?string
+    {
+        $normalizedValue = trim((string) $value);
+
+        return $normalizedValue === '' ? null : $normalizedValue;
     }
 }

@@ -104,7 +104,7 @@
   var csrfMeta     = document.querySelector('meta[name="csrf-token"]');
   var CURRENCY     = currencyMeta ? currencyMeta.content : @json($currency);
   var CSRF         = csrfMeta ? csrfMeta.content : '';
-  var NOIMG        = @json(asset('images/products/no-image.png'));
+  var NOIMG        = @json(product_image_url('no-image.png'));
 
   function fmt(v){ return CURRENCY + Number(v||0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 

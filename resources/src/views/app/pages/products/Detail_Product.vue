@@ -117,7 +117,7 @@
             </table>
           </b-col>
           <b-col md="4" class="mb-30">
-            <img :src="'/images/products/' + product.image" alt="Product Image" />
+            <img :src="product.image_url || ('/images/products/' + product.image)" alt="Product Image" />
           </b-col>
 
             <!-- product combo -->

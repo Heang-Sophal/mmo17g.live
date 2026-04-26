@@ -775,6 +775,7 @@ class ReportController extends BaseController
         // Accept both Passport tokens and custom base64 tokens
         $user = null;
         $isMobileUser = false;
+        $isMobileRoute = str_contains($request->path(), 'report/sales_by_seller_mobile');
         
         try {
             $user = $request->user('api');
@@ -803,8 +804,9 @@ class ReportController extends BaseController
             return response()->json(['error' => 'Unauthenticated', 'message' => 'Please login to view this report.'], 401);
         }
 
-        // Skip authorization for mobile users (they can only see their own data)
-        if (!$isMobileUser) {
+        // Mobile route only shows the authenticated user's own sales, so it
+        // does not need the broader web report permission gate.
+        if (! $isMobileRoute) {
             try {
                 $this->authorizeForUser($user, 'sales_by_seller_report', Sale::class);
             } catch (\Exception $e) {
@@ -823,8 +825,6 @@ class ReportController extends BaseController
         if (!in_array(strtolower($dir), ['asc', 'desc'])) {
             $dir = 'desc';
         }
-        $helpers = new helpers;
-
         $data = [];
 
         // Get sales with details
@@ -834,8 +834,12 @@ class ReportController extends BaseController
             ->where('sales.deleted_at', '=', null)
             ->whereBetween('sales.date', [$request->from, $request->to]);
 
-        // Check If User Has Permission Show All Records
-        $Sales = $helpers->Show_Records($Sales);
+        // Mobile report must always show only the logged-in seller's data.
+        if ($isMobileRoute) {
+            $Sales->where('sales.user_id', '=', $user->id);
+        } elseif (! $user->hasRecordView()) {
+            $Sales->where('sales.user_id', '=', $user->id);
+        }
         
         // Apply filters
         if ($request->filled('Ref')) {
@@ -847,7 +851,7 @@ class ReportController extends BaseController
         if ($request->filled('warehouse_id')) {
             $Sales->where('sales.warehouse_id', $request->warehouse_id);
         }
-        if ($request->filled('user_id')) {
+        if (! $isMobileRoute && $request->filled('user_id')) {
             $Sales->where('sales.user_id', $request->user_id);
         }
         if ($request->filled('statut')) {
@@ -947,10 +951,15 @@ class ReportController extends BaseController
         $data = array_slice($data, $offSet, $perPage);
 
         $customers = Client::where('deleted_at', '=', null)->get(['id', 'name']);
-        $sellers = User::where('deleted_at', '=', null)->get(['id', 'username', 'phone']);
+        $sellers = $isMobileRoute
+            ? User::where('deleted_at', '=', null)
+                ->where('id', $user->id)
+                ->get(['id', 'username', 'phone'])
+            : User::where('deleted_at', '=', null)
+                ->get(['id', 'username', 'phone']);
 
         // get warehouses assigned to user
-        $user_auth = auth()->user();
+        $user_auth = $user;
         if ($user_auth->is_all_warehouses) {
             $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
         } else {

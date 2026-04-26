@@ -47,12 +47,30 @@ Route::get('/get-logo-setting', function () {
     ]);
 });
 
-Route::get('/get-mobile-app-name', function () {
+Route::get('/get-mobile-app-name', function (Request $request) {
     $setting = \App\Models\Setting::first();
+    $app = strtolower(trim((string) $request->query('app', 'seller')));
+
+    if ($app === 'delivery') {
+        $mobileAppName = filled($setting->delivery_mobile_app_name ?? null)
+            ? $setting->delivery_mobile_app_name
+            : null;
+        $mobileAppLogo = $setting->delivery_mobile_app_logo ?? null;
+    } else {
+        $mobileAppName = filled($setting->seller_mobile_app_name ?? null)
+            ? $setting->seller_mobile_app_name
+            : (filled($setting->mobile_app_name ?? null)
+                ? $setting->mobile_app_name
+                : ($setting->app_name ?? null));
+        $mobileAppLogo = $setting->seller_mobile_app_logo
+            ?? $setting->mobile_app_logo
+            ?? null;
+    }
 
     return response()->json([
-        'mobile_app_name' => $setting->mobile_app_name ?? null,
-        'mobile_app_logo' => $setting->mobile_app_logo ?? null,
+        'mobile_app_name' => $mobileAppName,
+        'mobile_app_logo' => $mobileAppLogo,
+        'mobile_app_logo_url' => media_public_url('app', $mobileAppLogo),
     ]);
 });
 
@@ -109,6 +127,14 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout'])-
     Route::get('/admin/products', [CollectionController::class, 'searchProducts']);
 
     Route::get('dashboard_data', 'DashboardController@dashboard_data');
+    Route::get('delivery/dashboard', 'Api\DeliveryApiController@dashboard');
+    Route::get('delivery/orders', 'Api\DeliveryApiController@orders');
+    Route::post('delivery/orders/{id}/accept', 'Api\DeliveryApiController@acceptOrder');
+    Route::post('delivery/orders/{id}/complete', 'Api\DeliveryApiController@completeOrder');
+    Route::post('delivery/orders/{id}/shipping', 'Api\DeliveryApiController@updateShipping');
+    Route::get('delivery/alerts', 'Api\DeliveryApiController@alerts');
+    Route::post('delivery/alerts/read-all', 'Api\DeliveryApiController@readAllAlerts');
+    Route::post('delivery/alerts/{id}/read', 'Api\DeliveryApiController@markAlertAsRead');
 
     Route::get('/retrieve-customer', 'StripeController@retrieveCustomer');
     Route::post('/update-customer-stripe', 'StripeController@updateCustomer');
@@ -933,8 +959,10 @@ Route::get('damage_pdf/{id}', 'DamageController@damage_pdf');
 
 // Auth API
 Route::post('/auth/login', 'Api\AuthApiController@login');
+Route::post('/auth/delivery/login', 'Api\AuthApiController@deliveryLogin');
 Route::post('/auth/logout', 'Api\AuthApiController@logout');
 Route::get('/auth/check', 'Api\AuthApiController@check');
+Route::get('/auth/delivery/check', 'Api\AuthApiController@deliveryCheck');
 
 // Profile API
 Route::get('/profile', 'Api\ProfileApiController@show');
@@ -967,6 +995,38 @@ Route::get('/settings', function() {
 // Orders API - Create and list orders
 Route::get('/orders', function(\Illuminate\Http\Request $request) {
     try {
+        $applyShippingStatusFilter = function ($query, string $status) {
+            $normalizedStatus = strtolower(trim($status));
+
+            if ($normalizedStatus === 'pending') {
+                return $query->where(function ($pendingQuery) {
+                    $pendingQuery->whereNull('shipping_status')
+                        ->orWhere('shipping_status', '')
+                        ->orWhere('shipping_status', 'pending');
+                });
+            }
+
+            if (in_array($normalizedStatus, ['processing', 'shipped'], true)) {
+                return $query->whereIn('shipping_status', ['processing', 'shipped']);
+            }
+
+            return $query->where('shipping_status', $normalizedStatus);
+        };
+
+        $normalizeShippingStatus = function ($status) {
+            $normalizedStatus = strtolower(trim((string) $status));
+
+            if ($normalizedStatus === '' || $normalizedStatus === 'pending') {
+                return 'pending';
+            }
+
+            if ($normalizedStatus === 'processing') {
+                return 'shipped';
+            }
+
+            return $normalizedStatus;
+        };
+
         $query = \App\Models\Sale::with('client', 'warehouse', 'user')
             ->orderBy('created_at', 'desc')
             ->limit(100);
@@ -976,15 +1036,25 @@ Route::get('/orders', function(\Illuminate\Http\Request $request) {
             $query->where('user_id', $request->user_id);
         }
 
-        if ($request->has('status')) {
-            $query->where('statut', $request->status);
+        if ($request->filled('shipping_status')) {
+            $applyShippingStatusFilter($query, (string) $request->shipping_status);
+        } elseif ($request->filled('status')) {
+            $requestedStatus = strtolower(trim((string) $request->status));
+
+            if (in_array($requestedStatus, ['pending', 'processing', 'shipped', 'delivered', 'cancelled'], true)) {
+                $applyShippingStatusFilter($query, $requestedStatus);
+            } else {
+                $query->where('statut', $request->status);
+            }
         }
 
         if ($request->has('payment_status')) {
             $query->where('payment_statut', $request->payment_status);
         }
 
-        $orders = $query->get()->map(function($order) {
+        $orders = $query->get()->map(function($order) use ($normalizeShippingStatus) {
+            $shippingStatus = $normalizeShippingStatus($order->shipping_status);
+
             return [
                 'id' => (string) $order->id,
                 'Ref' => $order->Ref,
@@ -1000,6 +1070,7 @@ Route::get('/orders', function(\Illuminate\Http\Request $request) {
                 'payment_method' => $order->payment_method ?? 'cash',
                 'payment_status' => $order->payment_statut ?? 'unpaid',
                 'status' => $order->statut ?? 'completed',
+                'shipping_status' => $shippingStatus,
                 'notes' => $order->notes ?? '',
                 'created_at' => $order->created_at?->toIso8601String(),
                 'updated_at' => $order->updated_at?->toIso8601String(),
@@ -1091,6 +1162,38 @@ Route::get('/report/sales_by_seller_mobile', 'ReportController@sales_by_seller_r
 Route::get('/dashboard/seller', function(\Illuminate\Http\Request $request) {
     try {
         $userId = $request->get('user_id');
+
+        $applyShippingStatusFilter = function ($query, string $status) {
+            $normalizedStatus = strtolower(trim($status));
+
+            if ($normalizedStatus === 'pending') {
+                return $query->where(function ($pendingQuery) {
+                    $pendingQuery->whereNull('shipping_status')
+                        ->orWhere('shipping_status', '')
+                        ->orWhere('shipping_status', 'pending');
+                });
+            }
+
+            if (in_array($normalizedStatus, ['processing', 'shipped'], true)) {
+                return $query->whereIn('shipping_status', ['processing', 'shipped']);
+            }
+
+            return $query->where('shipping_status', $normalizedStatus);
+        };
+
+        $normalizeShippingStatus = function ($status) {
+            $normalizedStatus = strtolower(trim((string) $status));
+
+            if ($normalizedStatus === '' || $normalizedStatus === 'pending') {
+                return 'pending';
+            }
+
+            if ($normalizedStatus === 'processing') {
+                return 'shipped';
+            }
+
+            return $normalizedStatus;
+        };
         
         // Sales statistics
         $salesQuery = \App\Models\Sale::query();
@@ -1111,8 +1214,18 @@ Route::get('/dashboard/seller', function(\Illuminate\Http\Request $request) {
         
         $totalOrders = (clone $ordersQuery)->count();
         $todayOrders = (clone $ordersQuery)->whereDate('created_at', today())->count();
-        $pendingOrders = (clone $ordersQuery)->where('payment_statut', 'unpaid')->count();
+        $pendingOrders = $applyShippingStatusFilter(clone $ordersQuery, 'pending')->count();
+        $shippedOrders = $applyShippingStatusFilter(clone $ordersQuery, 'shipped')->count();
+        $deliveredOrders = $applyShippingStatusFilter(clone $ordersQuery, 'delivered')->count();
         $completedOrders = (clone $ordersQuery)->where('statut', 'completed')->count();
+
+        $unreadAlerts = 0;
+        if ($userId) {
+            $unreadAlerts = \App\Models\DeliveryAlert::query()
+                ->where('user_id', $userId)
+                ->whereNull('read_at')
+                ->count();
+        }
         
         // Products statistics
         $totalProducts = \App\Models\Product::where('is_active', 1)->count();
@@ -1146,7 +1259,9 @@ Route::get('/dashboard/seller', function(\Illuminate\Http\Request $request) {
             $recentOrdersQuery->where('user_id', $userId);
         }
         
-        $recentOrders = $recentOrdersQuery->get()->map(function($order) {
+        $recentOrders = $recentOrdersQuery->get()->map(function($order) use ($normalizeShippingStatus) {
+            $shippingStatus = $normalizeShippingStatus($order->shipping_status);
+
             return [
                 'id' => (string) $order->id,
                 'Ref' => $order->Ref,
@@ -1159,6 +1274,7 @@ Route::get('/dashboard/seller', function(\Illuminate\Http\Request $request) {
                 'payment_method' => $order->payment_method ?? 'cash',
                 'payment_status' => $order->payment_statut ?? 'unpaid',
                 'status' => $order->statut ?? 'completed',
+                'shipping_status' => $shippingStatus,
                 'created_at' => $order->created_at?->toIso8601String(),
             ];
         });
@@ -1181,7 +1297,12 @@ Route::get('/dashboard/seller', function(\Illuminate\Http\Request $request) {
                     'total' => $totalOrders,
                     'today' => $todayOrders,
                     'pending' => $pendingOrders,
+                    'shipped' => $shippedOrders,
+                    'delivered' => $deliveredOrders,
                     'completed' => $completedOrders,
+                ],
+                'alerts' => [
+                    'unread' => $unreadAlerts,
                 ],
                 'products' => [
                     'total' => $totalProducts,
@@ -1331,6 +1452,8 @@ Route::post('/orders', function(\Illuminate\Http\Request $request) {
                 'product_name' => $product ? $product->name : 'Product #' . $item['product_id'],
                 'quantity' => $item['quantity'],
                 'price' => $item['price'],
+                'image' => $product?->image ?? null,
+                'image_url' => ($product && $product->image) ? product_image_url($product->image) : null,
             ];
 
             // Update stock in product_warehouse
@@ -1345,29 +1468,42 @@ Route::post('/orders', function(\Illuminate\Http\Request $request) {
             \Log::info('Sending Telegram notification for mobile POS order - Sale ID: ' . $sale->id);
             
             $warehouse = \App\Models\Warehouse::find($validated['warehouse_id']);
+            $seller = \App\Models\User::find($userId);
             
             if ($warehouse && $warehouse->telegram_enabled && $warehouse->telegram_chat_id) {
                 // Prepare sale data for notification
                 $saleData = [
                     'ref' => $sale->Ref,
                     'customer_name' => $customerName,
+                    'customer_phone' => $customerPhone,
+                    'customer_address' => $customerAddress,
                     'date' => $sale->date,
+                    'datetime' => $sale->created_at?->format('Y-m-d H:i:s'),
                     'GrandTotal' => $grandTotal,
+                    'payment_method' => $validated['payment_method'],
                     'payment_status' => $validated['payment_status'],
                     'paid_amount' => $validated['paid_amount'],
                     'due' => $grandTotal - $validated['paid_amount'],
-                    'created_by' => 'Mobile POS',
+                    'seller_name' => $seller?->name ?? 'Mobile POS',
+                    'seller_phone' => $seller?->phone ?? '',
+                    'created_by' => $seller?->name ?? 'Mobile POS',
                     'products' => $products,
                 ];
 
                 // Send notification via TelegramService with warehouse-specific bot token
                 $telegramService = app(\App\Services\TelegramService::class);
-                $result = $telegramService->sendSaleNotification(
+                $result = $telegramService->sendSaleNotificationResult(
                     $saleData,
                     $warehouse->name,
                     $warehouse->telegram_chat_id,
                     $warehouse->telegram_bot_token
                 );
+
+                if ($result && isset($result['message_id'])) {
+                    $sale->telegram_sale_chat_id = (string) $warehouse->telegram_chat_id;
+                    $sale->telegram_sale_message_id = (int) $result['message_id'];
+                    $sale->save();
+                }
 
                 \Log::info('Telegram notification sent for mobile POS order - Result: ' . ($result ? 'success' : 'failed'));
             } else {
@@ -1457,7 +1593,7 @@ Route::get('/seller/products', function(\Illuminate\Http\Request $request) {
                     'stock' => $stock,
                     'stock_alert' => (int) ($product->stock_alert ?? 0),
                     'image' => $product->image ?? '',
-                    'image_url' => $product->image ? asset('images/products/' . $product->image) : null,
+                    'image_url' => $product->image ? product_image_url($product->image) : null,
                     'category' => $product->category ? ['id' => (string) $product->category->id, 'name' => $product->category->name ?? ''] : ['id' => '', 'name' => 'Uncategorized'],
                     'brand' => $product->brand ? ['id' => (string) $product->brand->id, 'name' => $product->brand->name ?? ''] : null,
                     'warehouse_id' => $warehouseId,

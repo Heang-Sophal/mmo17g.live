@@ -1,1 +1,49 @@
-# Keep everything - no exclusions
+# OS / Editor
+.DS_Store
+.idea/
+.vscode/
+.qwen/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Dependency directories
+/node_modules/
+/vendor/
+
+# Build / compiled assets
+/public/hot
+/public/storage
+/public/mix-manifest.json
+/public/css/*.css.map
+/public/js/*.js.map
+
+# Laravel cache / runtime
+/bootstrap/cache/*.php
+/storage/*.key
+/storage/app/public/*
+!/storage/app/public/.gitignore
+/storage/debugbar/
+/storage/framework/cache/*
+!/storage/framework/cache/.gitignore
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitignore
+/storage/framework/testing/*
+!/storage/framework/testing/.gitignore
+/storage/framework/views/*
+!/storage/framework/views/.gitignore
+/storage/logs/*
+!/storage/logs/.gitignore
+
+# Test / coverage / local tooling
+/.phpunit.result.cache
+/coverage/
+
+# Local backups / dumps / archives
+/.sync-backups/
+/.git.empty-backup-*/
+/*.sql
+/*.zip
+/bash.exe.stackdump

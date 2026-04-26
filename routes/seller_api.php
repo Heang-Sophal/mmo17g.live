@@ -31,7 +31,7 @@ Route::get('/products', function() {
                     'stock' => $stockData ? (int) $stockData->qte : 0,
                     'stock_alert' => (int) ($product->stock_alert ?? 0),
                     'image' => $product->image ?? '',
-                    'image_url' => $product->image ? asset('images/products/' . $product->image) : null,
+                    'image_url' => $product->image ? product_image_url($product->image) : null,
                     'category' => $product->category ? ['id' => (string) $product->category->id, 'name' => $product->category->name ?? ''] : ['id' => '', 'name' => 'Uncategorized'],
                     'brand' => null,
                     'is_featured' => (bool) $product->is_featured,

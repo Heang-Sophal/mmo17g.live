@@ -219,32 +219,71 @@
                           </validation-provider>
                   </b-col>
 
-                        <!-- Mobile App Name -->
+                        <b-col cols="12" class="mb-2">
+                          <div class="font-weight-bold text-primary">Seller App Branding</div>
+                          <small class="text-muted">Customize the seller mobile app name and logo shown on the login screen.</small>
+                        </b-col>
+
                         <b-col lg="6" md="6" sm="12" class="mb-3">
-                          <b-form-group :label="$t('Mobile App Name')">
+                          <b-form-group label="Seller App Name">
                             <b-form-input
-                              v-model="appearance_settings.mobile_app_name"
-                              :placeholder="$t('e.g., 17G Seller')"
+                              v-model="appearance_settings.seller_mobile_app_name"
+                              placeholder="e.g., 17G Seller"
                             ></b-form-input>
-                            <small class="form-text text-muted">{{$t('Name displayed on mobile app login screen. Leave empty to use app_name.')}}</small>
+                            <small class="form-text text-muted">Leave empty to fallback to the main app name.</small>
                           </b-form-group>
                         </b-col>
 
-                        <!-- Mobile App Logo Upload -->
                         <b-col lg="6" md="6" sm="12" class="mb-3">
-                          <b-form-group :label="$t('Mobile App Logo')">
+                          <b-form-group label="Seller App Logo">
                             <div class="d-flex align-items-center">
-                              <div v-if="appearance_settings.mobile_app_logo" class="mr-3">
-                                <img :src="'/images/' + appearance_settings.mobile_app_logo" alt="Mobile App Logo" style="width: 80px; height: 80px; object-fit: contain; border: 1px solid #ddd; border-radius: 12px;">
+                              <div v-if="appearance_settings.seller_mobile_app_logo_url || appearance_settings.seller_mobile_app_logo" class="mr-3">
+                                <img :src="appearance_settings.seller_mobile_app_logo_url || ('/images/' + appearance_settings.seller_mobile_app_logo)" alt="Seller App Logo" style="width: 80px; height: 80px; object-fit: contain; border: 1px solid #ddd; border-radius: 12px;">
                               </div>
                               <div>
                                 <b-form-file
-                                  v-model="appearance_settings.mobile_app_logo_file"
+                                  v-model="appearance_settings.seller_mobile_app_logo_file"
+                                  @input="onSellerMobileAppLogoSelected"
                                   accept="image/png,image/jpeg,image/webp"
                                   :placeholder="$t('Choose file...')"
                                   :browse-text="$t('Browse')"
                                 ></b-form-file>
-                                <small class="form-text text-muted">{{$t('Recommended: 512x512px PNG with transparent background.')}}</small>
+                                <small class="form-text text-muted">Recommended: 512x512px PNG with transparent background. Large files are optimized automatically.</small>
+                              </div>
+                            </div>
+                          </b-form-group>
+                        </b-col>
+
+                        <b-col cols="12" class="mb-2 mt-2">
+                          <div class="font-weight-bold text-primary">Delivery App Branding</div>
+                          <small class="text-muted">Customize the delivery mobile app name and logo shown on the login screen.</small>
+                        </b-col>
+
+                        <b-col lg="6" md="6" sm="12" class="mb-3">
+                          <b-form-group label="Delivery App Name">
+                            <b-form-input
+                              v-model="appearance_settings.delivery_mobile_app_name"
+                              placeholder="e.g., 17G Delivery"
+                            ></b-form-input>
+                            <small class="form-text text-muted">Leave empty to keep the delivery app default name.</small>
+                          </b-form-group>
+                        </b-col>
+
+                        <b-col lg="6" md="6" sm="12" class="mb-3">
+                          <b-form-group label="Delivery App Logo">
+                            <div class="d-flex align-items-center">
+                              <div v-if="appearance_settings.delivery_mobile_app_logo_url || appearance_settings.delivery_mobile_app_logo" class="mr-3">
+                                <img :src="appearance_settings.delivery_mobile_app_logo_url || ('/images/' + appearance_settings.delivery_mobile_app_logo)" alt="Delivery App Logo" style="width: 80px; height: 80px; object-fit: contain; border: 1px solid #ddd; border-radius: 12px;">
+                              </div>
+                              <div>
+                                <b-form-file
+                                  v-model="appearance_settings.delivery_mobile_app_logo_file"
+                                  @input="onDeliveryMobileAppLogoSelected"
+                                  accept="image/png,image/jpeg,image/webp"
+                                  :placeholder="$t('Choose file...')"
+                                  :browse-text="$t('Browse')"
+                                ></b-form-file>
+                                <small class="form-text text-muted">Recommended: 512x512px PNG with transparent background. Large files are optimized automatically.</small>
                               </div>
                             </div>
                           </b-form-group>
@@ -270,7 +309,7 @@
 
                         <!-- Logo -->
                         <b-col lg="6" md="6" sm="12" class="mb-3">
-                          <validation-provider name="Logo" ref="AppearanceLogo" rules="mimes:image/*|size:200">
+                          <validation-provider name="Logo" ref="AppearanceLogo" rules="mimes:image/*">
                             <b-form-group
                               slot-scope="{validate, valid, errors }"
                               :label="$t('ChangeLogo')"
@@ -289,7 +328,7 @@
 
                         <!-- Favicon Upload -->
                         <b-col lg="6" md="6" sm="12" class="mb-3">
-                          <validation-provider name="Favicon" ref="AppearanceFavicon" rules="mimes:image/*|size:100">
+                          <validation-provider name="Favicon" ref="AppearanceFavicon" rules="mimes:image/*">
                             <b-form-group
                               slot-scope="{ validate, valid, errors }"
                               :label="$t('ChangeFavicon')"
@@ -2890,7 +2929,16 @@ export default {
         app_name: "",
         mobile_app_name: "",
         mobile_app_logo: "",
+        mobile_app_logo_url: "",
         mobile_app_logo_file: null,
+        seller_mobile_app_name: "",
+        seller_mobile_app_logo: "",
+        seller_mobile_app_logo_url: "",
+        seller_mobile_app_logo_file: null,
+        delivery_mobile_app_name: "",
+        delivery_mobile_app_logo: "",
+        delivery_mobile_app_logo_url: "",
+        delivery_mobile_app_logo_file: null,
         page_title_suffix: "",
         developed_by: "",
         login_hero_title: "",
@@ -3410,6 +3458,142 @@ export default {
       return dirty || validated ? valid : null;
     },
 
+    normalizeSelectedFile(fileOrFiles) {
+      if (!fileOrFiles) {
+        return null;
+      }
+
+      if (Array.isArray(fileOrFiles)) {
+        return fileOrFiles[0] || null;
+      }
+
+      return fileOrFiles;
+    },
+
+    buildImageFilename(originalName, mimeType) {
+      const baseName = (originalName || "upload").replace(/\.[^/.]+$/, "");
+      const extensionMap = {
+        "image/jpeg": "jpg",
+        "image/png": "png",
+        "image/webp": "webp",
+      };
+
+      const extension = extensionMap[mimeType] || "png";
+
+      return `${baseName}.${extension}`;
+    },
+
+    loadImageElement(file) {
+      return new Promise((resolve, reject) => {
+        const imageUrl = URL.createObjectURL(file);
+        const image = new Image();
+
+        image.onload = () => {
+          URL.revokeObjectURL(imageUrl);
+          resolve(image);
+        };
+
+        image.onerror = error => {
+          URL.revokeObjectURL(imageUrl);
+          reject(error);
+        };
+
+        image.src = imageUrl;
+      });
+    },
+
+    canvasToBlob(canvas, mimeType, quality) {
+      return new Promise((resolve, reject) => {
+        canvas.toBlob(blob => {
+          if (blob) {
+            resolve(blob);
+            return;
+          }
+
+          reject(new Error("Unable to create image blob"));
+        }, mimeType, quality);
+      });
+    },
+
+    async optimizeImageUpload(fileOrFiles, options = {}) {
+      const file = this.normalizeSelectedFile(fileOrFiles);
+      if (!file) {
+        return null;
+      }
+
+      if (!file.type || !file.type.match("image.*")) {
+        this.makeToast("danger", this.$t("Invalid_file_type"), this.$t("Failed"));
+        return null;
+      }
+
+      const {
+        maxWidth = 1024,
+        maxHeight = 1024,
+        outputType = "image/webp",
+        qualitySteps = [0.9, 0.82, 0.74, 0.66],
+        maxBytes = 512 * 1024,
+        label = "image",
+      } = options;
+
+      try {
+        const image = await this.loadImageElement(file);
+        const width = image.naturalWidth || image.width;
+        const height = image.naturalHeight || image.height;
+        const ratio = Math.min(1, maxWidth / width, maxHeight / height);
+        const targetWidth = Math.max(1, Math.round(width * ratio));
+        const targetHeight = Math.max(1, Math.round(height * ratio));
+
+        const canvas = document.createElement("canvas");
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, targetWidth, targetHeight);
+        ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+        let bestBlob = null;
+
+        for (const quality of qualitySteps) {
+          const blob = await this.canvasToBlob(canvas, outputType, quality);
+          if (!bestBlob || blob.size < bestBlob.size) {
+            bestBlob = blob;
+          }
+
+          if (blob.size <= maxBytes) {
+            return new File(
+              [blob],
+              this.buildImageFilename(file.name, outputType),
+              { type: outputType }
+            );
+          }
+        }
+
+        if (bestBlob) {
+          if (bestBlob.size > maxBytes) {
+            this.makeToast(
+              "warning",
+              `${label} was optimized before upload because the original file was too large.`,
+              this.$t("Success")
+            );
+          }
+
+          return new File(
+            [bestBlob],
+            this.buildImageFilename(file.name, outputType),
+            { type: outputType }
+          );
+        }
+      } catch (error) {
+        this.makeToast(
+          "danger",
+          `Unable to process ${label.toLowerCase()} file.`,
+          this.$t("Failed")
+        );
+      }
+
+      return null;
+    },
+
     //------------------------------ Event Upload Logo -------------------------------\\
     async onFileSelected(e) {
       const file = e.target.files[0];
@@ -3437,9 +3621,16 @@ export default {
     //------------------------------ Event Upload Appearance Logo -------------------------------\\
     async onAppearanceLogoSelected(e) {
       const { valid } = await this.$refs.AppearanceLogo.validate(e);
+      const file = e.target.files[0];
 
-      if (valid) {
-        this.appearance_settings.logo = e.target.files[0];
+      if (valid && file) {
+        this.appearance_settings.logo = await this.optimizeImageUpload(file, {
+          maxWidth: 800,
+          maxHeight: 800,
+          outputType: "image/webp",
+          maxBytes: 450 * 1024,
+          label: "Logo",
+        });
       } else {
         this.appearance_settings.logo = "";
       }
@@ -3448,11 +3639,51 @@ export default {
     //------------------------------ Event Upload Appearance Favicon -------------------------------\\
     async onAppearanceFaviconSelected(e) {
       const { valid } = await this.$refs.AppearanceFavicon.validate(e);
+      const file = e.target.files[0];
 
-      if (valid) {
-        this.appearance_settings.favicon = e.target.files[0];
+      if (valid && file) {
+        this.appearance_settings.favicon = await this.optimizeImageUpload(file, {
+          maxWidth: 256,
+          maxHeight: 256,
+          outputType: "image/png",
+          qualitySteps: [0.92],
+          maxBytes: 90 * 1024,
+          label: "Favicon",
+        });
       } else {
         this.appearance_settings.favicon = "";
+      }
+    },
+
+    async onSellerMobileAppLogoSelected(file) {
+      const optimizedFile = await this.optimizeImageUpload(file, {
+        maxWidth: 512,
+        maxHeight: 512,
+        outputType: "image/webp",
+        maxBytes: 350 * 1024,
+        label: "Seller App Logo",
+      });
+
+      this.appearance_settings.seller_mobile_app_logo_file = optimizedFile;
+
+      if (optimizedFile) {
+        this.appearance_settings.seller_mobile_app_logo_url = URL.createObjectURL(optimizedFile);
+      }
+    },
+
+    async onDeliveryMobileAppLogoSelected(file) {
+      const optimizedFile = await this.optimizeImageUpload(file, {
+        maxWidth: 512,
+        maxHeight: 512,
+        outputType: "image/webp",
+        maxBytes: 350 * 1024,
+        label: "Delivery App Logo",
+      });
+
+      this.appearance_settings.delivery_mobile_app_logo_file = optimizedFile;
+
+      if (optimizedFile) {
+        this.appearance_settings.delivery_mobile_app_logo_url = URL.createObjectURL(optimizedFile);
       }
     },
 
@@ -3889,7 +4120,7 @@ export default {
     //---------------------------------- Get_SMS_Settings ----------------\\
     Get_SMS_Settings() {
       axios
-        .get("get_sms_config_ws")
+        .get("get_sms_config")
         .then(response => {
           this.sms_settings.twilio = response.data.twilio || this.sms_settings.twilio;
           this.sms_settings.termi = response.data.termi || this.sms_settings.termi;
@@ -3911,9 +4142,13 @@ export default {
       self.appearance_data.append("favicon", self.appearance_settings.favicon);
       self.appearance_data.append("logo", self.appearance_settings.logo);
       self.appearance_data.append("app_name", self.appearance_settings.app_name);
-      self.appearance_data.append("mobile_app_name", self.appearance_settings.mobile_app_name || "");
-      if (self.appearance_settings.mobile_app_logo_file) {
-        self.appearance_data.append("mobile_app_logo", self.appearance_settings.mobile_app_logo_file);
+      self.appearance_data.append("seller_mobile_app_name", self.appearance_settings.seller_mobile_app_name || "");
+      if (self.appearance_settings.seller_mobile_app_logo_file) {
+        self.appearance_data.append("seller_mobile_app_logo", self.appearance_settings.seller_mobile_app_logo_file);
+      }
+      self.appearance_data.append("delivery_mobile_app_name", self.appearance_settings.delivery_mobile_app_name || "");
+      if (self.appearance_settings.delivery_mobile_app_logo_file) {
+        self.appearance_data.append("delivery_mobile_app_logo", self.appearance_settings.delivery_mobile_app_logo_file);
       }
       self.appearance_data.append("page_title_suffix", self.appearance_settings.page_title_suffix);
       self.appearance_data.append("developed_by", self.appearance_settings.developed_by);
@@ -3940,7 +4175,19 @@ export default {
           }, 500);
         })
         .catch(error => {
-          this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
+          const statusCode = error?.response?.status;
+          const responseMessage = error?.response?.data?.message;
+          const validationErrors = error?.response?.data?.errors;
+          const firstValidationMessage = validationErrors
+            ? Object.values(validationErrors).flat()[0]
+            : null;
+          this.makeToast(
+            "danger",
+            statusCode === 413
+              ? "Uploaded images are too large. Please choose the files again and they will be optimized automatically."
+              : (firstValidationMessage || responseMessage || this.$t("InvalidData")),
+            this.$t("Failed")
+          );
           NProgress.done();
         });
     },
@@ -3950,7 +4197,10 @@ export default {
       axios
         .get("get_appearance_settings")
         .then(response => {
-          this.appearance_settings = response.data.settings || this.appearance_settings;
+          this.appearance_settings = {
+            ...this.appearance_settings,
+            ...(response.data.settings || {}),
+          };
         })
         .catch(error => {
           // Silently fail if appearance settings endpoint doesn't exist

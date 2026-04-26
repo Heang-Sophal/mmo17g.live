@@ -51,6 +51,11 @@ class Sms_SettingsController extends Controller
         ], 200);
     }
 
+    public function get_sms_config_ws(Request $request)
+    {
+        return $this->get_sms_config($request);
+    }
+
     // -------------- update_twilio_config ---------------\\
 
     public function update_twilio_config(Request $request)

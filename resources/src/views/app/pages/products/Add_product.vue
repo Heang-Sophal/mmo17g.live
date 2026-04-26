@@ -1717,13 +1717,32 @@ export default {
 
 
      //------ Generate code
+     generateProductCodeValue() {
+      return String(
+        Math.floor(
+          Math.pow(10, 7) +
+            Math.random() *
+              (Math.pow(10, 8) - Math.pow(10, 7) - 1)
+        )
+      );
+    },
+
      generateNumber() {
       this.code_exist = "";
-      this.product.code = Math.floor(
-        Math.pow(10, 7) +
-          Math.random() *
-            (Math.pow(10, 8) - Math.pow(10, 7) - 1)
-      );
+      this.product.code = this.generateProductCodeValue();
+    },
+
+    applyDuplicateDefaults() {
+      const duplicatedCode = this.generateProductCodeValue();
+      this.code_exist = "";
+      this.product.code = duplicatedCode;
+
+      if (this.variants.length) {
+        this.variants = this.variants.map((variant, index) => ({
+          ...variant,
+          code: `${duplicatedCode}-${index + 1}`
+        }));
+      }
     },
 
 
@@ -1889,6 +1908,7 @@ export default {
       NProgress.set(0.1);
       var self = this;
       self.SubmitProcessing = true;
+      self.data = new FormData();
 
       if (self.product.type == 'is_variant' && self.variants.length > 0) {
           self.product.is_variant = true;
@@ -1904,7 +1924,11 @@ export default {
            
       // append objet product
       Object.entries(self.product).forEach(([key, value]) => {
-          self.data.append(key, value);
+          if (key === "warehouses") {
+            return;
+          }
+
+          self.data.append(key, value == null ? "" : value);
       });
 
 
@@ -1938,13 +1962,29 @@ export default {
           // Complete the animation of theprogress bar.
           NProgress.done();
           self.SubmitProcessing = false;
-          if (error.errors.code && error.errors.code.length > 0) {
-            self.code_exist = error.errors.code[0];
-            this.makeToast("danger", error.errors.code[0], this.$t("Failed"));
-          }else if(error.errors.variants && error.errors.variants.length > 0){
-            this.makeToast("danger", error.errors.variants[0], this.$t("Failed"));
+          const errors =
+            (error && error.errors) ||
+            (error && error.response && error.response.data && error.response.data.errors) ||
+            {};
+          const errorGroups = Object.values(errors);
+          const firstError =
+            errorGroups.length > 0 && Array.isArray(errorGroups[0])
+              ? errorGroups[0][0]
+              : null;
+          const fallbackMessage =
+            typeof error === "string"
+              ? error
+              : (error && error.message) || this.$t("InvalidData");
+
+          if (errors.code && errors.code.length > 0) {
+            self.code_exist = errors.code[0];
+            this.makeToast("danger", errors.code[0], this.$t("Failed"));
+          }else if(errors.variants && errors.variants.length > 0){
+            this.makeToast("danger", errors.variants[0], this.$t("Failed"));
+          }else if(firstError){
+            this.makeToast("danger", firstError, this.$t("Failed"));
           }else{
-            this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
+            this.makeToast("danger", fallbackMessage, this.$t("Failed"));
           }
 
         });
@@ -2067,6 +2107,8 @@ export default {
           if (this.product.type === 'is_combo' && Array.isArray(response.data.materiels)) {
             this.materiels = response.data.materiels.slice();
           }
+
+          this.applyDuplicateDefaults();
         })
         .catch(() => {
           // Fail silently; user can still create product manually

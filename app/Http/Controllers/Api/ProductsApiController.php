@@ -44,7 +44,7 @@ class ProductsApiController extends Controller
                         'stock' => $stock,
                         'stock_alert' => (int) ($product->stock_alert ?? 0),
                         'image' => $product->image ?? '',
-                        'image_url' => $product->image ? asset('images/products/' . $product->image) : null,
+                        'image_url' => $product->image ? product_image_url($product->image) : null,
                         'category' => $product->category ? [
                             'id' => (string) $product->category->id,
                             'name' => $product->category->name ?? '',
@@ -95,7 +95,7 @@ class ProductsApiController extends Controller
                     'stock' => $stock,
                     'stock_alert' => (int) ($product->stock_alert ?? 0),
                     'image' => $product->image ?? '',
-                    'image_url' => $product->image ? asset('images/products/' . $product->image) : null,
+                    'image_url' => $product->image ? product_image_url($product->image) : null,
                     'category' => $product->category ? [
                         'id' => (string) $product->category->id,
                         'name' => $product->category->name ?? '',

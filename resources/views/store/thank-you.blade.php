@@ -71,7 +71,7 @@
 <script>
 (function(){
   const CURRENCY = document.querySelector('meta[name="currency"]')?.content || @json($currency);
-  const NOIMG    = @json(asset('images/products/no-image.png'));
+  const NOIMG    = @json(product_image_url('no-image.png'));
   const fmt = v => CURRENCY + Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const empty   = document.getElementById('ty-empty');
