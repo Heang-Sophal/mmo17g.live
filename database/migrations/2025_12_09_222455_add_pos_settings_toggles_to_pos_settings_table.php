@@ -31,14 +31,14 @@ return new class extends Migration
     {
         Schema::table('pos_settings', function (Blueprint $table) {
             $table->dropColumn([
-                'quick_add_customer', 
-                'barcode_scanning_sound', 
+                'quick_add_customer',
+                'barcode_scanning_sound',
                 'show_product_images',
                 'show_stock_quantity',
                 'enable_hold_sales',
                 'enable_customer_points',
                 'show_categories',
-                'show_brands'
+                'show_brands',
             ]);
         });
     }

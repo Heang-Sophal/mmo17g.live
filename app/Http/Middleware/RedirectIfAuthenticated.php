@@ -20,7 +20,7 @@ class RedirectIfAuthenticated
         if (! $request->hasSession() || ! $request->session()->isStarted()) {
             return $next($request);
         }
-    
+
         // Extra safety: ensure user is REALLY authenticated
         if (Auth::guard($guard)->check() && $request->user()) {
             switch ($guard) {
@@ -30,8 +30,7 @@ class RedirectIfAuthenticated
                     return redirect('/');
             }
         }
-    
+
         return $next($request);
     }
-    
 }

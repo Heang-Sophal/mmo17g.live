@@ -18,8 +18,3 @@ class PurchaseDeleted
         $this->purchase = $purchase;
     }
 }
-
-
-
-
-

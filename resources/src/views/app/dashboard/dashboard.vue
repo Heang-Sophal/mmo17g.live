@@ -787,7 +787,7 @@ export default {
               toolbar: { show: true },
               fontFamily: "inherit"
             },
-            colors: ["#8B5CF6", "#DDD6FE"],
+            colors: ["#D6A735", "#FFFBF2"],
             plotOptions: {
               bar: {
                 horizontal: false,
@@ -942,7 +942,7 @@ export default {
               fontFamily: "inherit"
             },
             labels: customerData.map(item => item.name),
-            colors: ["#8B5CF6", "#A78BFA", "#C4B5FD", "#DDD6FE", "#EDE9FE"],
+            colors: ["#D6A735", "#FFD86A", "#FFE8A7", "#FFFBF2", "#EDE9FE"],
             legend: {
               position: "bottom",
               fontSize: "12px"
@@ -1335,7 +1335,7 @@ export default {
 }
 
 .warehouse-filter >>> .v-select .vs__dropdown-option--highlight {
-  background: #8B5CF6 !important;
+  background: #D6A735 !important;
   color: white !important;
 }
 
@@ -1362,8 +1362,8 @@ export default {
 }
 
 .date-picker-btn:hover {
-  border-color: #8B5CF6;
-  color: #8B5CF6;
+  border-color: #D6A735;
+  color: #D6A735;
 }
 
 .quick-wrap .btn {
@@ -1407,7 +1407,7 @@ export default {
 }
 
 .sales-card .stat-card-icon {
-  background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);
+  background: linear-gradient(135deg, #D6A735 0%, #FFD86A 100%);
   color: white;
 }
 
@@ -1467,7 +1467,7 @@ export default {
 }
 
 .stat-card-link {
-  color: #8B5CF6;
+  color: #D6A735;
   font-size: 0.875rem;
   text-decoration: none;
   font-weight: 500;
@@ -1655,7 +1655,7 @@ export default {
 }
 
 .stock-icon-wholesale {
-  background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);
+  background: linear-gradient(135deg, #D6A735 0%, #FFD86A 100%);
 }
 
 .stock-value-item .info-card-item-label {
@@ -1749,11 +1749,11 @@ export default {
 }
 
 .sales-dot {
-  background: #8B5CF6;
+  background: #D6A735;
 }
 
 .purchases-dot {
-  background: #DDD6FE;
+  background: #FFFBF2;
 }
 
 .sent-dot {
@@ -1798,7 +1798,7 @@ export default {
 }
 
 .table-card-link {
-  color: #8B5CF6;
+  color: #D6A735;
   font-size: 0.875rem;
   text-decoration: none;
   font-weight: 500;
@@ -1981,7 +1981,7 @@ export default {
 .welcome-icon {
   width: 80px;
   height: 80px;
-  background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);
+  background: linear-gradient(135deg, #D6A735 0%, #FFD86A 100%);
   border-radius: 50%;
   display: inline-flex;
   align-items: center;

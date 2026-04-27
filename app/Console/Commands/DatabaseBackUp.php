@@ -39,7 +39,7 @@ class DatabaseBackUp extends Command
     public function handle()
     {
         $backupDir = storage_path().'/app/public/backup';
-        if (!is_dir($backupDir)) {
+        if (! is_dir($backupDir)) {
             @mkdir($backupDir, 0755, true);
         }
 
@@ -64,7 +64,7 @@ class DatabaseBackUp extends Command
 
         if ($returnVar !== 0) {
             $err = 'Exit code: '.$returnVar;
-            if (!empty($output)) {
+            if (! empty($output)) {
                 $err .= "\n".implode("\n", $output);
             } elseif (file_exists($outputPath) && filesize($outputPath) > 0) {
                 $err .= "\n".trim(@file_get_contents($outputPath));

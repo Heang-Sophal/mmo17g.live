@@ -7,9 +7,9 @@ use App\Models\Collection;
 use App\Models\Product;
 use App\Models\StoreBanner;
 use App\Models\StoreSetting;
-use Illuminate\Support\Facades\Schema;
 use DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class StoreFrontController extends Controller
 {
@@ -236,8 +236,7 @@ class StoreFrontController extends Controller
      * Sorting/filters use base "effective_price" (min variant or product price).
      * UI shows final display price (discount + tax) computed per item after fetch.
      */
-
-     public function shop(Request $request)
+    public function shop(Request $request)
     {
         $s = StoreSetting::firstOrFail();
 
@@ -361,7 +360,6 @@ class StoreFrontController extends Controller
             'collection' => $coll,
         ]);
     }
- 
 
     public function contact()
     {
@@ -461,7 +459,7 @@ class StoreFrontController extends Controller
                 $p->stock = null;
                 $productFallback = $stockMap["{$pid}:p"] ?? null;
                 foreach ($p->variants as $v) {
-                    $key = "{$pid}:" . (int) $v->id;
+                    $key = "{$pid}:".(int) $v->id;
                     if (array_key_exists($key, $stockMap)) {
                         $v->stock = (float) $stockMap[$key];
                     } elseif ($productFallback !== null) {

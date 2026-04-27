@@ -57,5 +57,3 @@ class ServiceJobPolicy
         return $this->hasPermission($user, 'customer_maintenance_history_report');
     }
 }
-
-

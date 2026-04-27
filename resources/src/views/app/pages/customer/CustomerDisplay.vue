@@ -482,14 +482,14 @@ export default {
 .price-value {
   font-size: 22px;
   font-weight: 700;
-  background: linear-gradient(135deg, #60a5fa, #a78bfa);
+  background: linear-gradient(135deg, #60a5fa, #FFD86A);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .light .price-value {
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  background: linear-gradient(135deg, #3b82f6, #D6A735);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

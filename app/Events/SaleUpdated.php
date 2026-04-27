@@ -18,8 +18,3 @@ class SaleUpdated
         $this->sale = $sale;
     }
 }
-
-
-
-
-

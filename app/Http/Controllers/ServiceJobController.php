@@ -378,5 +378,3 @@ class ServiceJobController extends BaseController
         return $pdf->download('Service_Job_'.$job->id.'.pdf');
     }
 }
-
-

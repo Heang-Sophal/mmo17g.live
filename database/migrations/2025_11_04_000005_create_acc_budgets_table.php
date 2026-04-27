@@ -31,8 +31,3 @@ class CreateAccBudgetsTable extends Migration
         Schema::dropIfExists('acc_budgets');
     }
 }
-
-
-
-
-

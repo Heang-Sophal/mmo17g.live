@@ -54,5 +54,3 @@ class CreateSubcategoriesTable extends Migration
         }
     }
 }
-
-

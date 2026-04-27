@@ -113,7 +113,7 @@ class SettingsController extends Controller
         $invoice_format = 'thermal';
         if (isset($request['invoice_format']) && in_array($request['invoice_format'], ['thermal', 'a4'], true)) {
             $invoice_format = $request['invoice_format'];
-        } elseif (!empty($setting->invoice_format) && in_array($setting->invoice_format, ['thermal', 'a4'], true)) {
+        } elseif (! empty($setting->invoice_format) && in_array($setting->invoice_format, ['thermal', 'a4'], true)) {
             $invoice_format = $setting->invoice_format;
         }
 
@@ -221,13 +221,13 @@ class SettingsController extends Controller
 
         // Clear config cache first to remove old cached values
         Artisan::call('config:clear');
-        
+
         // If APP_DEBUG was changed, also clear route and view cache for immediate effect
         if ($request->has('debug_mode')) {
             Artisan::call('route:clear');
             Artisan::call('view:clear');
         }
-        
+
         // Re-cache config with new values
         Artisan::call('config:cache');
 
@@ -279,7 +279,7 @@ class SettingsController extends Controller
         $settings->save();
 
         return response()->json([
-            'success'   => true,
+            'success' => true,
             'dark_mode' => (bool) $settings->dark_mode,
         ], 200);
     }
@@ -332,7 +332,7 @@ class SettingsController extends Controller
                 $invoice_format = 'thermal';
                 if (isset($request['invoice_format']) && in_array($request['invoice_format'], ['thermal', 'a4'], true)) {
                     $invoice_format = $request['invoice_format'];
-                } elseif (!empty($settings->invoice_format) && in_array($settings->invoice_format, ['thermal', 'a4'], true)) {
+                } elseif (! empty($settings->invoice_format) && in_array($settings->invoice_format, ['thermal', 'a4'], true)) {
                     $invoice_format = $settings->invoice_format;
                 }
 
@@ -493,7 +493,7 @@ class SettingsController extends Controller
         }
 
         return response()->json(['success' => true]);
-    } 
+    }
 
     // -------------- Get All Settings ---------------\\
 
@@ -605,7 +605,7 @@ class SettingsController extends Controller
             if ($includeSecrets) {
                 $item['backup_s3_secret_key'] = $settings->backup_s3_secret_key ?? null;
             } else {
-                $item['backup_s3_has_secret_key'] = !empty($settings->backup_s3_secret_key);
+                $item['backup_s3_has_secret_key'] = ! empty($settings->backup_s3_secret_key);
             }
             $item['backup_s3_endpoint'] = $settings->backup_s3_endpoint ?? null;
             $item['backup_s3_path_style'] = (bool) ($settings->backup_s3_path_style ?? false);
@@ -616,9 +616,9 @@ class SettingsController extends Controller
                 $item['backup_gdrive_refresh_token'] = $settings->backup_gdrive_refresh_token ?? null;
                 $item['backup_gdrive_client_secret'] = $settings->backup_gdrive_client_secret ?? null;
             } else {
-                $item['backup_gdrive_has_access_token'] = !empty($settings->backup_gdrive_access_token);
-                $item['backup_gdrive_has_refresh_token'] = !empty($settings->backup_gdrive_refresh_token);
-                $item['backup_gdrive_has_client_secret'] = !empty($settings->backup_gdrive_client_secret);
+                $item['backup_gdrive_has_access_token'] = ! empty($settings->backup_gdrive_access_token);
+                $item['backup_gdrive_has_refresh_token'] = ! empty($settings->backup_gdrive_refresh_token);
+                $item['backup_gdrive_has_client_secret'] = ! empty($settings->backup_gdrive_client_secret);
             }
             $item['backup_gdrive_client_id'] = $settings->backup_gdrive_client_id ?? null;
             // Dropbox settings
@@ -626,7 +626,7 @@ class SettingsController extends Controller
             if ($includeSecrets) {
                 $item['backup_dropbox_access_token'] = $settings->backup_dropbox_access_token ?? null;
             } else {
-                $item['backup_dropbox_has_access_token'] = !empty($settings->backup_dropbox_access_token);
+                $item['backup_dropbox_has_access_token'] = ! empty($settings->backup_dropbox_access_token);
             }
 
             $zones_array = [];
@@ -778,7 +778,7 @@ class SettingsController extends Controller
             if ($includeSecrets) {
                 $item['backup_s3_secret_key'] = $settings->backup_s3_secret_key ?? null;
             } else {
-                $item['backup_s3_has_secret_key'] = !empty($settings->backup_s3_secret_key);
+                $item['backup_s3_has_secret_key'] = ! empty($settings->backup_s3_secret_key);
             }
             $item['backup_s3_endpoint'] = $settings->backup_s3_endpoint ?? null;
             $item['backup_s3_path_style'] = (bool) ($settings->backup_s3_path_style ?? false);
@@ -789,9 +789,9 @@ class SettingsController extends Controller
                 $item['backup_gdrive_refresh_token'] = $settings->backup_gdrive_refresh_token ?? null;
                 $item['backup_gdrive_client_secret'] = $settings->backup_gdrive_client_secret ?? null;
             } else {
-                $item['backup_gdrive_has_access_token'] = !empty($settings->backup_gdrive_access_token);
-                $item['backup_gdrive_has_refresh_token'] = !empty($settings->backup_gdrive_refresh_token);
-                $item['backup_gdrive_has_client_secret'] = !empty($settings->backup_gdrive_client_secret);
+                $item['backup_gdrive_has_access_token'] = ! empty($settings->backup_gdrive_access_token);
+                $item['backup_gdrive_has_refresh_token'] = ! empty($settings->backup_gdrive_refresh_token);
+                $item['backup_gdrive_has_client_secret'] = ! empty($settings->backup_gdrive_client_secret);
             }
             $item['backup_gdrive_client_id'] = $settings->backup_gdrive_client_id ?? null;
             // Dropbox settings
@@ -799,7 +799,7 @@ class SettingsController extends Controller
             if ($includeSecrets) {
                 $item['backup_dropbox_access_token'] = $settings->backup_dropbox_access_token ?? null;
             } else {
-                $item['backup_dropbox_has_access_token'] = !empty($settings->backup_dropbox_access_token);
+                $item['backup_dropbox_has_access_token'] = ! empty($settings->backup_dropbox_access_token);
             }
 
             $zones_array = [];
@@ -854,31 +854,32 @@ class SettingsController extends Controller
     private function getEnvValue($key, $default = null)
     {
         $envFile = app()->environmentFilePath();
-        if (!file_exists($envFile)) {
+        if (! file_exists($envFile)) {
             return $default;
         }
-        
+
         $content = file_get_contents($envFile);
         $lines = preg_split('/\r\n|\r|\n/', $content);
-        
+
         foreach ($lines as $line) {
             // Skip comments and empty lines
             if (empty(trim($line)) || strpos(trim($line), '#') === 0) {
                 continue;
             }
-            
+
             // Check if line contains the key
-            if (strpos($line, $key . '=') === 0) {
+            if (strpos($line, $key.'=') === 0) {
                 $parts = explode('=', $line, 2);
                 if (count($parts) === 2) {
                     $value = trim($parts[1]);
                     // Remove quotes if present
                     $value = trim($value, '"\'');
+
                     return $value;
                 }
             }
         }
-        
+
         return $default;
     }
 

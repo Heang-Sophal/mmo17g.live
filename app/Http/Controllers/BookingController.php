@@ -143,14 +143,14 @@ class BookingController extends BaseController
         $this->authorizeForUser($request->user('api'), 'create', Booking::class);
         // Normalize time formats before validation - handle H:i:s format and empty strings
         $requestData = $request->all();
-        
+
         // Normalize booking_time (H:i:s to H:i)
         if (isset($requestData['booking_time']) && $requestData['booking_time'] !== null) {
             if (preg_match('/^(\d{2}:\d{2}):\d{2}$/', $requestData['booking_time'], $matches)) {
                 $requestData['booking_time'] = $matches[1];
             }
         }
-        
+
         // Normalize booking_end_time - handle empty strings and H:i:s format
         if (isset($requestData['booking_end_time']) && $requestData['booking_end_time'] === '') {
             $requestData['booking_end_time'] = null;
@@ -256,14 +256,14 @@ class BookingController extends BaseController
 
         // Normalize time formats before validation - handle H:i:s format and empty strings
         $requestData = $request->all();
-        
+
         // Normalize booking_time (H:i:s to H:i)
         if (isset($requestData['booking_time']) && $requestData['booking_time'] !== null) {
             if (preg_match('/^(\d{2}:\d{2}):\d{2}$/', $requestData['booking_time'], $matches)) {
                 $requestData['booking_time'] = $matches[1];
             }
         }
-        
+
         // Normalize booking_end_time - handle empty strings and H:i:s format
         if (isset($requestData['booking_end_time']) && $requestData['booking_end_time'] === '') {
             $requestData['booking_end_time'] = null;
@@ -300,12 +300,12 @@ class BookingController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'delete', Booking::class);
         $booking = Booking::withTrashed()->findOrFail($id);
-        
+
         // Check if already deleted
         if ($booking->trashed()) {
             return response()->json(['success' => true, 'message' => 'Booking already deleted']);
         }
-        
+
         $booking->delete();
 
         return response()->json(['success' => true]);
@@ -494,5 +494,3 @@ class BookingController extends BaseController
         return response()->json(['message' => 'Email sent successfully.'], 200);
     }
 }
-
-

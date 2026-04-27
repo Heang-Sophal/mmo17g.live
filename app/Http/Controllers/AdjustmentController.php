@@ -819,8 +819,8 @@ class AdjustmentController extends BaseController
     {
         // Get prefix from settings, fallback to 'AD' if not set
         $setting = \App\Models\Setting::where('deleted_at', '=', null)->first();
-        $prefix = !empty($setting->adjustment_prefix) ? $setting->adjustment_prefix : 'AD';
-        
+        $prefix = ! empty($setting->adjustment_prefix) ? $setting->adjustment_prefix : 'AD';
+
         // Get the last adjustment with a reference that starts with the prefix
         $last = DB::table('adjustments')
             ->where('Ref', 'like', $prefix.'_%')
@@ -830,7 +830,7 @@ class AdjustmentController extends BaseController
         if ($last) {
             $item = $last->Ref;
             $nwMsg = explode('_', $item);
-            
+
             // Ensure valid structure before processing
             if (isset($nwMsg[1]) && is_numeric($nwMsg[1])) {
                 $inMsg = $nwMsg[1] + 1;

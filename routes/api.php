@@ -569,7 +569,7 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout'])-
 
     Route::get('get_import_purchases', 'PurchasesController@get_import_purchases');
     Route::post('store_import_purchases', 'PurchasesController@store_import_purchases');
-    
+
     // ------------------------------- Purchase Documents --------------------------\\
     Route::get('purchases/{id}/documents', 'PurchasesController@getDocuments');
     Route::post('purchases/{id}/documents', 'PurchasesController@uploadDocuments');
@@ -972,9 +972,10 @@ Route::get('/profile/edit-history', 'Api\ProfileApiController@editHistory');
 Route::post('/profile/upload-photo', 'Api\ProfileApiController@uploadPhoto');
 
 // Settings API - Get tax rate and other settings
-Route::get('/settings', function() {
+Route::get('/settings', function () {
     try {
         $settings = \DB::table('settings')->first();
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -993,7 +994,7 @@ Route::get('/settings', function() {
 });
 
 // Orders API - Create and list orders
-Route::get('/orders', function(\Illuminate\Http\Request $request) {
+Route::get('/orders', function (\Illuminate\Http\Request $request) {
     try {
         $applyShippingStatusFilter = function ($query, string $status) {
             $normalizedStatus = strtolower(trim($status));
@@ -1052,7 +1053,7 @@ Route::get('/orders', function(\Illuminate\Http\Request $request) {
             $query->where('payment_statut', $request->payment_status);
         }
 
-        $orders = $query->get()->map(function($order) use ($normalizeShippingStatus) {
+        $orders = $query->get()->map(function ($order) use ($normalizeShippingStatus) {
             $shippingStatus = $normalizeShippingStatus($order->shipping_status);
 
             return [
@@ -1084,7 +1085,7 @@ Route::get('/orders', function(\Illuminate\Http\Request $request) {
 });
 
 // Customers API - List customers for selection
-Route::get('/customers', function(\Illuminate\Http\Request $request) {
+Route::get('/customers', function (\Illuminate\Http\Request $request) {
     try {
         $query = \App\Models\Client::orderBy('name', 'asc')
             ->whereNull('deleted_at')
@@ -1092,14 +1093,14 @@ Route::get('/customers', function(\Illuminate\Http\Request $request) {
 
         if ($request->has('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
-        $customers = $query->get()->map(function($customer) {
+        $customers = $query->get()->map(function ($customer) {
             return [
                 'id' => (int) $customer->id,
                 'name' => $customer->name ?? '',
@@ -1116,7 +1117,7 @@ Route::get('/customers', function(\Illuminate\Http\Request $request) {
 });
 
 // Update Order Payment Status
-Route::put('/orders/{id}/payment-status', function(\Illuminate\Http\Request $request, $id) {
+Route::put('/orders/{id}/payment-status', function (\Illuminate\Http\Request $request, $id) {
     try {
         $validated = $request->validate([
             'payment_status' => 'required|string|in:paid,unpaid',
@@ -1124,12 +1125,12 @@ Route::put('/orders/{id}/payment-status', function(\Illuminate\Http\Request $req
 
         $sale = \App\Models\Sale::findOrFail($id);
         $sale->payment_statut = $validated['payment_status'];
-        
+
         // If marking as paid, update paid_amount to GrandTotal
         if ($validated['payment_status'] === 'paid') {
             $sale->paid_amount = $sale->GrandTotal;
         }
-        
+
         $sale->save();
 
         return response()->json([
@@ -1150,7 +1151,7 @@ Route::put('/orders/{id}/payment-status', function(\Illuminate\Http\Request $req
     } catch (\Exception $e) {
         return response()->json([
             'success' => false,
-            'message' => 'Failed to update payment status: ' . $e->getMessage(),
+            'message' => 'Failed to update payment status: '.$e->getMessage(),
         ], 500);
     }
 });
@@ -1158,8 +1159,13 @@ Route::put('/orders/{id}/payment-status', function(\Illuminate\Http\Request $req
 // Mobile Seller Report - No Passport auth required (uses custom base64 token)
 Route::get('/report/sales_by_seller_mobile', 'ReportController@sales_by_seller_report');
 
+// Sales Return API for Seller App
+Route::get('/seller/sales-returns/sales', 'Api\SalesApiController@sellerReturnableSales');
+Route::get('/seller/sales-returns', 'Api\SalesApiController@sellerSalesReturnsIndex');
+Route::post('/seller/sales-returns', 'Api\SalesApiController@sellerStoreSalesReturn');
+
 // Dashboard API - Get dashboard data for seller
-Route::get('/dashboard/seller', function(\Illuminate\Http\Request $request) {
+Route::get('/dashboard/seller', function (\Illuminate\Http\Request $request) {
     try {
         $userId = $request->get('user_id');
 
@@ -1194,24 +1200,24 @@ Route::get('/dashboard/seller', function(\Illuminate\Http\Request $request) {
 
             return $normalizedStatus;
         };
-        
+
         // Sales statistics
         $salesQuery = \App\Models\Sale::query();
         if ($userId) {
             $salesQuery->where('user_id', $userId);
         }
-        
+
         $totalSales = $salesQuery->sum('GrandTotal');
         $todaySales = (clone $salesQuery)->whereDate('created_at', today())->sum('GrandTotal');
         $weekSales = (clone $salesQuery)->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->sum('GrandTotal');
         $monthSales = (clone $salesQuery)->whereMonth('created_at', now()->month)->sum('GrandTotal');
-        
+
         // Orders statistics
         $ordersQuery = \App\Models\Sale::query();
         if ($userId) {
             $ordersQuery->where('user_id', $userId);
         }
-        
+
         $totalOrders = (clone $ordersQuery)->count();
         $todayOrders = (clone $ordersQuery)->whereDate('created_at', today())->count();
         $pendingOrders = $applyShippingStatusFilter(clone $ordersQuery, 'pending')->count();
@@ -1226,10 +1232,10 @@ Route::get('/dashboard/seller', function(\Illuminate\Http\Request $request) {
                 ->whereNull('read_at')
                 ->count();
         }
-        
+
         // Products statistics
         $totalProducts = \App\Models\Product::where('is_active', 1)->count();
-        
+
         // Low stock and out of stock need to check product_warehouse table
         $productStocks = \DB::table('product_warehouse')
             ->select('product_id', \DB::raw('SUM(qte) as total_stock'))
@@ -1237,10 +1243,10 @@ Route::get('/dashboard/seller', function(\Illuminate\Http\Request $request) {
             ->groupBy('product_id')
             ->get()
             ->keyBy('product_id');
-        
+
         $lowStockProducts = 0;
         $outOfStockProducts = 0;
-        
+
         $activeProducts = \App\Models\Product::where('is_active', 1)->get();
         foreach ($activeProducts as $product) {
             $stock = $productStocks->get($product->id)?->total_stock ?? 0;
@@ -1250,7 +1256,7 @@ Route::get('/dashboard/seller', function(\Illuminate\Http\Request $request) {
                 $lowStockProducts++;
             }
         }
-        
+
         // Recent orders
         $recentOrdersQuery = \App\Models\Sale::with('client', 'warehouse', 'user')
             ->orderBy('created_at', 'desc')
@@ -1258,8 +1264,8 @@ Route::get('/dashboard/seller', function(\Illuminate\Http\Request $request) {
         if ($userId) {
             $recentOrdersQuery->where('user_id', $userId);
         }
-        
-        $recentOrders = $recentOrdersQuery->get()->map(function($order) use ($normalizeShippingStatus) {
+
+        $recentOrders = $recentOrdersQuery->get()->map(function ($order) use ($normalizeShippingStatus) {
             $shippingStatus = $normalizeShippingStatus($order->shipping_status);
 
             return [
@@ -1278,11 +1284,11 @@ Route::get('/dashboard/seller', function(\Illuminate\Http\Request $request) {
                 'created_at' => $order->created_at?->toIso8601String(),
             ];
         });
-        
+
         // Get system/company name from settings
         $settings = \DB::table('settings')->first();
         $systemName = $settings->CompanyName ?? $settings->app_name ?? 'Stocky POS';
-        
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -1315,12 +1321,12 @@ Route::get('/dashboard/seller', function(\Illuminate\Http\Request $request) {
     } catch (\Exception $e) {
         return response()->json([
             'success' => false,
-            'message' => 'Failed to load dashboard: ' . $e->getMessage(),
+            'message' => 'Failed to load dashboard: '.$e->getMessage(),
         ], 500);
     }
 });
 
-Route::post('/orders', function(\Illuminate\Http\Request $request) {
+Route::post('/orders', function (\Illuminate\Http\Request $request) {
     try {
         $validated = $request->validate([
             'customer_name' => 'required|string',
@@ -1380,10 +1386,10 @@ Route::post('/orders', function(\Illuminate\Http\Request $request) {
 
         if ($customerName && $customerName !== 'Walk-in Customer') {
             // Check if customer exists by phone or name
-            $existingCustomer = \App\Models\Client::where(function($q) use ($customerPhone, $customerName) {
+            $existingCustomer = \App\Models\Client::where(function ($q) use ($customerPhone, $customerName) {
                 if ($customerPhone) {
                     $q->where('phone', $customerPhone)
-                      ->orWhere('name', $customerName);
+                        ->orWhere('name', $customerName);
                 } else {
                     $q->where('name', $customerName);
                 }
@@ -1398,8 +1404,8 @@ Route::post('/orders', function(\Illuminate\Http\Request $request) {
                     'name' => $customerName,
                     'phone' => $customerPhone,
                     'adresse' => $customerAddress,
-                    'email' => $customerPhone ? $customerPhone . '@mobilepos.local' : null,
-                    'code' => 'C-' . strtoupper(\Illuminate\Support\Str::random(6)),
+                    'email' => $customerPhone ? $customerPhone.'@mobilepos.local' : null,
+                    'code' => 'C-'.strtoupper(\Illuminate\Support\Str::random(6)),
                     'country' => 'Cambodia',
                 ]);
                 $clientId = $newClient->id;
@@ -1415,7 +1421,7 @@ Route::post('/orders', function(\Illuminate\Http\Request $request) {
 
         $sale = \App\Models\Sale::create([
             'date' => now()->format('Y-m-d'),
-            'Ref' => 'SL-' . strtoupper(\Illuminate\Support\Str::random(6)),
+            'Ref' => 'SL-'.strtoupper(\Illuminate\Support\Str::random(6)),
             'client_id' => $clientId,
             'user_id' => $userId,
             'warehouse_id' => $validated['warehouse_id'],
@@ -1429,7 +1435,7 @@ Route::post('/orders', function(\Illuminate\Http\Request $request) {
             'payment_statut' => $validated['payment_status'],
             'payment_method' => $validated['payment_method'],
             'paid_amount' => $validated['paid_amount'],
-            'notes' => 'Mobile POS Order - ' . $customerName . ($discountAmount > 0 ? ' (Discount: ' . $discountAmount . ')' : '') . ($shipping > 0 ? ' (Shipping: ' . $shipping . ')' : ''),
+            'notes' => 'Mobile POS Order - '.$customerName.($discountAmount > 0 ? ' (Discount: '.$discountAmount.')' : '').($shipping > 0 ? ' (Shipping: '.$shipping.')' : ''),
             'is_pos' => 1,
         ]);
 
@@ -1449,7 +1455,7 @@ Route::post('/orders', function(\Illuminate\Http\Request $request) {
             // Get product name for Telegram notification
             $product = \App\Models\Product::find($item['product_id']);
             $products[] = [
-                'product_name' => $product ? $product->name : 'Product #' . $item['product_id'],
+                'product_name' => $product ? $product->name : 'Product #'.$item['product_id'],
                 'quantity' => $item['quantity'],
                 'price' => $item['price'],
                 'image' => $product?->image ?? null,
@@ -1465,11 +1471,11 @@ Route::post('/orders', function(\Illuminate\Http\Request $request) {
 
         // Send Telegram notification to warehouse group
         try {
-            \Log::info('Sending Telegram notification for mobile POS order - Sale ID: ' . $sale->id);
-            
+            \Log::info('Sending Telegram notification for mobile POS order - Sale ID: '.$sale->id);
+
             $warehouse = \App\Models\Warehouse::find($validated['warehouse_id']);
             $seller = \App\Models\User::find($userId);
-            
+
             if ($warehouse && $warehouse->telegram_enabled && $warehouse->telegram_chat_id) {
                 // Prepare sale data for notification
                 $saleData = [
@@ -1505,13 +1511,13 @@ Route::post('/orders', function(\Illuminate\Http\Request $request) {
                     $sale->save();
                 }
 
-                \Log::info('Telegram notification sent for mobile POS order - Result: ' . ($result ? 'success' : 'failed'));
+                \Log::info('Telegram notification sent for mobile POS order - Result: '.($result ? 'success' : 'failed'));
             } else {
-                \Log::info('Telegram not enabled or chat ID missing for warehouse ID: ' . $validated['warehouse_id']);
+                \Log::info('Telegram not enabled or chat ID missing for warehouse ID: '.$validated['warehouse_id']);
             }
         } catch (\Throwable $e) {
-            \Log::error('Telegram notification failed for mobile POS order: ' . $e->getMessage());
-            \Log::error('Telegram exception trace: ' . $e->getTraceAsString());
+            \Log::error('Telegram notification failed for mobile POS order: '.$e->getMessage());
+            \Log::error('Telegram exception trace: '.$e->getTraceAsString());
         }
 
         return response()->json([
@@ -1534,13 +1540,13 @@ Route::post('/orders', function(\Illuminate\Http\Request $request) {
     } catch (\Exception $e) {
         return response()->json([
             'success' => false,
-            'message' => 'Failed to create order: ' . $e->getMessage(),
+            'message' => 'Failed to create order: '.$e->getMessage(),
         ], 500);
     }
 });
 
 // Products API (No Auth for Development)
-Route::get('/seller/products', function(\Illuminate\Http\Request $request) {
+Route::get('/seller/products', function (\Illuminate\Http\Request $request) {
     try {
         $warehouseId = $request->query('warehouse_id');
 
@@ -1551,24 +1557,24 @@ Route::get('/seller/products', function(\Illuminate\Http\Request $request) {
         // បើមាន warehouse_id ត្រងតាមឃ្លាំង
         if ($warehouseId && $warehouseId !== 'all') {
             // ត្រងតែផលិតផលដែលមានស្តុក > 0
-            $query->whereHas('product_warehouse', function($q) use ($warehouseId) {
+            $query->whereHas('product_warehouse', function ($q) use ($warehouseId) {
                 $q->where('warehouse_id', $warehouseId)
-                  ->where('qte', '>', 0);
+                    ->where('qte', '>', 0);
             });
         } else {
             // បើអត់ជ្រើសឃ្លាំង ត្រងតែផលិតផលដែលមានស្តុក > 0
-            $query->whereHas('product_warehouse', function($q) {
+            $query->whereHas('product_warehouse', function ($q) {
                 $q->where('qte', '>', 0);
             });
         }
-        
+
         $products = $query->orderBy('name', 'asc')->get()
-            ->map(function($product) use ($warehouseId) {
+            ->map(function ($product) use ($warehouseId) {
                 // ទាញទិន្នន័យ stock
                 $stockQuery = \DB::table('product_warehouse')
                     ->where('product_id', $product->id)
                     ->whereNull('deleted_at');
-                
+
                 // បើមាន warehouse_id យកតាមឃ្លាំងនោះ
                 // បើអត់ យកពីគ្រប់ឃ្លាំង (បូកបញ្ចូលគ្នា)
                 if ($warehouseId && $warehouseId !== 'all') {
@@ -1578,11 +1584,11 @@ Route::get('/seller/products', function(\Illuminate\Http\Request $request) {
                 } else {
                     // បូកស្តុកពីគ្រប់ឃ្លាំង
                     $allStockData = $stockQuery->get();
-                    $stock = $allStockData->sum(function($item) {
+                    $stock = $allStockData->sum(function ($item) {
                         return (int) ($item->qte ?? 0);
                     });
                 }
-                
+
                 return [
                     'id' => (string) $product->id,
                     'code' => $product->code ?? '',
@@ -1609,14 +1615,14 @@ Route::get('/seller/products', function(\Illuminate\Http\Request $request) {
 });
 
 // Dashboard Stats
-Route::get('/seller/dashboard/stats', function() {
+Route::get('/seller/dashboard/stats', function () {
     return response()->json([
         'success' => true,
         'data' => [
             'sales' => ['total' => 0, 'today' => 0, 'week' => 0, 'month' => 0],
             'orders' => ['total' => 0, 'today' => 0, 'pending' => 0, 'completed' => 0],
             'products' => ['total' => 0, 'low_stock' => 0, 'out_of_stock' => 0],
-        ]
+        ],
     ]);
 });
 
@@ -1625,7 +1631,7 @@ Route::get('/seller/dashboard/stats', function() {
 // ===============================================================
 
 // Get Warehouses
-Route::get('/seller/warehouses', function() {
+Route::get('/seller/warehouses', function () {
     try {
         $warehouses = \App\Models\Warehouse::orderBy('name')->get();
 
@@ -1636,11 +1642,11 @@ Route::get('/seller/warehouses', function() {
 });
 
 // Get Categories (for Seller App)
-Route::get('/seller/categories', function() {
+Route::get('/seller/categories', function () {
     try {
         // យក categories ទាំងអស់ (មិនមាន is_active ទេ)
         $categories = \App\Models\Category::orderBy('name')->get()
-            ->map(function($category) {
+            ->map(function ($category) {
                 return [
                     'id' => (string) $category->id,
                     'name' => $category->name ?? 'Unknown',
@@ -1657,7 +1663,7 @@ Route::get('/seller/categories', function() {
 // ===============================================================
 // Update Product API
 // ===============================================================
-Route::put('/products/{id}', function(\Illuminate\Http\Request $request, $id) {
+Route::put('/products/{id}', function (\Illuminate\Http\Request $request, $id) {
     try {
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255',
@@ -1677,7 +1683,7 @@ Route::put('/products/{id}', function(\Illuminate\Http\Request $request, $id) {
     } catch (\Exception $e) {
         return response()->json([
             'success' => false,
-            'message' => 'Failed to update product: ' . $e->getMessage(),
+            'message' => 'Failed to update product: '.$e->getMessage(),
         ], 500);
     }
 });
@@ -1685,7 +1691,7 @@ Route::put('/products/{id}', function(\Illuminate\Http\Request $request, $id) {
 // ===============================================================
 // Seller App - Update Product (API Group)
 // ===============================================================
-Route::put('/seller/products/{id}', function(\Illuminate\Http\Request $request, $id) {
+Route::put('/seller/products/{id}', function (\Illuminate\Http\Request $request, $id) {
     try {
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255',
@@ -1705,7 +1711,7 @@ Route::put('/seller/products/{id}', function(\Illuminate\Http\Request $request, 
     } catch (\Exception $e) {
         return response()->json([
             'success' => false,
-            'message' => 'Failed to update product: ' . $e->getMessage(),
+            'message' => 'Failed to update product: '.$e->getMessage(),
         ], 500);
     }
 });

@@ -144,9 +144,6 @@ class LoginController extends Controller
         // 5) For classic form logouts, redirect to /login
         return redirect()->route('login');
     }
-    
-    
-    
 
     /**
      * Get the login username to be used by the controller.

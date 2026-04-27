@@ -111,20 +111,3 @@ class ServiceTechnicianController extends BaseController
         return response()->json(['success' => true]);
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

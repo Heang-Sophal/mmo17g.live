@@ -618,12 +618,12 @@ class SalesController extends BaseController
                 $oldClient = Client::find($current_Sale->client_id);
                 $newClient = Client::find($request->client_id);
 
-                $previous_used   = (int) ($current_Sale->used_points ?? 0);
+                $previous_used = (int) ($current_Sale->used_points ?? 0);
                 $previous_earned = (int) ($current_Sale->earned_points ?? 0);
 
                 // Use the same convention as store(): trust used_points coming from frontend
                 $discount_from_points = (float) ($request->discount_from_points ?? 0);
-                $new_used   = (float) ($request->used_points ?? 0);
+                $new_used = (float) ($request->used_points ?? 0);
                 $new_earned = (float) $total_points_earned;
 
                 // Run loyalty logic if:
@@ -715,7 +715,6 @@ class SalesController extends BaseController
                         }
                     }
                 }
-
 
                 $due = $request['GrandTotal'] - $current_Sale->paid_amount;
                 if ($due === 0.0 || $due < 0.0) {
@@ -1345,8 +1344,8 @@ class SalesController extends BaseController
     {
         // Get prefix from settings, fallback to 'SL' if not set
         $setting = \App\Models\Setting::where('deleted_at', '=', null)->first();
-        $prefix = !empty($setting->sale_prefix) ? $setting->sale_prefix : 'SL';
-        
+        $prefix = ! empty($setting->sale_prefix) ? $setting->sale_prefix : 'SL';
+
         // Get the last sale with a reference that starts with the prefix
         // Support both formats: WO_12 and WO-12
         $last = DB::table('sales')
@@ -1633,8 +1632,6 @@ class SalesController extends BaseController
      * - If code is a simple product (no variants): returns product + price + unit_sale_id.
      * - If code is a product with is_variant=1: returns ['reason' => 'has_variants', ...] so caller can require variant codes.
      * - If code not found: returns null.
-     *
-     * @return array|null
      */
     protected function resolveCodeForImportSale(string $code): ?array
     {
@@ -1750,6 +1747,7 @@ class SalesController extends BaseController
             $resolved = $this->resolveCodeForImportSale($code);
             if ($resolved === null) {
                 $missingProductCodes[] = $code;
+
                 continue;
             }
             if (isset($resolved['reason']) && $resolved['reason'] === 'has_variants') {
@@ -1757,6 +1755,7 @@ class SalesController extends BaseController
                     'code' => $code,
                     'variant_codes' => $resolved['variant_codes'],
                 ];
+
                 continue;
             }
             $codeToResolved[$code] = $resolved;
@@ -2038,6 +2037,7 @@ class SalesController extends BaseController
                 '~(?:[A-Za-z]:)?[\/\\\\][^"\']*?[\/\\\\]public[\/\\\\]images[\/\\\\]([^"\'>]+)~',
                 function ($m) use ($webImagesPath) {
                     $file = ltrim($m[1], '/\\');
+
                     return $webImagesPath.$file;
                 },
                 $Html
@@ -2776,24 +2776,36 @@ class SalesController extends BaseController
     {
         // Get warehouse with Telegram settings
         $warehouse = \App\Models\Warehouse::find($sale->warehouse_id);
-        
-        if (!$warehouse || !$warehouse->telegram_enabled || !$warehouse->telegram_chat_id) {
+
+        if (! $warehouse || ! $warehouse->telegram_enabled || ! $warehouse->telegram_chat_id) {
             return; // Telegram not enabled for this warehouse
         }
 
         // Get sale details - use correct relationship name 'details' not 'saleDetails'
         $sale->load(['details.product', 'client', 'user', 'facture.payment_method']);
-        
+
         // Prepare product data
         $products = [];
         foreach ($sale->details as $detail) {
+            $productImage = $detail->product?->image;
+            if ($detail->product_variant_id) {
+                $variantImage = ProductVariant::where('id', $detail->product_variant_id)->value('image');
+                if (! empty($variantImage)) {
+                    $productImage = $variantImage;
+                }
+            }
+
             $products[] = [
                 'product_name' => $detail->product ? $detail->product->name : 'N/A',
                 'quantity' => $detail->quantity,
                 'price' => $detail->price,
+                'product_id' => $detail->product_id,
+                'product_variant_id' => $detail->product_variant_id,
+                'image' => $productImage,
+                'image_url' => $productImage ? product_image_url($productImage) : null,
             ];
         }
-        
+
         // Prepare sale data for notification
         $paymentMethods = $sale->facture
             ->pluck('payment_method.name')
@@ -2802,7 +2814,7 @@ class SalesController extends BaseController
             ->values()
             ->all();
 
-        $paymentMethod = $sale->payment_method ?: (!empty($paymentMethods) ? implode(', ', $paymentMethods) : 'N/A');
+        $paymentMethod = $sale->payment_method ?: (! empty($paymentMethods) ? implode(', ', $paymentMethods) : 'N/A');
         $sellerName = $sale->user ? ($sale->user->name ?: $sale->user->username) : 'Unknown';
         $dateValue = $sale->date instanceof \Carbon\Carbon
             ? $sale->date->format('Y-m-d')
@@ -2812,7 +2824,7 @@ class SalesController extends BaseController
             'ref' => $sale->Ref,
             'customer_name' => $sale->client ? $sale->client->name : 'Walk-in Customer',
             'date' => $sale->date,
-            'datetime' => trim($dateValue . ' ' . ($sale->time ?? '')),
+            'datetime' => trim($dateValue.' '.($sale->time ?? '')),
             'GrandTotal' => $sale->GrandTotal,
             'payment_status' => $sale->payment_statut,
             'payment_method' => $paymentMethod,
@@ -2825,17 +2837,16 @@ class SalesController extends BaseController
             'customer_phone' => $sale->client->phone ?? 'N/A',
             'products' => $products,
         ];
-        
+
         // Send notification via TelegramService with warehouse-specific bot token
         $telegramService = app(\App\Services\TelegramService::class);
         $telegramService->sendSaleNotification(
-            $saleData, 
-            $warehouse->name, 
+            $saleData,
+            $warehouse->name,
             $warehouse->telegram_chat_id,
             $warehouse->telegram_bot_token  // Pass warehouse-specific bot token
         );
     }
-
 
     // sales_send_whatsapp
     public function sales_send_whatsapp(Request $request)
@@ -3136,9 +3147,9 @@ class SalesController extends BaseController
     public function getDocuments($saleId)
     {
         $this->authorizeForUser(request()->user('api'), 'view', Sale::class);
-        
+
         $sale = Sale::findOrFail($saleId);
-        
+
         $documents = DB::table('sale_documents')
             ->where('sale_id', $saleId)
             ->where('deleted_at', null)
@@ -3155,7 +3166,7 @@ class SalesController extends BaseController
     public function uploadDocuments(Request $request, $saleId)
     {
         $this->authorizeForUser($request->user('api'), 'update', Sale::class);
-        
+
         $sale = Sale::findOrFail($saleId);
 
         $request->validate([
@@ -3177,12 +3188,12 @@ class SalesController extends BaseController
                 $size = $file->getSize();
                 $mimeType = $file->getMimeType();
 
-                $filename = time() . '_' . Str::random(10) . '_' . $originalName;
-                
+                $filename = time().'_'.Str::random(10).'_'.$originalName;
+
                 // Move file to public/images/sale_documents
                 $file->move($uploadPath, $filename);
-                
-                $relativePath = 'images/sale_documents/' . $filename;
+
+                $relativePath = 'images/sale_documents/'.$filename;
 
                 $documentId = DB::table('sale_documents')->insertGetId([
                     'sale_id' => $saleId,
@@ -3209,7 +3220,7 @@ class SalesController extends BaseController
     public function downloadDocument($documentId)
     {
         $this->authorizeForUser(request()->user('api'), 'view', Sale::class);
-        
+
         $document = DB::table('sale_documents')
             ->where('id', $documentId)
             ->where('deleted_at', null)
@@ -3239,7 +3250,7 @@ class SalesController extends BaseController
     public function deleteDocument($documentId)
     {
         $this->authorizeForUser(request()->user('api'), 'delete', Sale::class);
-        
+
         $document = DB::table('sale_documents')
             ->where('id', $documentId)
             ->where('deleted_at', null)

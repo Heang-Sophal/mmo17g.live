@@ -40,15 +40,3 @@ class BookingPolicy
         return $this->checkPermission($user);
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-

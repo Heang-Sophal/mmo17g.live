@@ -49,5 +49,3 @@ class ServiceJob extends Model
         return $this->hasMany(ServiceJobChecklistItem::class, 'service_job_id');
     }
 }
-
-

@@ -137,7 +137,7 @@ class ProvidersController extends BaseController
         return response()->json([
             'success' => true,
             'id' => $provider->id,
-            'provider' => $provider
+            'provider' => $provider,
         ]);
 
     }

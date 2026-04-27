@@ -818,7 +818,7 @@ class PurchasesController extends BaseController
     {
         // Get prefix from settings, fallback to 'PR' if not set
         $setting = \App\Models\Setting::where('deleted_at', '=', null)->first();
-        $prefix = !empty($setting->purchase_prefix) ? $setting->purchase_prefix : 'PR';
+        $prefix = ! empty($setting->purchase_prefix) ? $setting->purchase_prefix : 'PR';
 
         // Get the last purchase with a reference that starts with the prefix
         $last = DB::table('purchases')
@@ -829,7 +829,7 @@ class PurchasesController extends BaseController
         if ($last) {
             $item = $last->Ref;
             $nwMsg = explode('_', $item);
-            
+
             // Ensure valid structure before processing
             if (isset($nwMsg[1]) && is_numeric($nwMsg[1])) {
                 $inMsg = $nwMsg[1] + 1;
@@ -1064,6 +1064,7 @@ class PurchasesController extends BaseController
                 '~(?:[A-Za-z]:)?[\/\\\\][^"\']*?[\/\\\\]public[\/\\\\]images[\/\\\\]([^"\'>]+)~',
                 function ($m) use ($webImagesPath) {
                     $file = ltrim($m[1], '/\\');
+
                     return $webImagesPath.$file;
                 },
                 $Html
@@ -1972,9 +1973,9 @@ class PurchasesController extends BaseController
     public function getDocuments($purchaseId)
     {
         $this->authorizeForUser(request()->user('api'), 'view', Purchase::class);
-        
+
         $purchase = Purchase::findOrFail($purchaseId);
-        
+
         $documents = DB::table('purchase_documents')
             ->where('purchase_id', $purchaseId)
             ->where('deleted_at', null)
@@ -1983,7 +1984,7 @@ class PurchasesController extends BaseController
 
         return response()->json([
             'documents' => $documents,
-            'status' => true
+            'status' => true,
         ]);
     }
 
@@ -1991,7 +1992,7 @@ class PurchasesController extends BaseController
     public function uploadDocuments(Request $request, $purchaseId)
     {
         $this->authorizeForUser($request->user('api'), 'update', Purchase::class);
-        
+
         $purchase = Purchase::findOrFail($purchaseId);
 
         $request->validate([
@@ -2003,7 +2004,7 @@ class PurchasesController extends BaseController
         if ($request->hasFile('documents')) {
             // Create directory if it doesn't exist
             $uploadPath = public_path('images/purchase_documents');
-            if (!file_exists($uploadPath)) {
+            if (! file_exists($uploadPath)) {
                 mkdir($uploadPath, 0755, true);
             }
 
@@ -2013,12 +2014,12 @@ class PurchasesController extends BaseController
                 $size = $file->getSize();
                 $mimeType = $file->getMimeType();
 
-                $filename = time() . '_' . Str::random(10) . '_' . $originalName;
-                
+                $filename = time().'_'.Str::random(10).'_'.$originalName;
+
                 // Move file to public/images/purchase_documents
                 $file->move($uploadPath, $filename);
-                
-                $relativePath = 'images/purchase_documents/' . $filename;
+
+                $relativePath = 'images/purchase_documents/'.$filename;
 
                 $documentId = DB::table('purchase_documents')->insertGetId([
                     'purchase_id' => $purchaseId,
@@ -2037,7 +2038,7 @@ class PurchasesController extends BaseController
         return response()->json([
             'message' => 'Documents uploaded successfully',
             'documents' => $uploadedDocuments,
-            'status' => true
+            'status' => true,
         ]);
     }
 
@@ -2045,26 +2046,26 @@ class PurchasesController extends BaseController
     public function downloadDocument($documentId)
     {
         $this->authorizeForUser(request()->user('api'), 'view', Purchase::class);
-        
+
         $document = DB::table('purchase_documents')
             ->where('id', $documentId)
             ->where('deleted_at', null)
             ->first();
 
-        if (!$document) {
+        if (! $document) {
             return response()->json([
                 'message' => 'Document not found in database',
-                'status' => false
+                'status' => false,
             ], 404);
         }
 
         $filePath = public_path($document->path);
 
-        if (!file_exists($filePath)) {
+        if (! file_exists($filePath)) {
             return response()->json([
                 'message' => 'Physical file not found on server',
                 'status' => false,
-                'path' => $document->path
+                'path' => $document->path,
             ], 404);
         }
 
@@ -2075,16 +2076,16 @@ class PurchasesController extends BaseController
     public function deleteDocument($documentId)
     {
         $this->authorizeForUser(request()->user('api'), 'delete', Purchase::class);
-        
+
         $document = DB::table('purchase_documents')
             ->where('id', $documentId)
             ->where('deleted_at', null)
             ->first();
 
-        if (!$document) {
+        if (! $document) {
             return response()->json([
                 'message' => 'Document not found',
-                'status' => false
+                'status' => false,
             ], 404);
         }
 
@@ -2101,7 +2102,7 @@ class PurchasesController extends BaseController
 
         return response()->json([
             'message' => 'Document deleted successfully',
-            'status' => true
+            'status' => true,
         ]);
     }
 }

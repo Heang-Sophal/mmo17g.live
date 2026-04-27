@@ -285,7 +285,7 @@ import {
           chart: { type: 'donut', toolbar: { show: false } },
           labels: (this.reports || []).map(r => r.category_name || ''),
           legend: { position: 'bottom', fontSize: '12px' },
-          colors: ['#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#f97316', '#eab308', '#22c55e', '#14b8a6'],
+          colors: ['#735F33', '#D6A735', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#f97316', '#eab308', '#22c55e', '#14b8a6'],
           dataLabels: { enabled: true, formatter(val) { return val ? Number(val).toFixed(1) + '%' : ''; } },
           plotOptions: { pie: { donut: { size: '55%', labels: { show: true, total: { show: true, label: this.$t('Total_Expenses'), formatter: () => totalStr } } } } },
         };
@@ -300,7 +300,7 @@ import {
           dataLabels: { enabled: true },
           xaxis: { categories: (this.reports || []).map(r => r.category_name || ''), labels: { rotate: -45, style: { fontSize: '11px' } } },
           yaxis: { labels: { formatter: (val) => (this.currentUser && this.currentUser.currency ? `${this.currentUser.currency} ${Number(val).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : String(val)) } },
-          colors: ['#6366f1'],
+          colors: ['#735F33'],
           legend: { show: false },
           grid: { borderColor: '#e5e7eb', strokeDashArray: 4, xaxis: { lines: { show: false } } },
         };
@@ -640,7 +640,7 @@ import {
     font-size: 1.4rem;
     color: #fff;
   }
-  .expense-card-total .summary-icon { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); }
+  .expense-card-total .summary-icon { background: linear-gradient(135deg, #735F33 0%, #D6A735 100%); }
   .expense-card-categories .summary-icon { background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%); }
   .expense-card-top .summary-icon { background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%); }
   .chart-wrapper { min-height: 280px; }

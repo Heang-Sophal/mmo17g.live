@@ -10,19 +10,17 @@ class HandleCors
     /**
      * Handle an incoming request.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure  $next
      * @return mixed
      */
     public function handle(Request $request, Closure $next)
     {
         // អនុញ្ញាតឱ្យ Flutter App ចូលប្រើ API
         $headers = [
-            'Access-Control-Allow-Origin'      => '*',
-            'Access-Control-Allow-Methods'     => 'POST, GET, OPTIONS, PUT, DELETE',
+            'Access-Control-Allow-Origin' => '*',
+            'Access-Control-Allow-Methods' => 'POST, GET, OPTIONS, PUT, DELETE',
             'Access-Control-Allow-Credentials' => 'true',
-            'Access-Control-Max-Age'           => '86400',
-            'Access-Control-Allow-Headers'     => 'Content-Type, Authorization, X-Requested-With, Origin, Accept'
+            'Access-Control-Max-Age' => '86400',
+            'Access-Control-Allow-Headers' => 'Content-Type, Authorization, X-Requested-With, Origin, Accept',
         ];
 
         // បន្ថែម Headers ចូលក្នុង Response

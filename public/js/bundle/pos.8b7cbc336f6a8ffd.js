@@ -4765,6 +4765,9 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
       _this36.makeToast("danger", _this36.$t("Please_fill_the_form_correctly"), _this36.$t("Failed"));
       return;
     }
+    if (!_this36.client.name) {
+      _this36.client.name = 'Walk-in Customer';
+    }
     axios.post("clients", {
       name: _this36.client.name,
       email: _this36.client.email || '',
@@ -9648,7 +9651,7 @@ var render = function render() {
   }, [_c("b-modal", {
     attrs: {
       "hide-footer": "",
-      size: "lg",
+      size: "md",
       id: "Quick_Add_Customer",
       title: _vm.$t("Quick_Add_Customer")
     }
@@ -9662,12 +9665,33 @@ var render = function render() {
     }
   }, [_c("b-row", [_c("b-col", {
     attrs: {
-      md: "6",
+      md: "12",
+      sm: "12"
+    }
+  }, [_c("b-form-group", {
+    attrs: {
+      label: _vm.$t("CustomerName") + " (" + _vm.$t("Optional") + ")"
+    }
+  }, [_c("b-form-input", {
+    attrs: {
+      label: "name",
+      placeholder: _vm.$t("CustomerName")
+    },
+    model: {
+      value: _vm.client.name,
+      callback: function callback($$v) {
+        _vm.$set(_vm.client, "name", $$v);
+      },
+      expression: "client.name"
+    }
+  })], 1)], 1), _vm._v(" "), _c("b-col", {
+    attrs: {
+      md: "12",
       sm: "12"
     }
   }, [_c("validation-provider", {
     attrs: {
-      name: "Name Customer",
+      name: "Phone",
       rules: {
         required: true
       }
@@ -9677,230 +9701,85 @@ var render = function render() {
       fn: function fn(validationContext) {
         return [_c("b-form-group", {
           attrs: {
-            label: _vm.$t("CustomerName") + " " + "*"
+            label: _vm.$t("Phone") + " *"
           }
         }, [_c("b-form-input", {
           attrs: {
             state: _vm.getValidationState(validationContext),
-            "aria-describedby": "name-feedback",
-            label: "name",
-            placeholder: _vm.$t("CustomerName")
+            "aria-describedby": "phone-feedback",
+            label: "Phone",
+            placeholder: _vm.$t("Phone")
           },
           model: {
-            value: _vm.client.name,
+            value: _vm.client.phone,
             callback: function callback($$v) {
-              _vm.$set(_vm.client, "name", $$v);
+              _vm.$set(_vm.client, "phone", $$v);
             },
-            expression: "client.name"
+            expression: "client.phone"
           }
         }), _vm._v(" "), _c("b-form-invalid-feedback", {
           attrs: {
-            id: "name-feedback"
+            id: "phone-feedback"
           }
         }, [_vm._v(_vm._s(validationContext.errors[0]))])], 1)];
       }
-    }], null, false, 1765869017)
+    }], null, false, 4190896850)
   })], 1), _vm._v(" "), _c("b-col", {
-    attrs: {
-      md: "6",
-      sm: "12"
-    }
-  }, [_c("b-form-group", {
-    attrs: {
-      label: _vm.$t("Email")
-    }
-  }, [_c("b-form-input", {
-    attrs: {
-      label: "email",
-      placeholder: _vm.$t("Email")
-    },
-    model: {
-      value: _vm.client.email,
-      callback: function callback($$v) {
-        _vm.$set(_vm.client, "email", $$v);
-      },
-      expression: "client.email"
-    }
-  })], 1)], 1), _vm._v(" "), _c("b-col", {
-    attrs: {
-      md: "6",
-      sm: "12"
-    }
-  }, [_c("b-form-group", {
-    attrs: {
-      label: _vm.$t("Phone")
-    }
-  }, [_c("b-form-input", {
-    attrs: {
-      label: "Phone",
-      placeholder: _vm.$t("Phone")
-    },
-    model: {
-      value: _vm.client.phone,
-      callback: function callback($$v) {
-        _vm.$set(_vm.client, "phone", $$v);
-      },
-      expression: "client.phone"
-    }
-  })], 1)], 1), _vm._v(" "), _c("b-col", {
-    attrs: {
-      md: "6",
-      sm: "12"
-    }
-  }, [_c("b-form-group", {
-    attrs: {
-      label: _vm.$t("Country")
-    }
-  }, [_c("b-form-input", {
-    attrs: {
-      label: "Country",
-      placeholder: _vm.$t("Country")
-    },
-    model: {
-      value: _vm.client.country,
-      callback: function callback($$v) {
-        _vm.$set(_vm.client, "country", $$v);
-      },
-      expression: "client.country"
-    }
-  })], 1)], 1), _vm._v(" "), _c("b-col", {
-    attrs: {
-      md: "6",
-      sm: "12"
-    }
-  }, [_c("b-form-group", {
-    attrs: {
-      label: _vm.$t("City")
-    }
-  }, [_c("b-form-input", {
-    attrs: {
-      label: "City",
-      placeholder: _vm.$t("City")
-    },
-    model: {
-      value: _vm.client.city,
-      callback: function callback($$v) {
-        _vm.$set(_vm.client, "city", $$v);
-      },
-      expression: "client.city"
-    }
-  })], 1)], 1), _vm._v(" "), _c("b-col", {
-    attrs: {
-      md: "6",
-      sm: "12"
-    }
-  }, [_c("b-form-group", {
-    attrs: {
-      label: _vm.$t("Tax_Number")
-    }
-  }, [_c("b-form-input", {
-    attrs: {
-      label: "Tax Number",
-      placeholder: _vm.$t("Tax_Number")
-    },
-    model: {
-      value: _vm.client.tax_number,
-      callback: function callback($$v) {
-        _vm.$set(_vm.client, "tax_number", $$v);
-      },
-      expression: "client.tax_number"
-    }
-  })], 1)], 1), _vm._v(" "), _c("b-col", {
     attrs: {
       md: "12",
       sm: "12"
     }
-  }, [_c("b-form-group", {
+  }, [_c("validation-provider", {
     attrs: {
-      label: _vm.$t("Adress")
-    }
-  }, [_c("textarea", {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: _vm.client.adresse,
-      expression: "client.adresse"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      label: "Adress",
-      rows: "4",
-      placeholder: _vm.$t("Adress")
-    },
-    domProps: {
-      value: _vm.client.adresse
-    },
-    on: {
-      input: function input($event) {
-        if ($event.target.composing) return;
-        _vm.$set(_vm.client, "adresse", $event.target.value);
+      name: "Address",
+      rules: {
+        required: true
       }
-    }
-  })])], 1), _vm._v(" "), _c("b-col", {
-    staticClass: "mt-4 mb-4",
-    attrs: {
-      md: "6",
-      sm: "12"
-    }
-  }, [_c("div", {
-    staticClass: "psx-form-check"
-  }, [_c("input", {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: _vm.client.is_royalty_eligible,
-      expression: "client.is_royalty_eligible"
-    }],
-    staticClass: "psx-checkbox psx-form-check-input",
-    attrs: {
-      type: "checkbox",
-      id: "is_royalty_eligible"
     },
-    domProps: {
-      checked: Array.isArray(_vm.client.is_royalty_eligible) ? _vm._i(_vm.client.is_royalty_eligible, null) > -1 : _vm.client.is_royalty_eligible
-    },
-    on: {
-      change: function change($event) {
-        var $$a = _vm.client.is_royalty_eligible,
-          $$el = $event.target,
-          $$c = $$el.checked ? true : false;
-        if (Array.isArray($$a)) {
-          var $$v = null,
-            $$i = _vm._i($$a, $$v);
-          if ($$el.checked) {
-            $$i < 0 && _vm.$set(_vm.client, "is_royalty_eligible", $$a.concat([$$v]));
-          } else {
-            $$i > -1 && _vm.$set(_vm.client, "is_royalty_eligible", $$a.slice(0, $$i).concat($$a.slice($$i + 1)));
+    scopedSlots: _vm._u([{
+      key: "default",
+      fn: function fn(validationContext) {
+        return [_c("b-form-group", {
+          attrs: {
+            label: _vm.$t("Adress") + " *"
           }
-        } else {
-          _vm.$set(_vm.client, "is_royalty_eligible", $$c);
-        }
+        }, [_c("textarea", {
+          directives: [{
+            name: "model",
+            rawName: "v-model",
+            value: _vm.client.adresse,
+            expression: "client.adresse"
+          }],
+          "class": ["form-control", {
+            "is-invalid": validationContext.errors.length
+          }],
+          attrs: {
+            "aria-describedby": "address-feedback",
+            label: "Adress",
+            rows: "4",
+            placeholder: _vm.$t("Adress")
+          },
+          domProps: {
+            value: _vm.client.adresse
+          },
+          on: {
+            input: function input($event) {
+              if ($event.target.composing) return;
+              _vm.$set(_vm.client, "adresse", $event.target.value);
+            }
+          }
+        }), _vm._v(" "), _c("b-form-invalid-feedback", {
+          staticStyle: {
+            display: "block"
+          },
+          attrs: {
+            id: "address-feedback"
+          }
+        }, [_vm._v(_vm._s(validationContext.errors[0]))])], 1)];
       }
-    }
-  }), _vm._v(" "), _c("label", {
-    staticClass: "psx-form-check-label",
-    attrs: {
-      "for": "is_royalty_eligible"
-    }
-  }, [_c("h5", [_vm._v(_vm._s(_vm.$t("Is_Royalty_Eligible")))])])])]), _vm._v(" "), _c("b-col", {
-    staticClass: "mt-3",
-    attrs: {
-      md: "12",
-      sm: "12"
-    }
-  }, [_c("CustomFieldsForm", {
-    attrs: {
-      "entity-type": "client"
-    },
-    model: {
-      value: _vm.quickAddCustomFieldValues,
-      callback: function callback($$v) {
-        _vm.quickAddCustomFieldValues = $$v;
-      },
-      expression: "quickAddCustomFieldValues"
-    }
+    }], null, false, 2763497874)
   })], 1), _vm._v(" "), _c("b-col", {
-    staticClass: "mt-3",
+    staticClass: "mt-4",
     attrs: {
       md: "12"
     }

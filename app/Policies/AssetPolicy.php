@@ -38,8 +38,3 @@ class AssetPolicy
         return $permission ? $user->hasRole($permission->roles) : false;
     }
 }
-
-
-
-
-

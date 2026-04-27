@@ -59,7 +59,7 @@ class GoogleCalendarService
         if ($this->settings && $this->settings->google_calendar_refresh_token) {
             $client->setAccessToken([
                 'refresh_token' => $this->settings->google_calendar_refresh_token,
-                'expires_in'    => 0,
+                'expires_in' => 0,
             ]);
             $client->fetchAccessTokenWithRefreshToken($this->settings->google_calendar_refresh_token);
         }
@@ -109,7 +109,7 @@ class GoogleCalendarService
 
         return [
             'start' => $start->format('Y-m-d\TH:i:sP'),
-            'end'   => $end->format('Y-m-d\TH:i:sP'),
+            'end' => $end->format('Y-m-d\TH:i:sP'),
         ];
     }
 

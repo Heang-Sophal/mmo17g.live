@@ -6,8 +6,8 @@ use App\Models\AdjustmentDetail;
 use App\Models\Product;
 use App\Models\PurchaseDetail;
 use App\Models\SaleDetail;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Shared FIFO / Average-cost helpers for profit & COGS calculations.
@@ -247,14 +247,3 @@ trait CalculatesCogsAndAverageCost
         return $avg;
     }
 }
-
-
-
-
-
-
-
-
-
-
-

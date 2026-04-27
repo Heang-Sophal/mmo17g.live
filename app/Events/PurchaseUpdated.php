@@ -18,8 +18,3 @@ class PurchaseUpdated
         $this->purchase = $purchase;
     }
 }
-
-
-
-
-

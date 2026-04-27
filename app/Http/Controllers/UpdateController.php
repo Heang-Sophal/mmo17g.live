@@ -25,9 +25,9 @@ class UpdateController extends Controller
 
     public function lastStep(Request $request)
     {
-        ini_set('max_execution_time', 2000); 
-		ini_set('memory_limit', '512M');
-        
+        ini_set('max_execution_time', 2000);
+        ini_set('memory_limit', '512M');
+
         $role = Auth::user()->roles()->first();
         $permission = Role::findOrFail($role->id)->inRole('setting_system');
 
@@ -42,7 +42,7 @@ class UpdateController extends Controller
                 // ----------------------------------------------------
                 // ✅ Backward compatibility for old sales (NO discount_method)
                 // ----------------------------------------------------
-                 if (!Schema::hasColumn('sales', 'discount_method')) {
+                if (! Schema::hasColumn('sales', 'discount_method')) {
 
                     // Run ONLY if the old loyalty column exists
                     if (Schema::hasColumn('sales', 'discount_from_points')) {
@@ -50,11 +50,10 @@ class UpdateController extends Controller
                         DB::table('sales')
                             ->where('discount_from_points', '>', 0)
                             ->update([
-                                'discount' => DB::raw('GREATEST(discount - discount_from_points, 0)')
+                                'discount' => DB::raw('GREATEST(discount - discount_from_points, 0)'),
                             ]);
                     }
                 }
-
 
                 Artisan::call('migrate --force');
 

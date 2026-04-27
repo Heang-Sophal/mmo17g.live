@@ -5,16 +5,16 @@ namespace App\Http\Controllers;
 use App\Exports\StockExport;
 use App\Imports\OpeningStockRowsImport;
 use App\Imports\ProductImport;
-use App\Models\Brand;
 use App\Models\Adjustment;
 use App\Models\AdjustmentDetail;
+use App\Models\Brand;
 use App\Models\Category;
-use App\Models\SubCategory;
 use App\Models\CombinedProduct;
 use App\Models\CountStock;
 use App\Models\Product;
 use App\Models\product_warehouse;
 use App\Models\ProductVariant;
+use App\Models\SubCategory;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\UserWarehouse;
@@ -30,8 +30,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Intervention\Image\ImageManagerStatic as Image;
@@ -1373,7 +1373,7 @@ class ProductsController extends BaseController
             }
         } catch (\Throwable $e) {
             throw ValidationException::withMessages([
-                'image' => ["Unable to save product image. ".$e->getMessage()],
+                'image' => ['Unable to save product image. '.$e->getMessage()],
             ]);
         }
 
@@ -3046,7 +3046,7 @@ class ProductsController extends BaseController
         }
     }
 
-        /**
+    /**
      * IMPORT: Update Only - Updates existing products by code
      * Expected CSV format: code,cost,retail_price
      * Only updates cost and retail_price (price field) for products matching the code
@@ -3064,8 +3064,8 @@ class ProductsController extends BaseController
                 function ($attribute, $value, $fail) {
                     $extension = strtolower($value->getClientOriginalExtension());
                     $allowedExtensions = ['csv', 'xls', 'xlsx'];
-                    if (!in_array($extension, $allowedExtensions)) {
-                        $fail('The ' . $attribute . ' must be a file of type: csv, xls, xlsx.');
+                    if (! in_array($extension, $allowedExtensions)) {
+                        $fail('The '.$attribute.' must be a file of type: csv, xls, xlsx.');
                     }
                 },
             ],
@@ -3073,29 +3073,30 @@ class ProductsController extends BaseController
 
         // Read file - support both CSV and Excel
         $fileExtension = strtolower($request->file('products')->getClientOriginalExtension());
-        
+
         if ($fileExtension === 'csv') {
             // Handle CSV file
             $file = fopen($request->file('products')->getRealPath(), 'r');
             $rows = [];
             $headers = null;
-            
+
             // Normalize header function
-            $normalizeHeader = function($header) {
+            $normalizeHeader = function ($header) {
                 return strtolower(trim(preg_replace('/[^a-z0-9]+/i', '_', $header)));
             };
-            
+
             while (($row = fgetcsv($file)) !== false) {
                 if ($headers === null) {
                     // Normalize headers: lowercase, trim, replace spaces/special chars with underscore
                     $headers = array_map($normalizeHeader, $row);
+
                     continue;
                 }
-                
+
                 if (count($row) !== count($headers)) {
                     continue; // Skip malformed rows
                 }
-                
+
                 $rows[] = array_combine($headers, array_map('trim', $row));
             }
             fclose($file);
@@ -3114,6 +3115,7 @@ class ProductsController extends BaseController
                     return true;
                 }
             }
+
             return false;
         }));
 
@@ -3140,17 +3142,20 @@ class ProductsController extends BaseController
 
             // Validation
             if (empty($code)) {
-                $errors[] = "Row " . ($index + 2) . ": Missing product code.";
+                $errors[] = 'Row '.($index + 2).': Missing product code.';
+
                 continue;
             }
 
-            if ($cost === null || $cost === '' || !is_numeric($cost)) {
-                $errors[] = "Row " . ($index + 2) . " (code: $code): Invalid or missing cost.";
+            if ($cost === null || $cost === '' || ! is_numeric($cost)) {
+                $errors[] = 'Row '.($index + 2)." (code: $code): Invalid or missing cost.";
+
                 continue;
             }
 
-            if ($retailPrice === null || $retailPrice === '' || !is_numeric($retailPrice)) {
-                $errors[] = "Row " . ($index + 2) . " (code: $code): Invalid or missing retail_price.";
+            if ($retailPrice === null || $retailPrice === '' || ! is_numeric($retailPrice)) {
+                $errors[] = 'Row '.($index + 2)." (code: $code): Invalid or missing retail_price.";
+
                 continue;
             }
 
@@ -3159,8 +3164,9 @@ class ProductsController extends BaseController
                 ->whereNull('deleted_at')
                 ->first();
 
-            if (!$product) {
+            if (! $product) {
                 $notFound[] = $code;
+
                 continue;
             }
 
@@ -3171,7 +3177,7 @@ class ProductsController extends BaseController
                 $product->save();
                 $updated++;
             } catch (\Exception $e) {
-                $errors[] = "Row " . ($index + 2) . " (code: $code): Failed to update - " . $e->getMessage();
+                $errors[] = 'Row '.($index + 2)." (code: $code): Failed to update - ".$e->getMessage();
             }
         }
 
@@ -3181,10 +3187,10 @@ class ProductsController extends BaseController
             $messages[] = "Successfully updated $updated product(s).";
         }
         if (count($notFound) > 0) {
-            $messages[] = count($notFound) . " product code(s) not found: " . implode(', ', array_slice($notFound, 0, 10)) . (count($notFound) > 10 ? '...' : '');
+            $messages[] = count($notFound).' product code(s) not found: '.implode(', ', array_slice($notFound, 0, 10)).(count($notFound) > 10 ? '...' : '');
         }
         if (count($errors) > 0) {
-            $messages[] = count($errors) . " error(s) occurred. " . implode(' ', array_slice($errors, 0, 5)) . (count($errors) > 5 ? '...' : '');
+            $messages[] = count($errors).' error(s) occurred. '.implode(' ', array_slice($errors, 0, 5)).(count($errors) > 5 ? '...' : '');
         }
 
         if ($updated === 0 && count($notFound) === 0 && count($errors) === 0) {

@@ -1,11 +1,11 @@
 <?php
 
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
-use App\Models\User;
-use App\Models\Role;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -20,16 +20,16 @@ return new class extends Migration
 
         // Migrate existing users: set record_view based on their role's permission
         $users = User::with('roles')->get();
-        
+
         foreach ($users as $user) {
             $hasRecordView = false;
-            
+
             // Check if user's role has record_view permission
             $role = $user->roles()->first();
             if ($role) {
                 $hasRecordView = $role->inRole('record_view');
             }
-            
+
             // Update user's record_view field
             DB::table('users')
                 ->where('id', $user->id)

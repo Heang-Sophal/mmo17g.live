@@ -19,21 +19,3 @@ class SaleDocument extends Model
         return $this->belongsTo(Sale::class, 'sale_id');
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

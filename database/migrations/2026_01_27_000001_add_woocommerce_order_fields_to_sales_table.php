@@ -8,18 +8,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('sales')) {
+        if (! Schema::hasTable('sales')) {
             return;
         }
 
         Schema::table('sales', function (Blueprint $table) {
-            if (!Schema::hasColumn('sales', 'woocommerce_order_id')) {
+            if (! Schema::hasColumn('sales', 'woocommerce_order_id')) {
                 $table->unsignedBigInteger('woocommerce_order_id')->nullable()->after('sale_uuid');
             }
-            if (!Schema::hasColumn('sales', 'woocommerce_order_number')) {
+            if (! Schema::hasColumn('sales', 'woocommerce_order_number')) {
                 $table->string('woocommerce_order_number', 64)->nullable()->after('woocommerce_order_id');
             }
-            if (!Schema::hasColumn('sales', 'woocommerce_order_status')) {
+            if (! Schema::hasColumn('sales', 'woocommerce_order_status')) {
                 $table->string('woocommerce_order_status', 32)->nullable()->after('woocommerce_order_number');
             }
         });
@@ -27,7 +27,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (!Schema::hasTable('sales')) {
+        if (! Schema::hasTable('sales')) {
             return;
         }
 
@@ -45,4 +45,3 @@ return new class extends Migration
         });
     }
 };
-

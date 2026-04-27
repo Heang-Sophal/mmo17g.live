@@ -618,7 +618,7 @@ import {
     color: #fff;
   }
   .deposit-card-total .summary-icon { background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%); }
-  .deposit-card-categories .summary-icon { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); }
+  .deposit-card-categories .summary-icon { background: linear-gradient(135deg, #735F33 0%, #D6A735 100%); }
   .deposit-card-top .summary-icon { background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%); }
   .chart-wrapper { min-height: 280px; }
   </style>

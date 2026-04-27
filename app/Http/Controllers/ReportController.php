@@ -40,7 +40,6 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Models\UserWarehouse;
 use App\Models\Warehouse;
-use App\Models\Staff;
 use App\Traits\CalculatesCogsAndAverageCost;
 use App\utils\helpers;
 use Carbon\Carbon;
@@ -776,15 +775,15 @@ class ReportController extends BaseController
         $user = null;
         $isMobileUser = false;
         $isMobileRoute = str_contains($request->path(), 'report/sales_by_seller_mobile');
-        
+
         try {
             $user = $request->user('api');
         } catch (\Exception $e) {
             // Passport auth failed, will try custom token below
             $user = null;
         }
-        
-        if (!$user) {
+
+        if (! $user) {
             // Try to authenticate with custom base64 token (Mobile App)
             try {
                 $token = $request->bearerToken();
@@ -800,7 +799,7 @@ class ReportController extends BaseController
             }
         }
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => 'Unauthenticated', 'message' => 'Please login to view this report.'], 401);
         }
 
@@ -813,7 +812,7 @@ class ReportController extends BaseController
                 return response()->json(['error' => 'Unauthorized', 'message' => 'You do not have permission to view this report.'], 403);
             }
         }
-        
+
         // How many items do you want to display.
         $perPage = $request->limit;
         $pageStart = \Request::get('page', 1);
@@ -822,7 +821,7 @@ class ReportController extends BaseController
         $order = $request->SortField ?: 'id';
         $dir = $request->SortType ?: 'desc';
         // Ensure direction is valid
-        if (!in_array(strtolower($dir), ['asc', 'desc'])) {
+        if (! in_array(strtolower($dir), ['asc', 'desc'])) {
             $dir = 'desc';
         }
         $data = [];
@@ -840,7 +839,7 @@ class ReportController extends BaseController
         } elseif (! $user->hasRecordView()) {
             $Sales->where('sales.user_id', '=', $user->id);
         }
-        
+
         // Apply filters
         if ($request->filled('Ref')) {
             $Sales->where('sales.Ref', 'LIKE', "%{$request->Ref}%");
@@ -886,17 +885,17 @@ class ReportController extends BaseController
                 // Calculate total sale amount for proportional paid_amount
                 $saleTotalAmount = $sale->GrandTotal ?? 0;
                 $salePaidAmount = $sale->paid_amount ?? 0;
-                
+
                 foreach ($sale->details as $detail) {
                     $product = $detail->product;
                     $unit = $product && $product->unit ? $product->unit->ShortName : 'N/A';
                     $productCost = $product ? ($product->cost ?? 0) : 0;
                     $productPrice = $detail->price ?? 0;
                     $productTotal = $detail->total ?? ($productPrice * $detail->quantity);
-                    
+
                     // Calculate proportional paid amount for this product
-                    $paidAmount = $saleTotalAmount > 0 
-                        ? ($productTotal / $saleTotalAmount) * $salePaidAmount 
+                    $paidAmount = $saleTotalAmount > 0
+                        ? ($productTotal / $saleTotalAmount) * $salePaidAmount
                         : 0;
 
                     $item['id'] = $sale->id;
@@ -1010,7 +1009,7 @@ class ReportController extends BaseController
         }
 
         $baseQuery = SaleDetail::query()
-            ->whereHas('sale', function ($q) use ($request, $helpers, $from, $to) {
+            ->whereHas('sale', function ($q) use ($helpers, $from, $to) {
                 $q->whereNull('sales.deleted_at')
                     ->whereBetween('sales.date', [$from, $to]);
                 $helpers->Show_Records($q);
@@ -2161,11 +2160,11 @@ class ReportController extends BaseController
         $this->authorizeForUser($request->user('api'), 'analytics_report', Client::class);
 
         // Date range (default to last 30 days if not provided)
-        $start = $request->filled('from') 
-            ? Carbon::parse($request->from)->toDateString() 
+        $start = $request->filled('from')
+            ? Carbon::parse($request->from)->toDateString()
             : Carbon::now()->subDays(29)->toDateString();
-        $end = $request->filled('to') 
-            ? Carbon::parse($request->to)->toDateString() 
+        $end = $request->filled('to')
+            ? Carbon::parse($request->to)->toDateString()
             : Carbon::now()->toDateString();
 
         // Warehouses visible to user
@@ -2183,16 +2182,16 @@ class ReportController extends BaseController
         $applyWarehouse = fn ($q) => $warehouseId
             ? $q->where('warehouse_id', $warehouseId)
             : $q->whereIn('warehouse_id', $warehouseIds);
-        
+
         // Helper for transfers (uses from_warehouse_id and to_warehouse_id)
         $applyTransferWarehouse = fn ($q) => $warehouseId
             ? $q->where(function ($query) use ($warehouseId) {
                 $query->where('from_warehouse_id', $warehouseId)
-                      ->orWhere('to_warehouse_id', $warehouseId);
+                    ->orWhere('to_warehouse_id', $warehouseId);
             })
             : $q->where(function ($query) use ($warehouseIds) {
                 $query->whereIn('from_warehouse_id', $warehouseIds)
-                      ->orWhereIn('to_warehouse_id', $warehouseIds);
+                    ->orWhereIn('to_warehouse_id', $warehouseIds);
             });
 
         // -------------------- Closing Stock (Current Stock at End Date) --------------------
@@ -2318,11 +2317,11 @@ class ReportController extends BaseController
             ->value('total');
 
         // Calculate opening stock by purchase price: Closing - Purchases + Sales - Purchase Returns + Sale Returns - Adjustments
-        $openingStockPurchase = $closingStockPurchase 
-            - $purchaseDetailsValue 
-            + $saleDetailsValue 
-            - $purchaseReturnDetailsValue 
-            + $saleReturnDetailsValue 
+        $openingStockPurchase = $closingStockPurchase
+            - $purchaseDetailsValue
+            + $saleDetailsValue
+            - $purchaseReturnDetailsValue
+            + $saleReturnDetailsValue
             - $adjustmentDetailsValue;
 
         // For sale price, we need to calculate similarly but using price instead of cost
@@ -2480,21 +2479,21 @@ class ReportController extends BaseController
             ->value('total');
 
         // Calculate opening stock by purchase price: Closing - Purchases + Sales - Purchase Returns + Sale Returns - Adjustments + Transfer Out - Transfer In
-        $openingStockPurchase = $closingStockPurchase 
-            - $purchaseDetailsValue 
-            + $saleDetailsValue 
-            - $purchaseReturnDetailsValue 
-            + $saleReturnDetailsValue 
+        $openingStockPurchase = $closingStockPurchase
+            - $purchaseDetailsValue
+            + $saleDetailsValue
+            - $purchaseReturnDetailsValue
+            + $saleReturnDetailsValue
             - $adjustmentDetailsValue
             + $transferOutDetailsCost
             - $transferInDetailsCost;
 
         // Calculate opening stock by sale price
-        $openingStockSale = $closingStockSale 
-            - $purchaseDetailsPrice 
-            + $saleDetailsPrice 
-            - $purchaseReturnDetailsPrice 
-            + $saleReturnDetailsPrice 
+        $openingStockSale = $closingStockSale
+            - $purchaseDetailsPrice
+            + $saleDetailsPrice
+            - $purchaseReturnDetailsPrice
+            + $saleReturnDetailsPrice
             - $adjustmentDetailsPrice
             + $transferOutDetailsPrice
             - $transferInDetailsPrice;
@@ -5345,8 +5344,8 @@ class ReportController extends BaseController
         $soldTotals = $soldQuery
             ->groupBy('sale_details.product_id', 'sale_details.product_variant_id', 'sales.warehouse_id')
             ->get()
-            ->keyBy(function($item) {
-                return $item->product_id . '_' . ($item->product_variant_id ?? 0) . '_' . $item->warehouse_id;
+            ->keyBy(function ($item) {
+                return $item->product_id.'_'.($item->product_variant_id ?? 0).'_'.$item->warehouse_id;
             });
 
         // Get most common sale_unit_id per product/variant/warehouse
@@ -5370,10 +5369,10 @@ class ReportController extends BaseController
         $soldUnits = $soldUnitsQuery
             ->groupBy('sale_details.product_id', 'sale_details.product_variant_id', 'sales.warehouse_id', 'sale_details.sale_unit_id')
             ->get()
-            ->groupBy(function($item) {
-                return $item->product_id . '_' . ($item->product_variant_id ?? 0) . '_' . $item->warehouse_id;
+            ->groupBy(function ($item) {
+                return $item->product_id.'_'.($item->product_variant_id ?? 0).'_'.$item->warehouse_id;
             })
-            ->map(function($group) {
+            ->map(function ($group) {
                 return $group->sortByDesc('count')->first()->sale_unit_id;
             });
 
@@ -5395,8 +5394,8 @@ class ReportController extends BaseController
         $transferredTotals = $transferredQuery
             ->groupBy('transfer_details.product_id', 'transfer_details.product_variant_id', 'transfers.from_warehouse_id')
             ->get()
-            ->keyBy(function($item) {
-                return $item->product_id . '_' . ($item->product_variant_id ?? 0) . '_' . $item->warehouse_id;
+            ->keyBy(function ($item) {
+                return $item->product_id.'_'.($item->product_variant_id ?? 0).'_'.$item->warehouse_id;
             });
 
         // Get most common purchase_unit_id per product/variant/warehouse
@@ -5420,10 +5419,10 @@ class ReportController extends BaseController
         $transferredUnits = $transferredUnitsQuery
             ->groupBy('transfer_details.product_id', 'transfer_details.product_variant_id', 'transfers.from_warehouse_id', 'transfer_details.purchase_unit_id')
             ->get()
-            ->groupBy(function($item) {
-                return $item->product_id . '_' . ($item->product_variant_id ?? 0) . '_' . $item->warehouse_id;
+            ->groupBy(function ($item) {
+                return $item->product_id.'_'.($item->product_variant_id ?? 0).'_'.$item->warehouse_id;
             })
-            ->map(function($group) {
+            ->map(function ($group) {
                 return $group->sortByDesc('count')->first()->purchase_unit_id;
             });
 
@@ -5445,8 +5444,8 @@ class ReportController extends BaseController
         $adjustedTotals = $adjustedQuery
             ->groupBy('adjustment_details.product_id', 'adjustment_details.product_variant_id', 'adjustments.warehouse_id')
             ->get()
-            ->keyBy(function($item) {
-                return $item->product_id . '_' . ($item->product_variant_id ?? 0) . '_' . $item->warehouse_id;
+            ->keyBy(function ($item) {
+                return $item->product_id.'_'.($item->product_variant_id ?? 0).'_'.$item->warehouse_id;
             });
 
         $data = [];
@@ -5458,7 +5457,7 @@ class ReportController extends BaseController
 
                 foreach ($variants as $variant) {
                     $vid = (int) $variant->id;
-                    
+
                     // Get stock per warehouse
                     $warehouseStocks = $stockRows->where('product_id', $product->id)
                         ->where('product_variant_id', $vid)
@@ -5466,17 +5465,19 @@ class ReportController extends BaseController
 
                     foreach ($warehouseStocks as $whId => $whStocks) {
                         $warehouse = $warehouses->firstWhere('id', $whId);
-                        if (!$warehouse) continue;
+                        if (! $warehouse) {
+                            continue;
+                        }
 
                         $currentQty = (float) $whStocks->sum('qty');
                         $costPrice = (float) $variant->cost;
                         $sellingPrice = (float) $variant->price;
-                        
+
                         $stockValueCost = $currentQty * $costPrice;
                         $stockValueSelling = $currentQty * $sellingPrice;
                         $potentialProfit = $stockValueSelling - $stockValueCost;
 
-                        $key = $product->id . '_' . $vid . '_' . $whId;
+                        $key = $product->id.'_'.$vid.'_'.$whId;
                         $soldTotal = $soldTotals->get($key);
                         $transferredTotal = $transferredTotals->get($key);
                         $totalSold = (float) ($soldTotal->total ?? 0);
@@ -5520,17 +5521,19 @@ class ReportController extends BaseController
 
                 foreach ($warehouseStocks as $whId => $whStocks) {
                     $warehouse = $warehouses->firstWhere('id', $whId);
-                    if (!$warehouse) continue;
+                    if (! $warehouse) {
+                        continue;
+                    }
 
                     $currentQty = (float) $whStocks->sum('qty');
                     $costPrice = (float) $product->cost;
                     $sellingPrice = (float) $product->price;
-                    
+
                     $stockValueCost = $currentQty * $costPrice;
                     $stockValueSelling = $currentQty * $sellingPrice;
                     $potentialProfit = $stockValueSelling - $stockValueCost;
 
-                    $key = $product->id . '_0_' . $whId;
+                    $key = $product->id.'_0_'.$whId;
                     $soldTotal = $soldTotals->get($key);
                     $transferredTotal = $transferredTotals->get($key);
                     $totalSold = (float) ($soldTotal->total ?? 0);
@@ -6427,11 +6430,11 @@ class ReportController extends BaseController
         $end_date = $request->end_date;
 
         // Normalise dates to 'Y-m-d' (database format)
-        if (!empty($start_date)) {
+        if (! empty($start_date)) {
             $start_date = date('Y-m-d', strtotime($start_date));
         }
 
-        if (!empty($end_date)) {
+        if (! empty($end_date)) {
             $end_date = date('Y-m-d', strtotime($end_date));
         }
 
@@ -6439,12 +6442,12 @@ class ReportController extends BaseController
         $end_time = $request->end_time;
 
         // Normalise times to 'H:i:s', accepting both 'HH:MM' and 'HH:MM:SS' from the UI
-        if (!empty($start_time) && strlen($start_time) === 5) {
+        if (! empty($start_time) && strlen($start_time) === 5) {
             // e.g. '08:00' -> '08:00:00'
             $start_time .= ':00';
         }
 
-        if (!empty($end_time) && strlen($end_time) === 5) {
+        if (! empty($end_time) && strlen($end_time) === 5) {
             // e.g. '17:00' -> '17:00:59' to include the full last minute
             $end_time .= ':59';
         }
@@ -6453,12 +6456,12 @@ class ReportController extends BaseController
         $startDateTime = null;
         $endDateTime = null;
 
-        if (!empty($start_date)) {
-            $startDateTime = $start_date . ' ' . (!empty($start_time) ? $start_time : '00:00:00');
+        if (! empty($start_date)) {
+            $startDateTime = $start_date.' '.(! empty($start_time) ? $start_time : '00:00:00');
         }
 
-        if (!empty($end_date)) {
-            $endDateTime = $end_date . ' ' . (!empty($end_time) ? $end_time : '23:59:59');
+        if (! empty($end_date)) {
+            $endDateTime = $end_date.' '.(! empty($end_time) ? $end_time : '23:59:59');
         }
 
         // dd($start_time);
@@ -6474,7 +6477,7 @@ class ReportController extends BaseController
         });
 
         $totalRows = $usersQuery->count();
-        if ($perPage == "-1") {
+        if ($perPage == '-1') {
             $perPage = $totalRows;
         }
 
@@ -6494,7 +6497,7 @@ class ReportController extends BaseController
             $salesQuery = DB::table('sales')
                 ->whereNull('deleted_at')
                 ->where('user_id', $user->id)
-                ->when($warehouse_id, fn($q) => $q->where('warehouse_id', $warehouse_id));
+                ->when($warehouse_id, fn ($q) => $q->where('warehouse_id', $warehouse_id));
 
             // If we have full datetime bounds, filter on combined date+time
             if ($startDateTime && $endDateTime) {
@@ -8264,20 +8267,20 @@ class ReportController extends BaseController
 
         // Charts: Top 10 by value & qty
         $topByValue = (clone $base)->orderBy('value_sum', 'desc')->limit(10)->get();
-        $topByQty = (clone $base)->orderBy('qty_sum','desc')->limit(10)->get();
+        $topByQty = (clone $base)->orderBy('qty_sum', 'desc')->limit(10)->get();
 
         // Table (pagination + sorting)
         $perPage = max(1, (int) ($request->get('limit', 10)));
         $page = max(1, (int) ($request->get('page', 1)));
         $offset = ($page - 1) * $perPage;
-        $sortField = $request->get('SortField','value_sum');
-        $sortType = strtolower($request->get('SortType','desc')) === 'asc' ? 'asc' : 'desc';
+        $sortField = $request->get('SortField', 'value_sum');
+        $sortType = strtolower($request->get('SortType', 'desc')) === 'asc' ? 'asc' : 'desc';
         $sortable = ['supplier', 'orders_count', 'qty_sum', 'value_sum', 'avg_value'];
 
         $tableTotal = (clone $base)->count();
 
         $rows = (clone $base)
-            ->orderBy(in_array($sortField,$sortable,true) ? $sortField : 'value_sum', $sortType)
+            ->orderBy(in_array($sortField, $sortable, true) ? $sortField : 'value_sum', $sortType)
             ->offset($offset)->limit($perPage)
             ->get()
             ->map(function ($r) {
@@ -8303,6 +8306,4 @@ class ReportController extends BaseController
             'warehouses' => $warehouses,
         ]);
     }
-
-
 }

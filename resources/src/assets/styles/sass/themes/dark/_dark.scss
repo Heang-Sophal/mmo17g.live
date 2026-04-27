@@ -936,7 +936,7 @@ body.dark-theme {
      
       &__option {
         &__link {
-          border-left: 2px solid #8B5CF6;
+          border-left: 2px solid #D6A735;
           color: $dark-heading;
           &:focus {
             outline: none;
@@ -945,7 +945,7 @@ body.dark-theme {
          
          
           &:hover {
-            background-color:#8B5CF6 ;
+            background-color:#D6A735 ;
             color: $dark-heading  !important;
             
           }
@@ -2828,7 +2828,7 @@ body.dark-theme {
     }
     
     &.stock-icon-wholesale {
-      background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%) !important;
+      background: linear-gradient(135deg, #D6A735 0%, #FFD86A 100%) !important;
       color: white !important;
     }
   }

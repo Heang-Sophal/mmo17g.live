@@ -29,8 +29,3 @@ class CreateAccBudgetLinesTable extends Migration
         Schema::dropIfExists('acc_budget_lines');
     }
 }
-
-
-
-
-

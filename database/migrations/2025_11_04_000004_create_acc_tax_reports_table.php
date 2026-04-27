@@ -35,8 +35,3 @@ class CreateAccTaxReportsTable extends Migration
         Schema::dropIfExists('acc_tax_reports');
     }
 }
-
-
-
-
-

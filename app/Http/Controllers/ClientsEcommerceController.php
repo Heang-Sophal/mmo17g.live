@@ -4,20 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Models\EcommerceClient;
-use App\Models\Setting;
 use App\utils\helpers;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class ClientsEcommerceController extends BaseController
 {
-
-    //------------- Get ALL clients_without_ecommerce -------------\\
+    // ------------- Get ALL clients_without_ecommerce -------------\\
 
     public function index(request $request)
     {
@@ -29,18 +25,18 @@ class ClientsEcommerceController extends BaseController
         $offSet = ($pageStart * $perPage) - $perPage;
         $order = $request->SortField;
         $dir = $request->SortType;
-        $helpers = new helpers();
+        $helpers = new helpers;
         // Filter fields With Params to retrieve
-        $columns = array(0 => 'name', 1 => 'code', 2 => 'phone', 3 => 'email');
-        $param = array(0 => 'like', 1 => 'like', 2 => 'like', 3 => 'like');
-        $data = array();
+        $columns = [0 => 'name', 1 => 'code', 2 => 'phone', 3 => 'email'];
+        $param = [0 => 'like', 1 => 'like', 2 => 'like', 3 => 'like'];
+        $data = [];
         // $clients = Client::where('deleted_at', '=', null);
         $clients = \App\Models\Client::where('deleted_at', '=', null)
-        ->whereNotIn('id', function($query){
-            $query->select('client_id')->from('ecommerce_clients');
-        });
+            ->whereNotIn('id', function ($query) {
+                $query->select('client_id')->from('ecommerce_clients');
+            });
 
-        //Multiple Filter
+        // Multiple Filter
         $Filtred = $helpers->filter($clients, $columns, $param, $request)
         // Search With Multiple Param
             ->where(function ($query) use ($request) {
@@ -52,7 +48,7 @@ class ClientsEcommerceController extends BaseController
                 });
             });
         $totalRows = $Filtred->count();
-        if($perPage == "-1"){
+        if ($perPage == '-1') {
             $perPage = $totalRows;
         }
         $clients = $Filtred->offset($offSet)
@@ -71,10 +67,10 @@ class ClientsEcommerceController extends BaseController
         }
 
         $clientsWithoutEcommerce = \App\Models\Client::where('deleted_at', '=', null)
-        ->whereNotIn('id', function($query){
-            $query->select('client_id')->from('ecommerce_clients');
-        })->count();
-        
+            ->whereNotIn('id', function ($query) {
+                $query->select('client_id')->from('ecommerce_clients');
+            })->count();
+
         return response()->json([
             'clients' => $data,
             'totalRows' => $totalRows,
@@ -82,17 +78,17 @@ class ClientsEcommerceController extends BaseController
         ]);
     }
 
-    //------------- List existing ecommerce client accounts -------------\\
+    // ------------- List existing ecommerce client accounts -------------\\
 
     public function accounts(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'view', Client::class);
 
-        $perPage   = $request->limit;
+        $perPage = $request->limit;
         $pageStart = \Request::get('page', 1);
-        $offSet    = ($pageStart * $perPage) - $perPage;
-        $order     = $request->SortField ?: 'id';
-        $dir       = $request->SortType ?: 'desc';
+        $offSet = ($pageStart * $perPage) - $perPage;
+        $order = $request->SortField ?: 'id';
+        $dir = $request->SortType ?: 'desc';
 
         $query = EcommerceClient::with('client')
             ->whereNull('deleted_at');
@@ -101,17 +97,17 @@ class ClientsEcommerceController extends BaseController
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('email', 'LIKE', "%{$search}%")
-                  ->orWhere('username', 'LIKE', "%{$search}%")
-                  ->orWhereHas('client', function ($qc) use ($search) {
-                      $qc->where('name', 'LIKE', "%{$search}%")
-                         ->orWhere('code', 'LIKE', "%{$search}%")
-                         ->orWhere('phone', 'LIKE', "%{$search}%");
-                  });
+                    ->orWhere('username', 'LIKE', "%{$search}%")
+                    ->orWhereHas('client', function ($qc) use ($search) {
+                        $qc->where('name', 'LIKE', "%{$search}%")
+                            ->orWhere('code', 'LIKE', "%{$search}%")
+                            ->orWhere('phone', 'LIKE', "%{$search}%");
+                    });
             });
         }
 
         $totalRows = $query->count();
-        if ($perPage == "-1") {
+        if ($perPage == '-1') {
             $perPage = $totalRows;
         }
 
@@ -123,24 +119,24 @@ class ClientsEcommerceController extends BaseController
         $data = [];
         foreach ($accounts as $acc) {
             $data[] = [
-                'id'         => $acc->id,
-                'client_id'  => $acc->client_id,
-                'client_code'=> optional($acc->client)->code,
-                'client_name'=> optional($acc->client)->name,
-                'phone'      => optional($acc->client)->phone,
-                'email'      => $acc->email,
-                'username'   => $acc->username,
-                'status'     => (int) $acc->status,
+                'id' => $acc->id,
+                'client_id' => $acc->client_id,
+                'client_code' => optional($acc->client)->code,
+                'client_name' => optional($acc->client)->name,
+                'phone' => optional($acc->client)->phone,
+                'email' => $acc->email,
+                'username' => $acc->username,
+                'status' => (int) $acc->status,
             ];
         }
 
         return response()->json([
-            'accounts'  => $data,
+            'accounts' => $data,
             'totalRows' => $totalRows,
         ]);
     }
 
-    //------------- Update ecommerce client account (email/password/status) -------------\\
+    // ------------- Update ecommerce client account (email/password/status) -------------\\
 
     public function updateAccount(Request $request, $id)
     {
@@ -150,7 +146,7 @@ class ClientsEcommerceController extends BaseController
         $account = EcommerceClient::whereNull('deleted_at')->findOrFail($id);
 
         $this->validate($request, [
-            'email'    => [
+            'email' => [
                 'required',
                 'email',
                 // Ensure email is unique in clients table (ignore linked client if exists, exclude soft-deleted)
@@ -163,7 +159,7 @@ class ClientsEcommerceController extends BaseController
                     ->whereNull('deleted_at'),
             ],
             'password' => ['nullable', 'string', 'min:6'],
-            'status'   => ['nullable', 'boolean'],
+            'status' => ['nullable', 'boolean'],
         ], [
             'email.unique' => 'This Email is already taken.',
         ]);
@@ -192,7 +188,7 @@ class ClientsEcommerceController extends BaseController
         return response()->json(['success' => true]);
     }
 
-    //------------- Remove ecommerce client account (without deleting Client) -------------\\
+    // ------------- Remove ecommerce client account (without deleting Client) -------------\\
 
     public function destroyAccount(Request $request, $id)
     {
@@ -206,7 +202,7 @@ class ClientsEcommerceController extends BaseController
         return response()->json(['success' => true]);
     }
 
-    //------------- Store new Customer -------------\\
+    // ------------- Store new Customer -------------\\
 
     public function store(Request $request)
     {
@@ -214,7 +210,7 @@ class ClientsEcommerceController extends BaseController
 
         // Email must be a valid email address and unique in both clients and ecommerce_clients tables
         $this->validate($request, [
-            'email'    => [
+            'email' => [
                 'required',
                 'email',
                 // Ensure email is unique in clients table (exclude soft-deleted)
@@ -227,51 +223,51 @@ class ClientsEcommerceController extends BaseController
             'email.unique' => 'This Email already taken.',
         ]);
 
-         // Check if the client_id already exists in the users table
-         $client_exist = EcommerceClient::where('client_id', $request->client_id)->exists();
+        // Check if the client_id already exists in the users table
+        $client_exist = EcommerceClient::where('client_id', $request->client_id)->exists();
 
-         if($client_exist){
-            return response()->json(['success' => false] , 403);
-         }else{
-            $client = Client::where('id' , $request->client_id)->first();
+        if ($client_exist) {
+            return response()->json(['success' => false], 403);
+        } else {
+            $client = Client::where('id', $request->client_id)->first();
 
-            \DB::transaction(function () use ($request , $client) {
+            \DB::transaction(function () use ($request, $client) {
 
                 EcommerceClient::create([
                     'client_id' => $request->client_id,
-                    'username'  => $client->name,
-                    'email'     => $request['email'],
-                    'password'  => Hash::make($request['password']),
-                    'status'    => 1,
+                    'username' => $client->name,
+                    'email' => $request['email'],
+                    'password' => Hash::make($request['password']),
+                    'status' => 1,
                 ]);
-    
-            }, 10);
-         }
 
+            }, 10);
+        }
 
         return response()->json(['success' => true]);
 
     }
 
-    //------------ function show -----------\\
+    // ------------ function show -----------\\
 
-    public function show($id){
+    public function show($id)
+    {
         //
-        
+
     }
 
-    //------------- Update Customer -------------\\
+    // ------------- Update Customer -------------\\
 
     public function update(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', Client::class);
-        
+
         $client_ecommerce = EcommerceClient::where('client_id', $id)
             ->whereNull('deleted_at')
             ->first();
-        
+
         $ecommerceClientId = $client_ecommerce ? $client_ecommerce->id : null;
-      
+
         $this->validate($request, [
             'email' => [
                 'required',
@@ -289,13 +285,12 @@ class ClientsEcommerceController extends BaseController
             'email.unique' => 'This Email is already taken.',
         ]);
 
-
-        \DB::transaction(function () use ($id , $client_ecommerce , $request) {
+        \DB::transaction(function () use ($id, $client_ecommerce, $request) {
             $current = $client_ecommerce->password;
 
             if ($request->NewPassword == 'null' || $request->NewPassword === null || $request->NewPassword == '') {
                 $pass = $client_ecommerce->password;
-            }else{
+            } else {
 
                 if ($request->NewPassword != $current) {
                     $pass = Hash::make($request->NewPassword);
@@ -304,8 +299,8 @@ class ClientsEcommerceController extends BaseController
                 }
 
             }
-                  
-            EcommerceClient::where('client_id' , $id)->update([
+
+            EcommerceClient::where('client_id', $id)->update([
                 'email' => $request['email'],
                 'password' => $pass,
             ]);
@@ -315,12 +310,12 @@ class ClientsEcommerceController extends BaseController
             ]);
 
         }, 10);
-        
+
         return response()->json(['success' => true]);
 
     }
 
-    //------------- delete client -------------\\
+    // ------------- delete client -------------\\
 
     public function destroy(Request $request, $id)
     {
@@ -329,12 +324,11 @@ class ClientsEcommerceController extends BaseController
         Client::whereId($id)->update([
             'deleted_at' => Carbon::now(),
         ]);
+
         return response()->json(['success' => true]);
     }
 
-
-
-    //------------- get Number Order Customer -------------\\
+    // ------------- get Number Order Customer -------------\\
 
     public function getNumberOrder()
     {
@@ -345,8 +339,7 @@ class ClientsEcommerceController extends BaseController
         } else {
             $code = 1;
         }
+
         return $code;
     }
-
-
 }

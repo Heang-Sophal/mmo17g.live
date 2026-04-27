@@ -34,20 +34,3 @@ class ServiceChecklistItem extends Model
         return $this->belongsTo(ServiceChecklistCategory::class, 'category_id');
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

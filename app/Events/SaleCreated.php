@@ -18,8 +18,3 @@ class SaleCreated
         $this->sale = $sale;
     }
 }
-
-
-
-
-

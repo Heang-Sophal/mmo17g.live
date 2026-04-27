@@ -23,6 +23,7 @@ class WooCommerceProductsSyncJob implements ShouldQueue
      * keep each job run short; if your worker uses --timeout this should override it.
      */
     public int $timeout = 1200;
+
     public int $tries = 1;
 
     private const ACTIVE_PRODUCTS_SYNC_TOKENS_KEY = 'woo_products_sync_active_tokens';
@@ -67,7 +68,7 @@ class WooCommerceProductsSyncJob implements ShouldQueue
 
         // Keep state between batches; do NOT reset counters on every run.
         $state = $cache->get($this->progressKey, null);
-        if (!is_array($state) || !empty($state['finished'])) {
+        if (! is_array($state) || ! empty($state['finished'])) {
             $state = [
                 'total_products' => $total,
                 'synced_products' => 0,
@@ -83,7 +84,7 @@ class WooCommerceProductsSyncJob implements ShouldQueue
             $cache->put($this->progressKey, $state, 3600);
         } else {
             // Ensure total is present (first run might have been older format)
-            if (!isset($state['total_products'])) {
+            if (! isset($state['total_products'])) {
                 $state['total_products'] = $total;
                 $cache->put($this->progressKey, $state, 3600);
             }
@@ -99,6 +100,7 @@ class WooCommerceProductsSyncJob implements ShouldQueue
             $state['error'] = 'cancelled';
             $cache->put($this->progressKey, $state, 3600);
             $cache->forget($cancelKey);
+
             return;
         }
 
@@ -142,7 +144,7 @@ class WooCommerceProductsSyncJob implements ShouldQueue
             $lastDoneProductId = null;
             $prevCreated = 0;
             $prevUpdated = 0;
-            $prevErrors  = 0;
+            $prevErrors = 0;
             $lastStageForProduct = null;
 
             $batchSize = (int) env('WOO_PRODUCTS_PER_JOB', 5);
@@ -383,7 +385,7 @@ class WooCommerceProductsSyncJob implements ShouldQueue
 
                             $createdNow = (int) ($p['created'] ?? 0);
                             $updatedNow = (int) ($p['updated'] ?? 0);
-                            $errorsNow  = (int) ($p['errors'] ?? 0);
+                            $errorsNow = (int) ($p['errors'] ?? 0);
 
                             $successDelta = ($createdNow + $updatedNow) - ($prevCreated + $prevUpdated);
                             $errorDelta = $errorsNow - $prevErrors;
@@ -423,7 +425,7 @@ class WooCommerceProductsSyncJob implements ShouldQueue
                 ->when($lastId > 0, fn ($q) => $q->where('id', '>', $lastId))
                 ->count();
 
-            if (!$cancelled && $remaining > 0) {
+            if (! $cancelled && $remaining > 0) {
                 // Queue next batch; keep job running status, do not finalize.
                 $finalize = false;
                 $state['stage'] = 'queued_next_batch';
@@ -432,7 +434,7 @@ class WooCommerceProductsSyncJob implements ShouldQueue
 
                 if ($this->syncJobId) {
                     $sj = SyncJob::query()->find($this->syncJobId);
-                    if ($sj && !in_array((string) $sj->status, ['cancelled', 'failed'], true)) {
+                    if ($sj && ! in_array((string) $sj->status, ['cancelled', 'failed'], true)) {
                         $sj->status = 'running';
                         $sj->stage = 'queued_next_batch';
                         $sj->worker_heartbeat_at = now();
@@ -464,6 +466,7 @@ class WooCommerceProductsSyncJob implements ShouldQueue
                 self::dispatch($this->progressKey, $this->onlyUnsynced, $this->syncJobId)
                     ->onConnection('database')
                     ->onQueue($queue);
+
                 return;
             }
 
@@ -472,7 +475,7 @@ class WooCommerceProductsSyncJob implements ShouldQueue
                 $sj = SyncJob::query()->find($this->syncJobId);
                 if ($sj) {
                     // Do not overwrite terminal state set by Stop/stuck detection.
-                    if (!in_array((string) $sj->status, ['cancelled', 'failed'], true)) {
+                    if (! in_array((string) $sj->status, ['cancelled', 'failed'], true)) {
                         $sj->status = 'completed';
                         $sj->percentage = 100;
                         $sj->stage = 'finished';
@@ -554,12 +557,12 @@ class WooCommerceProductsSyncJob implements ShouldQueue
             }
         } finally {
             // When batching, do not mark as finished and do not remove from active list.
-            if (!$finalize) {
+            if (! $finalize) {
                 $cache->put($this->progressKey, $state, 3600);
             } else {
                 $state['finished'] = true;
                 $state['finished_at'] = now()->toDateTimeString();
-                if (!$cancelled) {
+                if (! $cancelled) {
                     $state['percentage'] = 100;
                 } else {
                     $processed = (int) (($state['synced_products'] ?? 0) + ($state['failed_products'] ?? 0));
@@ -609,7 +612,7 @@ class WooCommerceProductsSyncJob implements ShouldQueue
     {
         try {
             $tokens = Cache::store('file')->get(self::ACTIVE_PRODUCTS_SYNC_TOKENS_KEY, []);
-            if (!is_array($tokens)) {
+            if (! is_array($tokens)) {
                 return;
             }
             unset($tokens[$this->progressKey]);
@@ -618,4 +621,3 @@ class WooCommerceProductsSyncJob implements ShouldQueue
         }
     }
 }
-

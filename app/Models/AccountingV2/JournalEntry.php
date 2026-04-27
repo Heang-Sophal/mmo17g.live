@@ -20,8 +20,3 @@ class JournalEntry extends Model
         return $this->hasMany(JournalEntryLine::class, 'journal_entry_id');
     }
 }
-
-
-
-
-

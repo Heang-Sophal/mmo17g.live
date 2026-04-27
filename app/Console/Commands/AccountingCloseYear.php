@@ -145,8 +145,3 @@ class AccountingCloseYear extends Command
         return 0;
     }
 }
-
-
-
-
-

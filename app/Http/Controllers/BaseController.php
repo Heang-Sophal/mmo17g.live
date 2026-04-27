@@ -91,25 +91,25 @@ class BaseController extends Controller
         if ($server && $settings) { // checking if table is not empty
             // Prefer sender_email from server, fallback to settings email
             $fromEmail = ($server->sender_email ?? null) ?: $settings->email;
-            
+
             $config = [
-                    'driver' => $server->mail_mailer,
-                    'host' => $server->host,
-                    'port' => $server->port,
-                    'from' => ['address' => $fromEmail, 'name' => $server->sender_name],
-                    'encryption' => $server->encryption,
-                    'username' => $server->username,
-                    'password' => $server->password,
-                    'sendmail' => '/usr/sbin/sendmail -bs',
-                    'pretend' => false,
-                    'stream' => [
-                        'ssl' => [
-                            'allow_self_signed' => true,
-                            'verify_peer' => false,
-                            'verify_peer_name' => false,
-                        ],
+                'driver' => $server->mail_mailer,
+                'host' => $server->host,
+                'port' => $server->port,
+                'from' => ['address' => $fromEmail, 'name' => $server->sender_name],
+                'encryption' => $server->encryption,
+                'username' => $server->username,
+                'password' => $server->password,
+                'sendmail' => '/usr/sbin/sendmail -bs',
+                'pretend' => false,
+                'stream' => [
+                    'ssl' => [
+                        'allow_self_signed' => true,
+                        'verify_peer' => false,
+                        'verify_peer_name' => false,
                     ],
-                ];
+                ],
+            ];
             Config::set('mail', $config);
         }
     }

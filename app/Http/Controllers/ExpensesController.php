@@ -221,7 +221,7 @@ class ExpensesController extends BaseController
                 $size = $file->getSize();
                 $mimeType = $file->getMimeType();
 
-                $filename = time() . '_' . Str::random(10) . '_' . $originalName;
+                $filename = time().'_'.Str::random(10).'_'.$originalName;
 
                 // Move file to public/images/expense_documents
                 $file->move($uploadPath, $filename);

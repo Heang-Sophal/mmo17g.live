@@ -173,5 +173,3 @@ class SubCategoryController extends BaseController
         return response()->json($subcategories);
     }
 }
-
-

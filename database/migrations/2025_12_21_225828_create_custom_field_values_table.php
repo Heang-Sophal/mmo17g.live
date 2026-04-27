@@ -20,7 +20,7 @@ return new class extends Migration
             $table->text('value')->nullable(); // Store the field value
             $table->timestamps(6);
             $table->softDeletes();
-            
+
             // Indexes for performance
             $table->index(['custom_field_id', 'entity_id', 'entity_type'], 'custom_field_value_lookup');
             $table->foreign('custom_field_id')->references('id')->on('custom_fields')->onDelete('cascade');

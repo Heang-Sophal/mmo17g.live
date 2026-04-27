@@ -22,16 +22,3 @@ class EnsureStoreEnabled
         return $next($request);
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

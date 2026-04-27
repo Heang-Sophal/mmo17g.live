@@ -23,6 +23,7 @@ class WooCommerceStockSyncJob implements ShouldQueue
     private string $progressKey;
 
     public int $timeout = 1200;
+
     public int $tries = 1;
 
     public function __construct(string $progressKey)
@@ -49,7 +50,7 @@ class WooCommerceStockSyncJob implements ShouldQueue
 
         // Keep state between batches; do NOT reset counters each run.
         $state = $cache->get($this->progressKey, null);
-        if (!is_array($state) || !empty($state['finished'])) {
+        if (! is_array($state) || ! empty($state['finished'])) {
             $state = [
                 'total_products' => $total,
                 'synced_products' => 0,
@@ -66,7 +67,7 @@ class WooCommerceStockSyncJob implements ShouldQueue
             ];
             $cache->put($this->progressKey, $state, 3600);
         } else {
-            if (!isset($state['total_products'])) {
+            if (! isset($state['total_products'])) {
                 $state['total_products'] = $total;
                 $cache->put($this->progressKey, $state, 3600);
             }
@@ -81,6 +82,7 @@ class WooCommerceStockSyncJob implements ShouldQueue
             $state['error'] = 'cancelled';
             $cache->put($this->progressKey, $state, 3600);
             $cache->forget($cancelKey);
+
             return;
         }
 
@@ -110,6 +112,7 @@ class WooCommerceStockSyncJob implements ShouldQueue
                         $state['error'] = 'cancelled';
                         $cache->put($this->progressKey, $state, 3600);
                         $cache->forget($cancelKey);
+
                         return false;
                     }
 
@@ -327,6 +330,7 @@ class WooCommerceStockSyncJob implements ShouldQueue
 
             $queue = (string) ($state['queue'] ?? ('woocommerce-stock-'.$this->progressKey));
             self::dispatch($this->progressKey)->onConnection('database')->onQueue($queue);
+
             return;
         }
 
@@ -484,7 +488,7 @@ class WooCommerceStockSyncJob implements ShouldQueue
 
             try {
                 $matches = function ($m) use ($imgName, $filenameBase): bool {
-                    if (!is_array($m)) {
+                    if (! is_array($m)) {
                         return false;
                     }
                     $src = (string) ($m['source_url'] ?? '');
@@ -513,6 +517,7 @@ class WooCommerceStockSyncJob implements ShouldQueue
                     if ($file !== '' && (stripos($file, $imgName) !== false || stripos($file, $filenameBase) !== false)) {
                         return true;
                     }
+
                     return false;
                 };
 
@@ -533,15 +538,15 @@ class WooCommerceStockSyncJob implements ShouldQueue
                             '_fields' => 'id,source_url,media_details',
                         ]);
 
-                    if (!$mediaList->successful()) {
+                    if (! $mediaList->successful()) {
                         return null;
                     }
                     $items = $mediaList->json();
-                    if (!is_array($items)) {
+                    if (! is_array($items)) {
                         return null;
                     }
                     foreach ($items as $m) {
-                        if (!$matches($m)) {
+                        if (! $matches($m)) {
                             continue;
                         }
                         $id = (int) ($m['id'] ?? 0);
@@ -550,6 +555,7 @@ class WooCommerceStockSyncJob implements ShouldQueue
                             return ['id' => $id, 'src' => $src];
                         }
                     }
+
                     return null;
                 };
 
@@ -570,15 +576,15 @@ class WooCommerceStockSyncJob implements ShouldQueue
                             '_fields' => 'id,source_url,media_details',
                         ]);
 
-                    if (!$mediaList->successful()) {
+                    if (! $mediaList->successful()) {
                         return null;
                     }
                     $items = $mediaList->json();
-                    if (!is_array($items)) {
+                    if (! is_array($items)) {
                         return null;
                     }
                     foreach ($items as $m) {
-                        if (!$matches($m)) {
+                        if (! $matches($m)) {
                             continue;
                         }
                         $id = (int) ($m['id'] ?? 0);
@@ -587,20 +593,22 @@ class WooCommerceStockSyncJob implements ShouldQueue
                             return ['id' => $id, 'src' => $src];
                         }
                     }
+
                     return null;
                 };
 
                 $found = $trySearch($imgName);
-                if (!$found && $filenameBase !== '' && $filenameBase !== $imgName) {
+                if (! $found && $filenameBase !== '' && $filenameBase !== $imgName) {
                     $found = $trySearch($filenameBase);
                 }
-                if (!$found && $filenameBase !== '') {
+                if (! $found && $filenameBase !== '') {
                     $found = $trySlug($filenameBase);
                 }
                 if ($found) {
                     if (is_resource($stream)) {
                         fclose($stream);
                     }
+
                     return $found;
                 }
             } catch (\Throwable $e) {

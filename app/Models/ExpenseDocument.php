@@ -23,21 +23,3 @@ class ExpenseDocument extends Model
         return $this->belongsTo(Expense::class, 'expense_id');
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -25,8 +25,3 @@ class JournalEntryLine extends Model
         return $this->belongsTo(ChartOfAccount::class, 'coa_id');
     }
 }
-
-
-
-
-

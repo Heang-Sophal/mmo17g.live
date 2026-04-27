@@ -33,20 +33,3 @@ class ServiceTechnician extends Model
         return $this->hasMany(ServiceJob::class, 'technician_id');
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

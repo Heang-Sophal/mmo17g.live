@@ -714,8 +714,3 @@ class DamageController extends BaseController
         return $code;
     }
 }
-
-
-
-
-

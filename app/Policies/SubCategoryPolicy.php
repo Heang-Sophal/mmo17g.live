@@ -68,14 +68,3 @@ class SubCategoryPolicy
         return $permission && $user->hasRole($permission->roles);
     }
 }
-
-
-
-
-
-
-
-
-
-
-

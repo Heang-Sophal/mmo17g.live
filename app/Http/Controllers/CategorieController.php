@@ -82,7 +82,7 @@ class CategorieController extends BaseController
         ]);
 
         return response()->json([
-            'success'  => true,
+            'success' => true,
             'category' => $category,
         ], 201);
     }

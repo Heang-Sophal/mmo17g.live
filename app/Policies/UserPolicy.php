@@ -75,17 +75,16 @@ class UserPolicy
     {
         $backupPermission = Permission::where('name', 'backup')->first();
         $systemPermission = Permission::where('name', 'setting_system')->first();
-    
+
         if (
             ($backupPermission && $user->hasRole($backupPermission->roles)) ||
             ($systemPermission && $user->hasRole($systemPermission->roles))
         ) {
             return true;
         }
-    
+
         return false;
     }
-    
 
     public function users_report(User $user)
     {

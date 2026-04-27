@@ -354,8 +354,8 @@ class OnlineOrdersApiController extends Controller
     {
         // Get prefix from settings, fallback to 'SL' if not set
         $setting = \App\Models\Setting::where('deleted_at', '=', null)->first();
-        $prefix = !empty($setting->sale_prefix) ? $setting->sale_prefix : 'SL';
-        
+        $prefix = ! empty($setting->sale_prefix) ? $setting->sale_prefix : 'SL';
+
         // Get the last sale with a reference that starts with the prefix
         $last = DB::table('sales')
             ->where('Ref', 'like', $prefix.'_%')

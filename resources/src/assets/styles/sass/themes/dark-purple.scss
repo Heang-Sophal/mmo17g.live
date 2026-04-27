@@ -3,7 +3,7 @@
 
 $blue: #263db5 !default;
 $indigo: #6610f2 !default;
-$purple: #8b5cf6 !default;
+$purple: #D6A735 !default;
 $pink: #e83e8c !default;
 $red: #880a1f !default;
 $orange: #e97d23 !default;
@@ -14,7 +14,7 @@ $cyan: #9c27b0 !default;
 $grey-r: #6c7293 !default;
 $grey-l: #a7abc3 !default;
 $grey-light: #f7f8fa !default;
-$primary-base: $purple;
+$primary-base: #D6A735;
 $white: darken(desaturate($primary-base, 40), 25) !default;
 $gray-100: darken(desaturate($primary-base, 40), 20) !default;
 $gray-200: darken(desaturate($primary-base, 40), 15) !default;

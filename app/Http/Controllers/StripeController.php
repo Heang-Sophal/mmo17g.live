@@ -2,11 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\PaymentWithCreditCard;
 use Illuminate\Http\Request;
 use Stripe;
-use Stripe\Customer;
-use Stripe\PaymentMethod;
 
 class StripeController extends Controller
 {
@@ -26,7 +23,6 @@ class StripeController extends Controller
             'customer_default_source' => null,
         ], 200);
     }
-    
 
     /**
      * Updating default saved cards is no longer supported.

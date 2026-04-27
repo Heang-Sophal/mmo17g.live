@@ -45,10 +45,10 @@ class UserController extends BaseController
 
         $users = User::where('deleted_at', '=', null)
             ->where(function ($query) use ($ShowRecord) {
-            if (! $ShowRecord) {
-                return $query->where('id', '=', Auth::user()->id);
-            }
-        });
+                if (! $ShowRecord) {
+                    return $query->where('id', '=', Auth::user()->id);
+                }
+            });
 
         // Multiple Filter
         $Filtred = $helpers->filter($users, $columns, $param, $request)
@@ -77,6 +77,7 @@ class UserController extends BaseController
                     ->where('created_at', '>=', now()->subMinutes(30))
                     ->count();
                 $user->is_locked = $failedAttempts >= 3;
+
                 return $user;
             });
 
@@ -198,14 +199,14 @@ class UserController extends BaseController
             $User->avatar = $filename;
             $User->role_id = $roleId;
             $User->is_all_warehouses = $is_all_warehouses;
-            
+
             // Set record_view from request (default to false if not provided)
             if (isset($request['record_view'])) {
                 $User->record_view = ($request['record_view'] == '1' || $request['record_view'] == 'true' || $request['record_view'] == 1) ? 1 : 0;
             } else {
                 $User->record_view = 0;
             }
-            
+
             $User->save();
 
             $role_user = new role_user;
@@ -374,16 +375,16 @@ class UserController extends BaseController
             $filename = $currentAvatar;
         }
 
-            User::whereId($id)->update([
-                'firstname' => $request['firstname'],
-                'lastname' => $request['lastname'],
-                'username' => $request['username'],
-                'email' => $request['email'],
-                'phone' => $request['phone'],
-                // Password is updated via dedicated endpoint
-                'avatar' => $filename,
+        User::whereId($id)->update([
+            'firstname' => $request['firstname'],
+            'lastname' => $request['lastname'],
+            'username' => $request['username'],
+            'email' => $request['email'],
+            'phone' => $request['phone'],
+            // Password is updated via dedicated endpoint
+            'avatar' => $filename,
 
-            ]);
+        ]);
 
         return response()->json(['avatar' => $filename, 'user' => $request['username']]);
 
@@ -445,7 +446,7 @@ class UserController extends BaseController
         $this->authorizeForUser($request->user('api'), 'delete', User::class);
 
         $user = Auth::user();
-        
+
         // Prevent user from deleting their own account
         if ($id == $user->id) {
             return response()->json([
@@ -507,7 +508,7 @@ class UserController extends BaseController
 
         return response()->json([
             'success' => true,
-            'message' => 'Edit limit reset successfully for ' . $user->username . '. They can now edit their profile 3 more times this year.',
+            'message' => 'Edit limit reset successfully for '.$user->username.'. They can now edit their profile 3 more times this year.',
             'deleted_logs' => $deletedCount,
         ]);
     }
@@ -558,31 +559,32 @@ class UserController extends BaseController
     private function getEnvValue($key, $default = null)
     {
         $envFile = app()->environmentFilePath();
-        if (!file_exists($envFile)) {
+        if (! file_exists($envFile)) {
             return $default;
         }
-        
+
         $content = file_get_contents($envFile);
         $lines = preg_split('/\r\n|\r|\n/', $content);
-        
+
         foreach ($lines as $line) {
             // Skip comments and empty lines
             if (empty(trim($line)) || strpos(trim($line), '#') === 0) {
                 continue;
             }
-            
+
             // Check if line contains the key
-            if (strpos($line, $key . '=') === 0) {
+            if (strpos($line, $key.'=') === 0) {
                 $parts = explode('=', $line, 2);
                 if (count($parts) === 2) {
                     $value = trim($parts[1]);
                     // Remove quotes if present
                     $value = trim($value, '"\'');
+
                     return $value;
                 }
             }
         }
-        
+
         return $default;
     }
 

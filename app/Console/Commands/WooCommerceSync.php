@@ -20,7 +20,9 @@ class WooCommerceSync extends Command
     protected $description = 'Run WooCommerce sync using the same jobs as manual sync (products push, stock)';
 
     private const ACTIVE_PRODUCTS_SYNC_TOKENS_KEY = 'woo_products_sync_active_tokens';
+
     private const WOO_PRODUCTS_QUEUE_PREFIX = 'woocommerce-sync-';
+
     private const WOO_STOCK_QUEUE_PREFIX = 'woocommerce-stock-';
 
     private const MAX_WAIT_SECONDS = 7200; // 2 hours max per phase
@@ -194,6 +196,7 @@ class WooCommerceSync extends Command
                 if ($error) {
                     $this->warn("{$label} finished with error: {$error}");
                 }
+
                 return 0;
             }
 
@@ -212,6 +215,7 @@ class WooCommerceSync extends Command
                 }
                 // Job might have re-dispatched with a slight delay; wait and retry
                 sleep(2);
+
                 continue;
             }
 

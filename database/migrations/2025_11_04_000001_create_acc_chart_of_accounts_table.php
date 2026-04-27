@@ -33,8 +33,3 @@ class CreateAccChartOfAccountsTable extends Migration
         Schema::dropIfExists('acc_chart_of_accounts');
     }
 }
-
-
-
-
-

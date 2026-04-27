@@ -533,7 +533,7 @@ export default {
         chart: { toolbar: { show: false } },
         labels: this.apexCountLabels,
         legend: { show: true, position: 'bottom' },
-        colors: ["#6D28D9", "#A78BFA", "#7C3AED", "#8B5CF6", "#C4B5FD"],
+        colors: ["#6D28D9", "#FFD86A", "#8D6208", "#D6A735", "#FFE8A7"],
         dataLabels: { enabled: true },
         tooltip: {
           y: {
@@ -551,7 +551,7 @@ export default {
         chart: { toolbar: { show: false } },
         labels: this.apexValueLabels,
         legend: { show: true, position: 'bottom' },
-        colors: ["#6D28D9", "#A78BFA", "#7C3AED", "#8B5CF6", "#C4B5FD"],
+        colors: ["#6D28D9", "#FFD86A", "#8D6208", "#D6A735", "#FFE8A7"],
         dataLabels: { enabled: true },
         tooltip: {
           y: {

@@ -39,11 +39,11 @@ class helpers
     public function Show_Records($model)
     {
         $user = Auth::user();
-        
+
         // New way: Check user's record_view field (user-level boolean)
         // Backward compatibility: If record_view is null, fall back to role permission check
         $ShowRecord = false;
-        
+
         if (isset($user->record_view)) {
             // Use user-level record_view field
             $ShowRecord = (bool) $user->record_view;
@@ -61,14 +61,14 @@ class helpers
 
         return $model;
     }
-    
+
     //  Check If User Has Record View Permission (with backward compatibility)
     public function HasRecordView($user = null)
     {
         if ($user === null) {
             $user = Auth::user();
         }
-        
+
         // New way: Check user's record_view field (user-level boolean)
         // Backward compatibility: If record_view is null, fall back to role permission check
         if (isset($user->record_view)) {
@@ -81,7 +81,7 @@ class helpers
                 return Role::findOrFail($Role->id)->inRole('record_view');
             }
         }
-        
+
         return false;
     }
 
@@ -127,36 +127,36 @@ class helpers
 
     /**
      * Format price for display based on price_format setting
-     * 
-     * @param float $number The number to format
-     * @param int $decimals Number of decimal places (default: 2)
-     * @param string|null $priceFormat The price format key ('comma_dot', 'dot_comma', 'space_comma', or null for default)
+     *
+     * @param  float  $number  The number to format
+     * @param  int  $decimals  Number of decimal places (default: 2)
+     * @param  string|null  $priceFormat  The price format key ('comma_dot', 'dot_comma', 'space_comma', or null for default)
      * @return string Formatted price string
      */
     public function formatPriceDisplay($number, $decimals = 2, $priceFormat = null)
     {
         $number = (float) $number;
         $decimals = (int) $decimals;
-        
+
         // If no price format specified, use default number_format
         if (empty($priceFormat)) {
             return number_format($number, $decimals, '.', ',');
         }
-        
+
         // Format based on price_format setting
         switch ($priceFormat) {
             case 'comma_dot':
                 // 1,234.56 (thousand , decimal .)
                 return number_format($number, $decimals, '.', ',');
-                
+
             case 'dot_comma':
                 // 1.234,56 (thousand . decimal ,)
                 return number_format($number, $decimals, ',', '.');
-                
+
             case 'space_comma':
                 // 1 234,56 (thousand space, decimal ,)
                 return number_format($number, $decimals, ',', ' ');
-                
+
             default:
                 // Fallback to default format
                 return number_format($number, $decimals, '.', ',');

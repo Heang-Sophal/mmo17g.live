@@ -33,8 +33,3 @@ class Damage extends Model
         return $this->belongsTo('App\Models\Warehouse');
     }
 }
-
-
-
-
-

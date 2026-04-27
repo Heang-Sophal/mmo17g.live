@@ -18,8 +18,3 @@ class SaleReturned
         $this->saleReturn = $saleReturn;
     }
 }
-
-
-
-
-

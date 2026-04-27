@@ -58,8 +58,3 @@ class ZatcaQr
         return $carbon->toIso8601String();
     }
 }
-
-
-
-
-

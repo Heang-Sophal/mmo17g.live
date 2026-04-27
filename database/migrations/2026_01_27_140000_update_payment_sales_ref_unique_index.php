@@ -9,7 +9,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('payment_sales')) {
+        if (! Schema::hasTable('payment_sales')) {
             return;
         }
 
@@ -24,7 +24,7 @@ return new class extends Migration
 
         if ($duplicate) {
             throw new RuntimeException(
-                "Cannot add composite unique index on payment_sales (Ref, deleted_at); duplicate active Ref detected: '{$duplicate->Ref}'. " .
+                "Cannot add composite unique index on payment_sales (Ref, deleted_at); duplicate active Ref detected: '{$duplicate->Ref}'. ".
                 'Please de-duplicate existing active payment_sales records before running this migration.'
             );
         }
@@ -53,7 +53,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (!Schema::hasTable('payment_sales')) {
+        if (! Schema::hasTable('payment_sales')) {
             return;
         }
 
@@ -77,4 +77,3 @@ return new class extends Migration
         });
     }
 };
-

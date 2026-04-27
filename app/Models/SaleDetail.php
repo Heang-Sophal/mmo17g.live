@@ -45,7 +45,7 @@ class SaleDetail extends Model
      *
      * @param  Product  $product  Product (or product from variant) with warranty_period, warranty_unit, has_guarantee, guarantee_period, guarantee_unit
      * @param  \Carbon\Carbon|string  $baseDate  Sale date or created_at to add duration to
-     * @return array{ warranty_date: ?string, guarantee_date: ?string }  Y-m-d or null
+     * @return array{ warranty_date: ?string, guarantee_date: ?string } Y-m-d or null
      */
     public static function computeWarrantyGuaranteeDates(Product $product, $baseDate): array
     {

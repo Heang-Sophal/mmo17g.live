@@ -976,7 +976,7 @@ export default {
   }
 
   .reference-icon {
-    color: #8b5cf6;
+    color: #D6A735;
   }
 
   .card-title {
@@ -1582,11 +1582,11 @@ export default {
   }
 
   &.email {
-    color: #6366f1;
+    color: #735F33;
     background: #e0e7ff;
 
     &:hover {
-      background: #6366f1;
+      background: #735F33;
       color: white;
       transform: scale(1.05);
     }

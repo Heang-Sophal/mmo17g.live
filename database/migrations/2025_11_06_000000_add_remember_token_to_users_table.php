@@ -30,5 +30,3 @@ class AddRememberTokenToUsersTable extends Migration
         });
     }
 }
-
-

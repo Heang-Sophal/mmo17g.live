@@ -192,8 +192,7 @@ class SettingsApiController extends Controller
                     $c->aspectRatio();
                     $c->upsize();
                 })
-                ->encode($ext, 85)
-            ;
+                ->encode($ext, 85);
 
             if (! media_put('store', $filename, $encoded, $request->file('logo')->getMimeType() ?: 'image/'.$ext)) {
                 throw new \RuntimeException('Unable to save store logo to cloud storage.');
@@ -219,8 +218,8 @@ class SettingsApiController extends Controller
                     'store',
                     $filename,
                     (string) Image::make($file->getRealPath())
-                    ->fit(64, 64)
-                    ->encode('png'),
+                        ->fit(64, 64)
+                        ->encode('png'),
                     'image/png'
                 );
             }
@@ -244,8 +243,7 @@ class SettingsApiController extends Controller
                     $c->aspectRatio();
                     $c->upsize();
                 })
-                ->encode($ext, 82)
-            ;
+                ->encode($ext, 82);
 
             if (! media_put('store', $filename, $encoded, $request->file('hero_image')->getMimeType() ?: 'image/'.$ext)) {
                 throw new \RuntimeException('Unable to save store hero image to cloud storage.');
@@ -298,6 +296,7 @@ class SettingsApiController extends Controller
                 'google_calendar_calendar_id' => null,
             ]);
         }
+
         return response()->json([
             'google_calendar_connected' => ! empty($s->google_calendar_refresh_token),
             'google_calendar_connect_url' => route('google_calendar.connect'),
@@ -330,6 +329,7 @@ class SettingsApiController extends Controller
             unset($data['google_calendar_client_secret']);
         }
         $s->fill($data)->save();
+
         return response()->json(['success' => true]);
     }
 

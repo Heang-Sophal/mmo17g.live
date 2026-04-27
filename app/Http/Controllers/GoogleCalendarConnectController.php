@@ -29,6 +29,7 @@ class GoogleCalendarConnectController extends Controller
         $client->setPrompt('consent');
         $client->addScope('https://www.googleapis.com/auth/calendar');
         $client->addScope('https://www.googleapis.com/auth/calendar.events');
+
         return $client;
     }
 
@@ -43,15 +44,17 @@ class GoogleCalendarConnectController extends Controller
         $clientSecret = $s ? ($s->google_calendar_client_secret ?? config('google_calendar.client_secret')) : config('google_calendar.client_secret');
         if (! $clientId || ! $clientSecret) {
             Log::warning('Google Calendar: client_id or client_secret not set');
+
             return redirect($this->settingsRedirectUrl('error=config'));
         }
 
         $client = $this->oauthClient();
         $client->setState(encrypt(json_encode([
             'intent' => 'google_calendar_connect',
-            'time'   => time(),
+            'time' => time(),
         ])));
         $authUrl = $client->createAuthUrl();
+
         return redirect()->away($authUrl);
     }
 
@@ -73,6 +76,7 @@ class GoogleCalendarConnectController extends Controller
 
         if ($error) {
             Log::warning('Google Calendar OAuth error', ['error' => $error]);
+
             return redirect($this->settingsRedirectUrl('error='.urlencode($error)));
         }
 
@@ -86,12 +90,14 @@ class GoogleCalendarConnectController extends Controller
 
             if (isset($token['error'])) {
                 Log::warning('Google Calendar token error', $token);
+
                 return redirect($this->settingsRedirectUrl('error=token'));
             }
 
             $refreshToken = $token['refresh_token'] ?? null;
             if (! $refreshToken) {
                 Log::warning('Google Calendar: no refresh_token in response; user may need to revoke app and reconnect with prompt=consent');
+
                 return redirect($this->settingsRedirectUrl('error=no_refresh_token'));
             }
 
@@ -105,6 +111,7 @@ class GoogleCalendarConnectController extends Controller
             return redirect($this->settingsRedirectUrl('google_calendar=connected'));
         } catch (\Throwable $e) {
             Log::error('Google Calendar callback exception', ['message' => $e->getMessage()]);
+
             return redirect($this->settingsRedirectUrl('error=exception'));
         }
     }
@@ -119,6 +126,7 @@ class GoogleCalendarConnectController extends Controller
             $settings->google_calendar_refresh_token = null;
             $settings->save();
         }
+
         return redirect($this->settingsRedirectUrl('google_calendar=disconnected'));
     }
 

@@ -53,16 +53,19 @@ class CloudBackupUploader
         try {
             if ($provider === 'dropbox') {
                 $remote = $this->uploadToDropbox($setting, $localPath, $fileName);
+
                 return ['success' => true, 'provider' => 'dropbox', 'remote' => $remote, 'error' => null];
             }
 
             if ($provider === 'google_drive') {
                 $remote = $this->uploadToGoogleDrive($setting, $localPath, $fileName);
+
                 return ['success' => true, 'provider' => 'google_drive', 'remote' => $remote, 'error' => null];
             }
 
             if ($provider === 's3') {
                 $remote = $this->uploadToS3($setting, $localPath, $fileName);
+
                 return ['success' => true, 'provider' => 's3', 'remote' => $remote, 'error' => null];
             }
 
@@ -92,6 +95,7 @@ class CloudBackupUploader
         // Normalize separators to "/" and ensure single slash between prefix and file
         $p = str_replace('\\', '/', $p);
         $p = trim($p, '/');
+
         return $p === '' ? $fileName : ($p.'/'.$fileName);
     }
 
@@ -171,6 +175,7 @@ class CloudBackupUploader
         if ($token === '') {
             throw new \RuntimeException('Failed to refresh Google Drive access token');
         }
+
         return $token;
     }
 
@@ -217,6 +222,7 @@ class CloudBackupUploader
         if (! $id) {
             throw new \RuntimeException('Google Drive upload failed');
         }
+
         return (string) $id;
     }
 
@@ -268,63 +274,3 @@ class CloudBackupUploader
         return $bucket.'/'.$key;
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

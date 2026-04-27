@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ReportQuestion;
 use App\Models\Client;
-use App\Services\ReportQuestionService;
+use App\Models\ReportQuestion;
+use App\Models\Warehouse;
 use App\Services\DateRangeResolver;
+use App\Services\ReportQuestionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-use App\Models\Warehouse;
 
 class ReportQuestionController extends BaseController
 {
@@ -22,7 +22,6 @@ class ReportQuestionController extends BaseController
     /**
      * Get all active report questions
      *
-     * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function index(Request $request)
@@ -46,7 +45,6 @@ class ReportQuestionController extends BaseController
     /**
      * Run a report question
      *
-     * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function run(Request $request)
@@ -72,7 +70,7 @@ class ReportQuestionController extends BaseController
         // Build effective filters (ensure array; DB may return JSON string)
         $rawFilters = $question->default_filters ?? [];
         $filters = is_array($rawFilters) ? $rawFilters : (is_string($rawFilters) ? (json_decode($rawFilters, true) ?? []) : []);
-        
+
         // Override with explicit dates if provided
         if ($request->has('date_from') && $request->has('date_to')) {
             $dateFrom = $request->date_from;
@@ -110,7 +108,7 @@ class ReportQuestionController extends BaseController
         switch ($question->report_key) {
             case 'daily_sales_summary':
                 $data = $this->reportService->dailySalesSummary($dateFrom, $dateTo, $warehouseId);
-                
+
                 // If needs insights, also get compare data
                 if ($question->needs_insights && $question->default_compare) {
                     $compareRange = $question->default_compare['range'] ?? 'previous_day';
@@ -133,7 +131,7 @@ class ReportQuestionController extends BaseController
                 break;
 
             default:
-                return $this->sendError('Unknown report_key: ' . $question->report_key);
+                return $this->sendError('Unknown report_key: '.$question->report_key);
         }
 
         return response()->json([

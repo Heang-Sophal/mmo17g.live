@@ -17,10 +17,13 @@ class WooCommerceProductsPullJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 1200;
+
     public int $tries = 1;
 
     private string $progressKey;
+
     private bool $onlyUnsynced;
+
     private ?int $syncJobId;
 
     private const CANCELLED_EXCEPTION = '__WOO_PRODUCTS_PULL_CANCELLED__';
@@ -42,6 +45,7 @@ class WooCommerceProductsPullJob implements ShouldQueue
         $settings = WooCommerceSetting::first();
         if (! $settings) {
             $this->failJob($cache, 'WooCommerce settings missing');
+
             return;
         }
 
@@ -74,6 +78,7 @@ class WooCommerceProductsPullJob implements ShouldQueue
             $state['error'] = 'cancelled';
             $cache->put($this->progressKey, $state, 3600);
             $cache->forget($cancelKey);
+
             return;
         }
 
@@ -141,7 +146,7 @@ class WooCommerceProductsPullJob implements ShouldQueue
             $state['processed'] = (int) ($state['processed'] ?? 0) + (int) ($result['processed'] ?? 0);
             $state['synced_products'] = (int) $state['created'] + (int) $state['updated'];
 
-            if (!empty($result['remote_total'])) {
+            if (! empty($result['remote_total'])) {
                 $state['total_products'] = (int) $result['remote_total'];
             }
 
@@ -182,7 +187,7 @@ class WooCommerceProductsPullJob implements ShouldQueue
 
             // If not done, queue the next batch on the same dedicated queue.
             // Without this, the job can get stuck in stage=queued_next_batch with no queued work.
-            if (!$done) {
+            if (! $done) {
                 $queue = $this->syncJobId ? ('woocommerce-sync-'.(int) $this->syncJobId) : 'default';
                 self::dispatch($this->progressKey, $this->onlyUnsynced, $this->syncJobId)
                     ->onConnection('database')
@@ -199,7 +204,7 @@ class WooCommerceProductsPullJob implements ShouldQueue
     private function failJob($cache, string $error): void
     {
         $state = $cache->get($this->progressKey, []);
-        if (!is_array($state)) {
+        if (! is_array($state)) {
             $state = [];
         }
         $state['finished'] = true;
@@ -219,4 +224,3 @@ class WooCommerceProductsPullJob implements ShouldQueue
         }
     }
 }
-

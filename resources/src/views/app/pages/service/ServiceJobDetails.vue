@@ -627,7 +627,7 @@ export default {
   }
 
   .job-type-icon {
-    color: #8b5cf6;
+    color: #D6A735;
   }
 
   .status-icon {
@@ -639,7 +639,7 @@ export default {
   }
 
   .reference-icon {
-    color: #8b5cf6;
+    color: #D6A735;
   }
 
   .card-title {

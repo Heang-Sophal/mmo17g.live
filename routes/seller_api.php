@@ -13,15 +13,16 @@ use Illuminate\Support\Facades\Route;
 // These routes DO NOT require authentication (for POS Mobile App)
 
 // Products - Direct database query without auth
-Route::get('/products', function() {
+Route::get('/products', function () {
     try {
         $products = \App\Models\Product::where('is_active', 1)
             ->orderBy('name', 'asc')
             ->get()
-            ->map(function($product) {
+            ->map(function ($product) {
                 $stockData = \DB::table('product_warehouse')
                     ->where('product_id', $product->id)
                     ->first();
+
                 return [
                     'id' => (string) $product->id,
                     'code' => $product->code ?? '',
@@ -48,7 +49,7 @@ Route::get('/products', function() {
 });
 
 // Create Order (POS)
-Route::post('/orders', function(Request $request) {
+Route::post('/orders', function (Request $request) {
     try {
         $validated = $request->validate([
             'customer_name' => 'nullable|string',
@@ -63,13 +64,13 @@ Route::post('/orders', function(Request $request) {
         ]);
 
         \DB::beginTransaction();
-        
-        $subtotal = collect($validated['items'])->sum(fn($item) => $item['quantity'] * $item['price']);
+
+        $subtotal = collect($validated['items'])->sum(fn ($item) => $item['quantity'] * $item['price']);
         $grandTotal = $subtotal;
 
         $sale = \App\Models\Sale::create([
             'date' => now(),
-            'Ref' => 'POS-' . strtoupper(uniqid()) . '-' . rand(1000, 9999),
+            'Ref' => 'POS-'.strtoupper(uniqid()).'-'.rand(1000, 9999),
             'client_id' => null,
             'GrandTotal' => $grandTotal,
             'TaxNet' => 0,
@@ -100,7 +101,7 @@ Route::post('/orders', function(Request $request) {
                 ->where('product_id', $item['product_id'])
                 ->where('warehouse_id', $warehouseId)
                 ->first();
-            
+
             if ($pw) {
                 \DB::table('product_warehouse')
                     ->where('product_id', $item['product_id'])
@@ -127,21 +128,22 @@ Route::post('/orders', function(Request $request) {
         ], 201);
     } catch (\Exception $e) {
         \DB::rollBack();
+
         return response()->json([
             'success' => false,
-            'message' => 'Failed to create order: ' . $e->getMessage(),
+            'message' => 'Failed to create order: '.$e->getMessage(),
             'error' => $e->getMessage(),
         ], 500);
     }
 });
 
 // Get Orders
-Route::get('/orders', function() {
+Route::get('/orders', function () {
     return response()->json(['success' => true, 'data' => []], 200);
 });
 
 // Dashboard Stats
-Route::get('/dashboard/seller', function() {
+Route::get('/dashboard/seller', function () {
     return response()->json([
         'success' => true,
         'data' => [
@@ -152,12 +154,12 @@ Route::get('/dashboard/seller', function() {
             'payments' => ['today' => 0],
             'top_products' => [],
             'recent_orders' => [],
-        ]
+        ],
     ]);
 });
 
 // Sales Stats
-Route::get('/sales/stats', function() {
+Route::get('/sales/stats', function () {
     return response()->json([
         'success' => true,
         'data' => [
@@ -165,7 +167,7 @@ Route::get('/sales/stats', function() {
             'total_orders' => 0,
             'pending_orders' => 0,
             'completed_orders' => 0,
-        ]
+        ],
     ], 200);
 });
 // ===============================================================

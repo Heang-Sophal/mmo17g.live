@@ -19,7 +19,7 @@ return new class extends Migration
 
         if ($duplicate) {
             throw new RuntimeException(
-                "Cannot add unique index on payment_sales.Ref; duplicate Ref detected: '{$duplicate->Ref}'. " .
+                "Cannot add unique index on payment_sales.Ref; duplicate Ref detected: '{$duplicate->Ref}'. ".
                 'Please de-duplicate existing payment_sales records before running this migration.'
             );
         }
@@ -36,4 +36,3 @@ return new class extends Migration
         });
     }
 };
-

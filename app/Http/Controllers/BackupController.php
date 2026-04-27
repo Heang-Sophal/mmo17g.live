@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Setting;
-use App\Services\CloudBackupUploader;
 use App\Models\User;
+use App\Services\CloudBackupUploader;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 
@@ -46,17 +46,17 @@ class BackupController extends Controller
         // Run backup command
         $exitCode = Artisan::call('database:backup');
         $output = Artisan::output();
-        
+
         // Check if backup command failed
         if ($exitCode !== 0) {
             // Extract error details from output
             $errorMsg = trim($output);
-            
+
             // Try to extract ERROR_DETAILS if present
             if (preg_match('/ERROR_DETAILS:\s*(.+)/s', $output, $matches)) {
                 $errorMsg = trim($matches[1]);
             }
-            
+
             // If no specific error, provide helpful message
             if (empty($errorMsg) || strlen($errorMsg) < 10) {
                 $errorMsg = 'Database backup command failed. Common issues:'."\n";
@@ -66,7 +66,7 @@ class BackupController extends Controller
                 $errorMsg .= '4. Database user does not have backup permissions'."\n";
                 $errorMsg .= '5. Database name (DB_DATABASE) is incorrect';
             }
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Backup generation failed',
@@ -82,9 +82,9 @@ class BackupController extends Controller
         $cloud = null;
         try {
             $dir = storage_path().'/app/public/backup';
-            
+
             // Ensure directory exists
-            if (!is_dir($dir)) {
+            if (! is_dir($dir)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Backup directory does not exist',
@@ -96,7 +96,7 @@ class BackupController extends Controller
             $latest = null;
             $latestMtime = 0;
             $files = glob($dir.'/*.sql');
-            
+
             if (empty($files)) {
                 return response()->json([
                     'success' => false,
@@ -107,7 +107,7 @@ class BackupController extends Controller
             }
 
             foreach ($files as $filename) {
-                if (!is_file($filename)) {
+                if (! is_file($filename)) {
                     continue;
                 }
                 $mt = @filemtime($filename) ?: 0;
@@ -130,7 +130,7 @@ class BackupController extends Controller
                 }
 
                 $setting = Setting::whereNull('deleted_at')->first();
-                $uploader = new CloudBackupUploader();
+                $uploader = new CloudBackupUploader;
                 $cloud = $uploader->uploadIfConfigured($latest, basename($latest), $setting);
 
                 // Cloud upload is additive; we always keep the local backup file.

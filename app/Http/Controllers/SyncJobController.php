@@ -30,13 +30,13 @@ class SyncJobController extends BaseController
                 @set_time_limit($tickLimit);
             }
 
-            if (!Schema::hasTable('jobs')) {
+            if (! Schema::hasTable('jobs')) {
                 return;
             }
 
             $queue = self::WOO_PRODUCTS_QUEUE_PREFIX.(int) $job->id;
             $hasQueued = DB::table('jobs')->where('queue', $queue)->exists();
-            if (!$hasQueued) {
+            if (! $hasQueued) {
                 return;
             }
 
@@ -45,7 +45,7 @@ class SyncJobController extends BaseController
             $lock = null;
             try {
                 $lock = Cache::store('file')->lock($lockKey, 120);
-                if (!$lock->get()) {
+                if (! $lock->get()) {
                     return;
                 }
             } catch (\Throwable $e) {
@@ -80,7 +80,7 @@ class SyncJobController extends BaseController
     public function latest(Request $request)
     {
         $userId = optional($request->user('api'))->id;
-        if (!$userId) {
+        if (! $userId) {
             return response()->json(['ok' => false, 'error' => 'Unauthenticated'], 401);
         }
 
@@ -90,7 +90,7 @@ class SyncJobController extends BaseController
             ->orderByDesc('id')
             ->first();
 
-        if (!$job) {
+        if (! $job) {
             return response()->json(['ok' => true, 'job' => null]);
         }
 
@@ -200,4 +200,3 @@ class SyncJobController extends BaseController
         return response()->json(['ok' => true]);
     }
 }
-

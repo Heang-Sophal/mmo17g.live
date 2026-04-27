@@ -462,8 +462,8 @@ class QuotationsController extends BaseController
     {
         // Get prefix from settings, fallback to 'QT' if not set
         $setting = \App\Models\Setting::where('deleted_at', '=', null)->first();
-        $prefix = !empty($setting->quotation_prefix) ? $setting->quotation_prefix : 'QT';
-        
+        $prefix = ! empty($setting->quotation_prefix) ? $setting->quotation_prefix : 'QT';
+
         // Get the last quotation with a reference that starts with the prefix
         $last = DB::table('quotations')
             ->where('Ref', 'like', $prefix.'_%')
@@ -473,7 +473,7 @@ class QuotationsController extends BaseController
         if ($last) {
             $item = $last->Ref;
             $nwMsg = explode('_', $item);
-            
+
             // Ensure valid structure before processing
             if (isset($nwMsg[1]) && is_numeric($nwMsg[1])) {
                 $inMsg = $nwMsg[1] + 1;
@@ -713,6 +713,7 @@ class QuotationsController extends BaseController
                 '~(?:[A-Za-z]:)?[\/\\\\][^"\']*?[\/\\\\]public[\/\\\\]images[\/\\\\]([^"\'>]+)~',
                 function ($m) use ($webImagesPath) {
                     $file = ltrim($m[1], '/\\');
+
                     return $webImagesPath.$file;
                 },
                 $Html

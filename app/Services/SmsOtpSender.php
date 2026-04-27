@@ -36,6 +36,7 @@ class SmsOtpSender
             }
             $client = new TwilioClient($sid, $token);
             $client->messages->create($toPhone, ['from' => $from, 'body' => $message]);
+
             return;
         }
 
@@ -63,6 +64,7 @@ class SmsOtpSender
 
             $request = (new SmsAdvancedTextualRequest)->setMessages([$sms]);
             $sendSmsApi->sendSmsMessage($request);
+
             return;
         }
 
@@ -87,11 +89,10 @@ class SmsOtpSender
                 Log::error('Termii SMS Error: '.$e->getMessage());
                 throw new \RuntimeException('Failed to send SMS');
             }
+
             return;
         }
 
         throw new \RuntimeException('Unsupported SMS gateway: '.$gateway->title);
     }
 }
-
-

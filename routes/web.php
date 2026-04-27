@@ -14,7 +14,6 @@ use App\Http\Controllers\StoreFrontController;
 use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Storage;
 use Laravel\Passport\Passport;
 
 /*

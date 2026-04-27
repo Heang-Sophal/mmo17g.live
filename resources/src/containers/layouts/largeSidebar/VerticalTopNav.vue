@@ -647,11 +647,11 @@ body.dark-theme .notif-content p {
 }
 
 body.dark-theme .notif-content a {
-  color: #a78bfa;
+  color: #FFD86A;
 }
 
 body.dark-theme .notif-content a:hover {
-  color: #c4b5fd;
+  color: #FFE8A7;
 }
 
 body.dark-theme .dropdown-header {
@@ -740,9 +740,9 @@ body.dark-theme .dropdown-item:hover {
     align-items: center;
     justify-content: center;
     gap: 0;
-    background: #8b5cf6;
+    background: #D6A735;
     color: #fff;
-    border: 1px solid #8b5cf6;
+    border: 1px solid #D6A735;
   }
 
   .nav-right .btn.btn-primary i {

@@ -3,13 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Models\LoginFailedAttempt;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
+use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class AuthApiController extends Controller
 {
@@ -17,8 +16,12 @@ class AuthApiController extends Controller
      * កំណត់រចនាសម្ព័ន្ធ
      */
     const MAX_LOGIN_ATTEMPTS = 3;
+
     const BLOCK_DURATION_MINUTES = 30; // បិទ ៣០នាទី បើ login ខុស ៣ដង
-    const MOBILE_ALLOWED_ROLES = ['Sale', 'Delivery', 'Laivrison'];
+
+    const SELLER_APP_ALLOWED_ROLES = ['Sale', 'Delivery', 'Admin', 'Owner'];
+
+    const DELIVERY_APP_ALLOWED_ROLES = ['Delivery', 'Admin', 'Owner'];
 
     /**
      * Sign In
@@ -26,7 +29,7 @@ class AuthApiController extends Controller
      */
     public function login(Request $request): JsonResponse
     {
-        return $this->loginWithRequiredRole($request);
+        return $this->loginForApp($request, 'seller');
     }
 
     /**
@@ -35,7 +38,7 @@ class AuthApiController extends Controller
      */
     public function deliveryLogin(Request $request): JsonResponse
     {
-        return $this->loginWithRequiredRole($request, 'Delivery');
+        return $this->loginForApp($request, 'delivery');
     }
 
     /**
@@ -44,7 +47,7 @@ class AuthApiController extends Controller
      */
     public function check(Request $request): JsonResponse
     {
-        return $this->checkWithRequiredRole($request);
+        return $this->checkForApp($request, 'seller');
     }
 
     /**
@@ -53,10 +56,10 @@ class AuthApiController extends Controller
      */
     public function deliveryCheck(Request $request): JsonResponse
     {
-        return $this->checkWithRequiredRole($request, 'Delivery');
+        return $this->checkForApp($request, 'delivery');
     }
 
-    private function loginWithRequiredRole(Request $request, ?string $requiredRole = null): JsonResponse
+    private function loginForApp(Request $request, string $appContext): JsonResponse
     {
         try {
             $validated = $request->validate([
@@ -73,7 +76,7 @@ class AuthApiController extends Controller
             if ($blockedUntil) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Too many failed login attempts. Please try again after ' . $blockedUntil->diffForHumans(),
+                    'message' => 'Too many failed login attempts. Please try again after '.$blockedUntil->diffForHumans(),
                     'blocked_until' => $blockedUntil->toIso8601String(),
                     'error_type' => 'account_blocked',
                 ], 429);
@@ -83,13 +86,13 @@ class AuthApiController extends Controller
             $user = User::where('email', $email)->with('roles')->first();
 
             // ពិនិត្យមើលថាតើមាន User ឬអត់
-            if (!$user) {
+            if (! $user) {
                 // កត់ត្រាការព្យាយាមខុស
                 $this->recordFailedAttempt($email, $ipAddress);
 
                 return response()->json([
                     'success' => false,
-                    'message' => $this->roleAccessMessage($requiredRole),
+                    'message' => $this->roleAccessMessage($appContext),
                     'error_type' => 'invalid_credentials',
                 ], 401);
             }
@@ -103,21 +106,21 @@ class AuthApiController extends Controller
                 ], 403);
             }
 
-            $mobileRoleName = $this->resolveMobileRoleName($user, $requiredRole);
+            $mobileRoleName = $this->resolveMobileRoleName($user, $appContext);
 
-            if (!$mobileRoleName) {
+            if (! $mobileRoleName) {
                 // កត់ត្រាការព្យាយាមខុស
                 $this->recordFailedAttempt($email, $ipAddress);
-                
+
                 return response()->json([
                     'success' => false,
-                    'message' => $this->roleAccessMessage($requiredRole),
+                    'message' => $this->roleAccessMessage($appContext),
                     'error_type' => 'insufficient_permissions',
                 ], 403);
             }
 
             // ពិនិត្យមើល Password
-            if (!Hash::check($password, $user->password)) {
+            if (! Hash::check($password, $user->password)) {
                 // កត់ត្រាការព្យាយាមខុស
                 $this->recordFailedAttempt($email, $ipAddress);
 
@@ -141,7 +144,7 @@ class AuthApiController extends Controller
             // សម្រាប់ Development យើងប្រើ simple token
             // សម្រាប់ Production គួរប្រើ Laravel Passport ឬ Sanctum
             $customToken = $this->createPersistentToken($user);
-            
+
             // Generate Passport token for API routes
             $passportToken = $user->createToken('MobileApp')->accessToken;
 
@@ -175,7 +178,7 @@ class AuthApiController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Login failed: ' . $e->getMessage(),
+                'message' => 'Login failed: '.$e->getMessage(),
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -198,17 +201,17 @@ class AuthApiController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Logout failed: ' . $e->getMessage(),
+                'message' => 'Logout failed: '.$e->getMessage(),
             ], 500);
         }
     }
 
-    private function checkWithRequiredRole(Request $request, ?string $requiredRole = null): JsonResponse
+    private function checkForApp(Request $request, string $appContext): JsonResponse
     {
         try {
             $token = $request->bearerToken();
 
-            if (!$token) {
+            if (! $token) {
                 return response()->json([
                     'success' => false,
                     'authenticated' => false,
@@ -216,10 +219,10 @@ class AuthApiController extends Controller
             }
 
             $user = null;
-            
+
             // Try to decode as custom base64 token first
             $decoded = $this->decodeToken($token);
-            
+
             if ($decoded && isset($decoded['user_id'])) {
                 $user = User::find($decoded['user_id']);
             } else {
@@ -227,7 +230,7 @@ class AuthApiController extends Controller
                 $user = $request->user('api');
             }
 
-            if (!$user || !$user->is_active) {
+            if (! $user || ! $user->is_active) {
                 return response()->json([
                     'success' => false,
                     'authenticated' => false,
@@ -235,9 +238,9 @@ class AuthApiController extends Controller
             }
 
             $user->loadMissing('roles');
-            $mobileRoleName = $this->resolveMobileRoleName($user, $requiredRole);
+            $mobileRoleName = $this->resolveMobileRoleName($user, $appContext);
 
-            if (!$mobileRoleName) {
+            if (! $mobileRoleName) {
                 return response()->json([
                     'success' => false,
                     'authenticated' => false,
@@ -259,28 +262,24 @@ class AuthApiController extends Controller
         }
     }
 
-    private function roleAccessMessage(?string $requiredRole = null): string
+    private function roleAccessMessage(string $appContext): string
     {
-        if ($requiredRole === 'Delivery') {
-            return 'Invalid credentials or insufficient permissions. Only "Delivery" role can access.';
+        if ($appContext === 'delivery') {
+            return 'Invalid credentials or insufficient permissions. Only "Delivery", "Admin", or "Owner" role can access.';
         }
 
-        return 'Invalid credentials or insufficient permissions. Only "Sale" or "Delivery" role can access.';
+        return 'Invalid credentials or insufficient permissions. Only "Sale", "Delivery", "Admin", or "Owner" role can access.';
     }
 
-    private function resolveMobileRoleName(User $user, ?string $requiredRole = null): ?string
+    private function resolveMobileRoleName(User $user, string $appContext): ?string
     {
         $mobileRoleName = $this->getAllowedMobileRoleName($user);
 
-        if (!$mobileRoleName) {
+        if (! $mobileRoleName) {
             return null;
         }
 
-        if (!$requiredRole) {
-            return $mobileRoleName;
-        }
-
-        return strcasecmp($mobileRoleName, $requiredRole) === 0
+        return in_array($mobileRoleName, $this->allowedRolesForApp($appContext), true)
             ? $mobileRoleName
             : null;
     }
@@ -291,7 +290,7 @@ class AuthApiController extends Controller
     private function getFailedAttemptsCount(string $email, ?string $ipAddress): int
     {
         $query = LoginFailedAttempt::where('email', $email);
-        
+
         if ($ipAddress) {
             $query->where('ip_address', $ipAddress);
         }
@@ -322,7 +321,7 @@ class AuthApiController extends Controller
     private function clearFailedAttempts(string $email, ?string $ipAddress): void
     {
         $query = LoginFailedAttempt::where('email', $email);
-        
+
         if ($ipAddress) {
             $query->where('ip_address', $ipAddress);
         }
@@ -358,7 +357,7 @@ class AuthApiController extends Controller
     {
         // សម្រាប់ Development: បង្កើត simple JWT-like token
         // សម្រាប់ Production: ប្រើ Laravel Passport ឬ Sanctum
-        
+
         $payload = [
             'user_id' => $user->id,
             'email' => $user->email,
@@ -368,7 +367,7 @@ class AuthApiController extends Controller
 
         // Simple base64 encoding (សម្រាប់ Development ប៉ុណ្ណោះ)
         $token = base64_encode(json_encode($payload));
-        
+
         return $token;
     }
 
@@ -379,8 +378,8 @@ class AuthApiController extends Controller
     {
         try {
             $decoded = json_decode(base64_decode($token), true);
-            
-            if (!$decoded || !isset($decoded['user_id'])) {
+
+            if (! $decoded || ! isset($decoded['user_id'])) {
                 return null;
             }
 
@@ -392,6 +391,20 @@ class AuthApiController extends Controller
 
     private function getAllowedMobileRoleName(User $user): ?string
     {
+        $primaryRole = $this->normalizeMobileRoleName($user->role);
+
+        if ($primaryRole) {
+            return $primaryRole;
+        }
+
+        if ($user->hasAnyRoleNamed(['Owner'])) {
+            return 'Owner';
+        }
+
+        if ($user->hasAnyRoleNamed(['Admin'])) {
+            return 'Admin';
+        }
+
         if ($user->isDeliveryUser()) {
             return 'Delivery';
         }
@@ -401,6 +414,30 @@ class AuthApiController extends Controller
         }
 
         return null;
+    }
+
+    private function allowedRolesForApp(string $appContext): array
+    {
+        return $appContext === 'delivery'
+            ? self::DELIVERY_APP_ALLOWED_ROLES
+            : self::SELLER_APP_ALLOWED_ROLES;
+    }
+
+    private function normalizeMobileRoleName(?string $roleName): ?string
+    {
+        switch (strtolower(trim((string) $roleName))) {
+            case 'owner':
+                return 'Owner';
+            case 'admin':
+                return 'Admin';
+            case 'delivery':
+            case 'laivrison':
+                return 'Delivery';
+            case 'sale':
+                return 'Sale';
+            default:
+                return null;
+        }
     }
 
     private function buildMobileUserPayload(User $user, string $mobileRoleName, array $mobilePermissions = []): array

@@ -24,4 +24,3 @@ class CreateJobsTable extends Migration
         Schema::dropIfExists('jobs');
     }
 }
-

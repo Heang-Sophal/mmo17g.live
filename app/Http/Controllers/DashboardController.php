@@ -53,11 +53,11 @@ class DashboardController extends Controller
         $Payment_chart = $this->Payment_chart($warehouse_id, $array_warehouses_id, $request->from, $request->to);
         $TopCustomers = $this->TopCustomers($warehouse_id, $array_warehouses_id);
         $Top_Products_Year = $this->Top_Products_Year($warehouse_id, $array_warehouses_id);
-        
+
         // Stat cards and Sales by Payment: Use date range + warehouse filter
         $report_dashboard = $this->report_dashboard($request, $warehouse_id, $array_warehouses_id);
         $sales_by_payment = $this->SalesByPayment($warehouse_id, $array_warehouses_id, $request->from, $request->to);
-        
+
         // Stock Value: Only warehouse filter (no date range)
         $stock_value = $this->StockValue($warehouse_id, $array_warehouses_id);
 
@@ -386,7 +386,7 @@ class DashboardController extends Controller
 
         /**
          * 🔹 Completed sales only
-        */
+         */
         $completedSalesTotal = (clone $salesBase)
             ->where('statut', 'completed')
             ->sum('GrandTotal');
@@ -790,7 +790,7 @@ class DashboardController extends Controller
         $result = [];
         foreach ($paymentMethods as $pm) {
             $result[$pm->id] = [
-                'name'   => $pm->name,
+                'name' => $pm->name,
                 'amount' => 0.0,
             ];
         }
@@ -807,12 +807,12 @@ class DashboardController extends Controller
                 if ($warehouse_id !== 0) {
                     return $query->whereHas('sale', function ($q) use ($warehouse_id) {
                         $q->where('warehouse_id', $warehouse_id)
-                          ->where('deleted_at', '=', null);
+                            ->where('deleted_at', '=', null);
                     });
                 } else {
                     return $query->whereHas('sale', function ($q) use ($array_warehouses_id) {
                         $q->whereIn('warehouse_id', $array_warehouses_id)
-                          ->where('deleted_at', '=', null);
+                            ->where('deleted_at', '=', null);
                     });
                 }
             })
@@ -850,10 +850,10 @@ class DashboardController extends Controller
             $color = $colorPalette[$index % count($colorPalette)];
 
             $formattedResult[] = [
-                'name'       => $entry['name'],
-                'amount'     => $amount,
+                'name' => $entry['name'],
+                'amount' => $amount,
                 'percentage' => (int) $percentage,
-                'color'      => $color,
+                'color' => $color,
             ];
 
             $index++;
@@ -882,7 +882,7 @@ class DashboardController extends Controller
         $stockByCost = product_warehouse::join('products', 'product_warehouse.product_id', '=', 'products.id')
             ->leftJoin('product_variants', function ($join) {
                 $join->on('product_warehouse.product_variant_id', '=', 'product_variants.id')
-                     ->where('products.is_variant', '=', 1);
+                    ->where('products.is_variant', '=', 1);
             })
             ->where('product_warehouse.deleted_at', '=', null)
             ->where('products.deleted_at', '=', null)
@@ -903,7 +903,7 @@ class DashboardController extends Controller
         $stockByRetail = product_warehouse::join('products', 'product_warehouse.product_id', '=', 'products.id')
             ->leftJoin('product_variants', function ($join) {
                 $join->on('product_warehouse.product_variant_id', '=', 'product_variants.id')
-                     ->where('products.is_variant', '=', 1);
+                    ->where('products.is_variant', '=', 1);
             })
             ->where('product_warehouse.deleted_at', '=', null)
             ->where('products.deleted_at', '=', null)
@@ -924,7 +924,7 @@ class DashboardController extends Controller
         $stockByWholesale = product_warehouse::join('products', 'product_warehouse.product_id', '=', 'products.id')
             ->leftJoin('product_variants', function ($join) {
                 $join->on('product_warehouse.product_variant_id', '=', 'product_variants.id')
-                     ->where('products.is_variant', '=', 1);
+                    ->where('products.is_variant', '=', 1);
             })
             ->where('product_warehouse.deleted_at', '=', null)
             ->where('products.deleted_at', '=', null)
@@ -948,4 +948,3 @@ class DashboardController extends Controller
         ];
     }
 }
-

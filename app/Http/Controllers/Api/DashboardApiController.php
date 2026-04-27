@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Sale;
-use App\Models\Product;
 use App\Models\Client;
 use App\Models\PaymentSale;
+use App\Models\Product;
+use App\Models\Sale;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
@@ -37,14 +37,14 @@ class DashboardApiController extends Controller
 
             // ផលិតផល
             $totalProducts = Product::where('is_active', 1)->count();
-            
+
             // ទាញទិន្នន័យ low stock ពី product_warehouse
             $lowStockProducts = \DB::table('products')
                 ->join('product_warehouse', 'products.id', '=', 'product_warehouse.product_id')
                 ->where('products.is_active', 1)
                 ->whereColumn('product_warehouse.qte', '<=', 'products.stock_alert')
                 ->count();
-            
+
             $outOfStockProducts = \DB::table('products')
                 ->join('product_warehouse', 'products.id', '=', 'product_warehouse.product_id')
                 ->where('products.is_active', 1)
@@ -136,7 +136,7 @@ class DashboardApiController extends Controller
         try {
             $period = $request->get('period', 'week'); // day, week, month, year
             $endDate = now();
-            
+
             switch ($period) {
                 case 'day':
                     $startDate = now()->subDay();

@@ -18,8 +18,3 @@ class ExpenseDeleted
         $this->expense = $expense;
     }
 }
-
-
-
-
-

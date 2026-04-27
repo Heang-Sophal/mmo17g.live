@@ -2,32 +2,34 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\WooCommerceProductsSyncJob;
 use App\Jobs\WooCommerceProductsPullJob;
+use App\Jobs\WooCommerceProductsSyncJob;
 use App\Jobs\WooCommerceStockSyncJob;
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\Client as PosClient;
 use App\Models\Product;
+use App\Models\Sale;
+use App\Models\Setting;
 use App\Models\SyncJob;
+use App\Models\UserWarehouse;
+use App\Models\Warehouse;
 use App\Models\WooCommerceLog;
 use App\Models\WooCommerceSetting;
-use App\Services\WooCommerce\SyncService;
 use App\Services\WooCommerce\Client as WooCommerceClient;
+use App\Services\WooCommerce\SyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use App\Models\Client as PosClient;
-use App\Models\Setting;
-use App\Models\UserWarehouse;
-use App\Models\Warehouse;
-use App\Models\Sale;
 
 class WooCommerceSyncController extends BaseController
 {
     private const ACTIVE_PRODUCTS_SYNC_TOKENS_KEY = 'woo_products_sync_active_tokens';
+
     private const WOO_PRODUCTS_QUEUE_PREFIX = 'woocommerce-sync-';
+
     private const WOO_STOCK_QUEUE_PREFIX = 'woocommerce-stock-';
 
     private function progressCache()
@@ -40,7 +42,7 @@ class WooCommerceSyncController extends BaseController
     {
         try {
             $tokens = $this->progressCache()->get(self::ACTIVE_PRODUCTS_SYNC_TOKENS_KEY, []);
-            if (!is_array($tokens)) {
+            if (! is_array($tokens)) {
                 $tokens = [];
             }
             $tokens[$token] = now()->toDateTimeString();
@@ -53,7 +55,7 @@ class WooCommerceSyncController extends BaseController
     {
         try {
             $tokens = $this->progressCache()->get(self::ACTIVE_PRODUCTS_SYNC_TOKENS_KEY, []);
-            if (!is_array($tokens)) {
+            if (! is_array($tokens)) {
                 return;
             }
             unset($tokens[$token]);
@@ -82,7 +84,7 @@ class WooCommerceSyncController extends BaseController
     private function deleteQueuedProductsJobs(?string $token = null): void
     {
         try {
-            if (!Schema::hasTable('jobs')) {
+            if (! Schema::hasTable('jobs')) {
                 return;
             }
             $q = DB::table('jobs')->where('payload', 'like', '%WooCommerceProductsSyncJob%');
@@ -99,11 +101,11 @@ class WooCommerceSyncController extends BaseController
         $count = 0;
         try {
             $tokens = $this->progressCache()->get(self::ACTIVE_PRODUCTS_SYNC_TOKENS_KEY, []);
-            if (!is_array($tokens) || empty($tokens)) {
+            if (! is_array($tokens) || empty($tokens)) {
                 return 0;
             }
             foreach (array_keys($tokens) as $token) {
-                if (!is_string($token) || $token === '') {
+                if (! is_string($token) || $token === '') {
                     continue;
                 }
                 $this->cancelProductsSyncToken($token, $reason);
@@ -135,7 +137,7 @@ class WooCommerceSyncController extends BaseController
 
         $token = (string) $data['token'];
         $state = $this->progressCache()->get($token, null);
-        if (!is_array($state)) {
+        if (! is_array($state)) {
             return response()->json(['ok' => false, 'error' => 'Invalid token'], 422);
         }
 
@@ -263,8 +265,8 @@ class WooCommerceSyncController extends BaseController
 
     public function syncProducts(Request $request)
     {
-        ini_set('max_execution_time', 2000); 
-		ini_set('memory_limit', '512M');
+        ini_set('max_execution_time', 2000);
+        ini_set('memory_limit', '512M');
 
         $this->authorizeForUser($request->user('api'), 'view', WooCommerceSetting::class);
 
@@ -423,7 +425,7 @@ class WooCommerceSyncController extends BaseController
                 @set_time_limit($tickLimit);
             }
 
-            if (!Schema::hasTable('jobs')) {
+            if (! Schema::hasTable('jobs')) {
                 return;
             }
 
@@ -434,7 +436,7 @@ class WooCommerceSyncController extends BaseController
 
             $queue = self::WOO_PRODUCTS_QUEUE_PREFIX.$syncJobId;
             $hasQueued = DB::table('jobs')->where('queue', $queue)->exists();
-            if (!$hasQueued) {
+            if (! $hasQueued) {
                 return;
             }
 
@@ -443,7 +445,7 @@ class WooCommerceSyncController extends BaseController
             $lock = null;
             try {
                 $lock = Cache::store('file')->lock($lockKey, 120);
-                if (!$lock->get()) {
+                if (! $lock->get()) {
                     return;
                 }
             } catch (\Throwable $e) {
@@ -474,9 +476,9 @@ class WooCommerceSyncController extends BaseController
 
     public function syncStock(Request $request)
     {
-        ini_set('max_execution_time', 2000); 
-		ini_set('memory_limit', '512M');
-        
+        ini_set('max_execution_time', 2000);
+        ini_set('memory_limit', '512M');
+
         $this->authorizeForUser($request->user('api'), 'view', WooCommerceSetting::class);
 
         $settings = WooCommerceSetting::first();
@@ -519,7 +521,7 @@ class WooCommerceSyncController extends BaseController
 
         $token = (string) $data['token'];
         $state = $this->progressCache()->get($token, null);
-        if (!is_array($state)) {
+        if (! is_array($state)) {
             return response()->json(['ok' => false, 'error' => 'Invalid token'], 422);
         }
 
@@ -532,7 +534,7 @@ class WooCommerceSyncController extends BaseController
         $state['finished'] = true;
         $state['finished_at'] = now()->toDateTimeString();
         $state['error'] = 'cancelled';
-        if (!isset($state['processed'])) {
+        if (! isset($state['processed'])) {
             $state['processed'] = (int) (($state['synced_products'] ?? 0) + ($state['failed_products'] ?? 0));
         }
         $this->progressCache()->put($token, $state, 3600);
@@ -559,7 +561,7 @@ class WooCommerceSyncController extends BaseController
                 @set_time_limit($tickLimit);
             }
 
-            if (!Schema::hasTable('jobs')) {
+            if (! Schema::hasTable('jobs')) {
                 return;
             }
 
@@ -569,7 +571,7 @@ class WooCommerceSyncController extends BaseController
             }
 
             $hasQueued = DB::table('jobs')->where('queue', $queue)->exists();
-            if (!$hasQueued) {
+            if (! $hasQueued) {
                 return;
             }
 
@@ -577,7 +579,7 @@ class WooCommerceSyncController extends BaseController
             $lock = null;
             try {
                 $lock = Cache::store('file')->lock($lockKey, 120);
-                if (!$lock->get()) {
+                if (! $lock->get()) {
                     return;
                 }
             } catch (\Throwable $e) {
@@ -1017,9 +1019,9 @@ class WooCommerceSyncController extends BaseController
     public function getCustomersStats(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'view', WooCommerceSetting::class);
-        
+
         $total = \App\Models\Client::whereNull('deleted_at')->count();
-        
+
         // Synced = customers with valid woocommerce_id (not null and > 0)
         // Count customers where woocommerce_id is NOT NULL and is a positive integer (> 0)
         // This excludes: null, 0, empty string, and negative numbers
@@ -1027,7 +1029,7 @@ class WooCommerceSyncController extends BaseController
             ->whereNotNull('woocommerce_id')
             ->whereRaw('CAST(woocommerce_id AS UNSIGNED) > 0')
             ->count();
-        
+
         // Unsynced = total - synced (customers without valid woocommerce_id)
         // This includes: null, 0, empty string, and any invalid values
         $unsynced = max(0, $total - $synced);
@@ -1120,25 +1122,29 @@ class WooCommerceSyncController extends BaseController
                         '_fields' => 'id,type',
                     ], 30, 5);
 
-                    if (!$res->successful()) {
+                    if (! $res->successful()) {
                         break;
                     }
 
                     $items = $res->json();
-                    if (!is_array($items) || empty($items)) {
+                    if (! is_array($items) || empty($items)) {
                         break;
                     }
 
                     foreach ($items as $it) {
-                        if (!is_array($it)) continue;
+                        if (! is_array($it)) {
+                            continue;
+                        }
                         $id = (int) ($it['id'] ?? 0);
-                        if ($id <= 0) continue;
+                        if ($id <= 0) {
+                            continue;
+                        }
                         $type = (string) ($it['type'] ?? '');
                         if ($type === 'variation') {
                             continue;
                         }
                         $parents++;
-                        if (!isset($localSet[(string) $id])) {
+                        if (! isset($localSet[(string) $id])) {
                             $missing++;
                             if (count($sampleMissing) < 10) {
                                 $sampleMissing[] = $id;
@@ -1261,7 +1267,7 @@ class WooCommerceSyncController extends BaseController
         $sync = SyncService::fromSettings($settings);
         $mode = (string) $request->query('mode', 'push');
         $customerId = $request->query('customer_id');
-        
+
         // Single customer sync
         if ($customerId) {
             $customerId = (int) $customerId;
@@ -1270,15 +1276,15 @@ class WooCommerceSyncController extends BaseController
             } else {
                 $result = $sync->pushSingleCustomer($customerId);
             }
-            
+
             if ($result['ok'] ?? false) {
                 $settings->last_sync_at = now();
                 $settings->save();
             }
-            
+
             return response()->json($result);
         }
-        
+
         // Bulk sync
         if ($mode === 'pull') {
             // Pull customers from WooCommerce → Stocky
@@ -1288,7 +1294,7 @@ class WooCommerceSyncController extends BaseController
             $onlyUnsynced = (bool) $request->boolean('only_unsynced', false);
             $result = $sync->pushCustomers($onlyUnsynced);
         }
-        
+
         $settings->last_sync_at = now();
         $settings->save();
 
@@ -1322,7 +1328,7 @@ class WooCommerceSyncController extends BaseController
                     }
                 } else {
                     $allowed = UserWarehouse::where('user_id', $user->id)->pluck('warehouse_id')->toArray();
-                    if (!empty($allowed) && in_array($candidate, $allowed, true)) {
+                    if (! empty($allowed) && in_array($candidate, $allowed, true)) {
                         $warehouseId = $candidate;
                     }
                 }
@@ -1333,7 +1339,7 @@ class WooCommerceSyncController extends BaseController
                     $warehouseId = (int) (Warehouse::whereNull('deleted_at')->min('id') ?? 0);
                 } else {
                     $allowed = UserWarehouse::where('user_id', $user->id)->pluck('warehouse_id')->toArray();
-                    $warehouseId = !empty($allowed) ? (int) $allowed[0] : 0;
+                    $warehouseId = ! empty($allowed) ? (int) $allowed[0] : 0;
                 }
             }
         } catch (\Throwable $e) {
@@ -1400,7 +1406,7 @@ class WooCommerceSyncController extends BaseController
 
             $res = $client->getNoRetry('customers', $params, 20, 5);
 
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 return response()->json([
                     'ok' => false,
                     'error' => 'Failed to fetch WooCommerce customers',
@@ -1410,7 +1416,7 @@ class WooCommerceSyncController extends BaseController
 
             $body = $res->json();
             $customers = is_array($body) ? ($body['customers'] ?? $body) : [];
-            
+
             // Get total count from response
             $totalPages = (int) ($body['total_pages'] ?? 1);
             $total = (int) ($body['total'] ?? count($customers));
@@ -1424,7 +1430,7 @@ class WooCommerceSyncController extends BaseController
                     'email' => $customer['email'] ?? '',
                     'first_name' => $customer['first_name'] ?? '',
                     'last_name' => $customer['last_name'] ?? '',
-                    'name' => trim(($customer['first_name'] ?? '') . ' ' . ($customer['last_name'] ?? '')),
+                    'name' => trim(($customer['first_name'] ?? '').' '.($customer['last_name'] ?? '')),
                     'phone' => is_array($billing) ? ($billing['phone'] ?? '') : '',
                     'city' => is_array($billing) ? ($billing['city'] ?? '') : '',
                     'state' => is_array($billing) ? ($billing['state'] ?? '') : '',
@@ -1485,7 +1491,7 @@ class WooCommerceSyncController extends BaseController
             }
 
             $res = $client->getNoRetry('orders', $params, 20, 5);
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 return response()->json([
                     'ok' => false,
                     'error' => 'Failed to fetch WooCommerce orders',
@@ -1495,7 +1501,7 @@ class WooCommerceSyncController extends BaseController
 
             $orders = $res->json();
             $orders = is_array($orders) ? ($orders['orders'] ?? $orders) : [];
-            if (!is_array($orders)) {
+            if (! is_array($orders)) {
                 $orders = [];
             }
 
@@ -1508,7 +1514,9 @@ class WooCommerceSyncController extends BaseController
             $formatted = [];
             $customerCache = [];
             foreach ($orders as $order) {
-                if (!is_array($order)) continue;
+                if (! is_array($order)) {
+                    continue;
+                }
                 $billing = $order['billing'] ?? [];
                 $billingEmail = is_array($billing) ? (string) ($billing['email'] ?? '') : '';
                 $billingName = is_array($billing) ? trim(($billing['first_name'] ?? '').' '.($billing['last_name'] ?? '')) : '';
@@ -1517,7 +1525,7 @@ class WooCommerceSyncController extends BaseController
                 // Prefer customer name (billing name). If missing, fallback to Woo customer username/name by customer_id.
                 $customerDisplay = $billingName;
                 if ($customerDisplay === '' && $customerId > 0) {
-                    if (!array_key_exists($customerId, $customerCache)) {
+                    if (! array_key_exists($customerId, $customerCache)) {
                         try {
                             $cres = $client->getNoRetry('customers/'.$customerId, [
                                 '_fields' => 'id,username,name,first_name,last_name,email',
@@ -1565,10 +1573,12 @@ class WooCommerceSyncController extends BaseController
             $ids = [];
             foreach ($formatted as $it) {
                 $oid = (int) ($it['id'] ?? 0);
-                if ($oid > 0) $ids[$oid] = true;
+                if ($oid > 0) {
+                    $ids[$oid] = true;
+                }
             }
             $importedMap = [];
-            if (!empty($ids)) {
+            if (! empty($ids)) {
                 $rows = \App\Models\Sale::whereNull('deleted_at')
                     ->whereIn('woocommerce_order_id', array_keys($ids))
                     ->get(['id', 'woocommerce_order_id']);
@@ -1610,12 +1620,12 @@ class WooCommerceSyncController extends BaseController
         $search = trim((string) $request->query('search', ''));
         $sortField = (string) $request->query('SortField', 'id');
         $sortType = strtolower((string) $request->query('SortType', 'desc'));
-        if (!in_array($sortType, ['asc', 'desc'], true)) {
+        if (! in_array($sortType, ['asc', 'desc'], true)) {
             $sortType = 'desc';
         }
 
         $allowedSort = ['id', 'date', 'Ref', 'GrandTotal', 'payment_statut', 'statut', 'woocommerce_order_id', 'woocommerce_order_status'];
-        if (!in_array($sortField, $allowedSort, true)) {
+        if (! in_array($sortField, $allowedSort, true)) {
             $sortField = 'id';
         }
 
@@ -1708,7 +1718,7 @@ class WooCommerceSyncController extends BaseController
         $search = trim((string) $request->query('search', ''));
         $sortField = (string) $request->query('SortField', 'sync_issue_at');
         $sortType = strtolower((string) $request->query('SortType', 'desc'));
-        if (!in_array($sortType, ['asc', 'desc'], true)) {
+        if (! in_array($sortType, ['asc', 'desc'], true)) {
             $sortType = 'desc';
         }
 
@@ -1727,7 +1737,7 @@ class WooCommerceSyncController extends BaseController
 
         // Allow-list sort fields
         $allowedSort = ['id', 'name', 'email', 'phone', 'woocommerce_id', 'sync_issue_type', 'sync_issue_source', 'sync_issue_at'];
-        if (!in_array($sortField, $allowedSort, true)) {
+        if (! in_array($sortField, $allowedSort, true)) {
             $sortField = 'sync_issue_at';
         }
 

@@ -3,13 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Models\ProfileEditLog;
-use Illuminate\Http\Request;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Hash;
 
 class ProfileApiController extends Controller
 {
@@ -22,8 +21,8 @@ class ProfileApiController extends Controller
         try {
             // ទាញយក User ពី Token ដែលបានផ្ញើមក
             $user = $this->getAuthenticatedUser($request);
-            
-            if (!$user) {
+
+            if (! $user) {
                 return response()->json([
                     'success' => false,
                     'message' => 'User not found',
@@ -59,7 +58,7 @@ class ProfileApiController extends Controller
             // ទាញយក User ពី Token ដែលបានផ្ញើមក
             $user = $this->getAuthenticatedUser($request);
 
-            if (!$user) {
+            if (! $user) {
                 return response()->json([
                     'success' => false,
                     'message' => 'User not found',
@@ -85,9 +84,9 @@ class ProfileApiController extends Controller
             $validated = $request->validate([
                 'firstname' => 'nullable|string|max:255',
                 'lastname' => 'nullable|string|max:255',
-                'email' => 'nullable|email|max:255|unique:users,email,' . $user->id,
+                'email' => 'nullable|email|max:255|unique:users,email,'.$user->id,
                 'phone' => 'nullable|string|max:20',
-                'username' => 'nullable|string|max:255|unique:users,username,' . $user->id,
+                'username' => 'nullable|string|max:255|unique:users,username,'.$user->id,
             ]);
 
             DB::beginTransaction();
@@ -145,7 +144,7 @@ class ProfileApiController extends Controller
             }
 
             // បើមានការផ្លាស់ប្តូរ
-            if (!empty($changes)) {
+            if (! empty($changes)) {
                 $user->save();
 
                 // កត់ត្រាក្នុង ProfileEditLog
@@ -182,6 +181,7 @@ class ProfileApiController extends Controller
             ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update profile',
@@ -208,8 +208,9 @@ class ProfileApiController extends Controller
             // ទាញយក User ពី Token ដែលបានផ្ញើមក
             $user = $this->getAuthenticatedUser($request);
 
-            if (!$user) {
+            if (! $user) {
                 \Log::warning('User not found for password change');
+
                 return response()->json([
                     'success' => false,
                     'message' => 'User not found',
@@ -230,10 +231,11 @@ class ProfileApiController extends Controller
             \Log::info('Validation passed, checking current password');
 
             // ពិនិត្យមើល current password
-            if (!Hash::check($validated['current_password'], $user->password)) {
+            if (! Hash::check($validated['current_password'], $user->password)) {
                 \Log::warning('Current password is incorrect for user', [
                     'user_id' => $user->id,
                 ]);
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Current password is incorrect',
@@ -271,6 +273,7 @@ class ProfileApiController extends Controller
                 'errors' => $e->errors(),
                 'input' => $request->except(['current_password', 'new_password', 'new_password_confirmation']),
             ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
@@ -282,6 +285,7 @@ class ProfileApiController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update password',
@@ -299,7 +303,7 @@ class ProfileApiController extends Controller
         try {
             $user = $this->getAuthenticatedUser($request);
 
-            if (!$user) {
+            if (! $user) {
                 return response()->json([
                     'success' => false,
                     'message' => 'User not found',
@@ -310,7 +314,7 @@ class ProfileApiController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->limit(50)
                 ->get()
-                ->map(function($log) {
+                ->map(function ($log) {
                     return [
                         'id' => (string) $log->id,
                         'field_changed' => $log->field_changed,
@@ -344,7 +348,7 @@ class ProfileApiController extends Controller
             // ទាញយក User ពី Token
             $user = $this->getAuthenticatedUser($request);
 
-            if (!$user) {
+            if (! $user) {
                 return response()->json([
                     'success' => false,
                     'message' => 'User not found',
@@ -365,7 +369,7 @@ class ProfileApiController extends Controller
 
             // រក្សទុករូបថ្មី
             $photo = $validated['photo'];
-            $photoName = time() . '_' . $photo->getClientOriginalName();
+            $photoName = time().'_'.$photo->getClientOriginalName();
             $saved = media_put('avatar', $photoName, file_get_contents($photo->getRealPath()), $photo->getMimeType() ?: 'application/octet-stream');
             if (! $saved) {
                 throw new \RuntimeException('Unable to save profile photo to cloud storage.');
@@ -411,7 +415,7 @@ class ProfileApiController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to upload photo: ' . $e->getMessage(),
+                'message' => 'Failed to upload photo: '.$e->getMessage(),
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -425,7 +429,7 @@ class ProfileApiController extends Controller
         // ទាញយក Token ពី Authorization Header
         $token = $request->bearerToken();
 
-        if (!$token) {
+        if (! $token) {
             return null;
         }
 
@@ -460,7 +464,7 @@ class ProfileApiController extends Controller
             'id' => (string) $user->id,
             'firstname' => $user->firstname ?? '',
             'lastname' => $user->lastname ?? '',
-            'name' => trim(($user->firstname ?? '') . ' ' . ($user->lastname ?? '')),
+            'name' => trim(($user->firstname ?? '').' '.($user->lastname ?? '')),
             'email' => $user->email ?? '',
             'phone' => $user->phone ?? '',
             'username' => $user->username ?? '',

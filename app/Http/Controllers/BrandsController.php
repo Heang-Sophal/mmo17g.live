@@ -82,7 +82,7 @@ class BrandsController extends Controller
 
         return response()->json([
             'success' => true,
-            'brand' => $createdBrand
+            'brand' => $createdBrand,
         ], 201);
 
     }

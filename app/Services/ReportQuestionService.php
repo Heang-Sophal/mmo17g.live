@@ -2,15 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleDetail;
-use App\Models\Product;
-use App\Models\Client;
-use App\Models\PaymentSale;
 use App\Traits\CalculatesCogsAndAverageCost;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ReportQuestionService
 {
@@ -18,11 +16,6 @@ class ReportQuestionService
 
     /**
      * Execute daily sales summary report
-     *
-     * @param string $dateFrom
-     * @param string $dateTo
-     * @param int|null $warehouseId
-     * @return array
      */
     public function dailySalesSummary(string $dateFrom, string $dateTo, ?int $warehouseId = null): array
     {
@@ -43,7 +36,7 @@ class ReportQuestionService
             $query->whereIn('warehouse_id', $warehouseIds);
         }
 
-        if (!$viewRecords) {
+        if (! $viewRecords) {
             $query->where('user_id', $user->id);
         }
 
@@ -68,7 +61,7 @@ class ReportQuestionService
             }, function ($q) use ($warehouseIds) {
                 return $q->whereIn('warehouse_id', $warehouseIds);
             })
-            ->when(!$viewRecords, function ($q) use ($user) {
+            ->when(! $viewRecords, function ($q) use ($user) {
                 return $q->where('user_id', $user->id);
             })
             ->sum('amount');
@@ -86,12 +79,6 @@ class ReportQuestionService
 
     /**
      * Execute sales by product report
-     *
-     * @param string $dateFrom
-     * @param string $dateTo
-     * @param int|null $warehouseId
-     * @param array $filters
-     * @return array
      */
     public function salesByProduct(string $dateFrom, string $dateTo, ?int $warehouseId = null, array $filters = []): array
     {
@@ -116,7 +103,7 @@ class ReportQuestionService
             $query->whereIn('s.warehouse_id', $warehouseIds);
         }
 
-        if (!$viewRecords) {
+        if (! $viewRecords) {
             $query->where('s.user_id', $user->id);
         }
 
@@ -136,7 +123,7 @@ class ReportQuestionService
                 $cost = (float) $item->cost;
                 $profit = $revenue - $cost;
                 $marginPercent = $revenue > 0 ? (($profit / $revenue) * 100) : 0;
-                $displayName = $item->name !== null && (string) $item->name !== '' ? (string) $item->name : 'Product #' . $item->product_id;
+                $displayName = $item->name !== null && (string) $item->name !== '' ? (string) $item->name : 'Product #'.$item->product_id;
 
                 return [
                     'product_id' => $item->product_id,
@@ -160,9 +147,6 @@ class ReportQuestionService
 
     /**
      * Execute late payments report
-     *
-     * @param array $filters
-     * @return array
      */
     public function latePayments(array $filters = []): array
     {
@@ -189,7 +173,7 @@ class ReportQuestionService
                 $customerId = $sale->client_id;
                 $customerName = $sale->client ? $sale->client->name : 'Unknown';
 
-                if (!isset($customerData[$customerId])) {
+                if (! isset($customerData[$customerId])) {
                     $customerData[$customerId] = [
                         'customer_id' => $customerId,
                         'name' => $customerName,
@@ -218,10 +202,6 @@ class ReportQuestionService
 
     /**
      * Generate insights by comparing two periods
-     *
-     * @param array $currentData
-     * @param array $compareData
-     * @return string
      */
     public function generateInsights(array $currentData, array $compareData): string
     {
@@ -240,11 +220,11 @@ class ReportQuestionService
         $discountDelta = $currentDiscount - $compareDiscount;
 
         $insights = [];
-        
+
         if (abs($profitDelta) > 0.01) {
             $direction = $profitDelta > 0 ? 'increased' : 'decreased';
             $insights[] = sprintf(
-                "Profit %s from %s to %s (change: %s, %.1f%%)",
+                'Profit %s from %s to %s (change: %s, %.1f%%)',
                 $direction,
                 number_format($compareProfit, 2),
                 number_format($currentProfit, 2),
@@ -255,7 +235,7 @@ class ReportQuestionService
 
         if (abs($revenueDelta) > 0.01) {
             $insights[] = sprintf(
-                "Revenue changed by %s (from %s to %s)",
+                'Revenue changed by %s (from %s to %s)',
                 number_format($revenueDelta, 2),
                 number_format($compareRevenue, 2),
                 number_format($currentRevenue, 2)
@@ -264,7 +244,7 @@ class ReportQuestionService
 
         if (abs($discountDelta) > 0.01) {
             $insights[] = sprintf(
-                "Discount changed by %s (from %s to %s)",
+                'Discount changed by %s (from %s to %s)',
                 number_format($discountDelta, 2),
                 number_format($compareDiscount, 2),
                 number_format($currentDiscount, 2)
@@ -272,18 +252,16 @@ class ReportQuestionService
         }
 
         if (empty($insights)) {
-            return "No significant changes detected between periods.";
+            return 'No significant changes detected between periods.';
         }
 
-        return implode('. ', $insights) . '.';
+        return implode('. ', $insights).'.';
     }
 
     /**
      * Get user's accessible warehouse IDs
      *
-     * @param mixed $user
-     * @param int|null $warehouseId
-     * @return array
+     * @param  mixed  $user
      */
     private function getUserWarehouseIds($user, ?int $warehouseId = null): array
     {

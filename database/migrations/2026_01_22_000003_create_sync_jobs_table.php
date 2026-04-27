@@ -40,4 +40,3 @@ class CreateSyncJobsTable extends Migration
         Schema::dropIfExists('sync_jobs');
     }
 }
-

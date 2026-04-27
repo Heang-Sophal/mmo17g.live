@@ -18,8 +18,3 @@ class ExpenseUpdated
         $this->expense = $expense;
     }
 }
-
-
-
-
-

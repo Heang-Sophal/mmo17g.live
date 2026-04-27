@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\CustomField;
 use App\Models\CustomFieldValue;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class CustomFieldController extends BaseController
@@ -16,16 +15,16 @@ class CustomFieldController extends BaseController
     public function index(Request $request)
     {
         $entityType = $request->input('entity_type'); // 'client' or 'provider'
-        
+
         $query = CustomField::where('deleted_at', '=', null);
-        
+
         if ($entityType) {
             $query->where('entity_type', $entityType);
         }
-        
+
         $customFields = $query->orderBy('id', 'asc')
             ->get();
-        
+
         return response()->json([
             'custom_fields' => $customFields,
         ]);
@@ -47,9 +46,9 @@ class CustomFieldController extends BaseController
         ]);
 
         // If field_type is select, validate default_value as JSON array
-        if ($validated['field_type'] === 'select' && !empty($validated['default_value'])) {
+        if ($validated['field_type'] === 'select' && ! empty($validated['default_value'])) {
             $options = json_decode($validated['default_value'], true);
-            if (!is_array($options)) {
+            if (! is_array($options)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Default value for select field must be a valid JSON array',
@@ -79,7 +78,7 @@ class CustomFieldController extends BaseController
     public function show($id)
     {
         $customField = CustomField::where('deleted_at', '=', null)->findOrFail($id);
-        
+
         return response()->json([
             'custom_field' => $customField,
         ]);
@@ -103,9 +102,9 @@ class CustomFieldController extends BaseController
         ]);
 
         // If field_type is select, validate default_value as JSON array
-        if (isset($validated['field_type']) && $validated['field_type'] === 'select' && !empty($validated['default_value'])) {
+        if (isset($validated['field_type']) && $validated['field_type'] === 'select' && ! empty($validated['default_value'])) {
             $options = json_decode($validated['default_value'], true);
-            if (!is_array($options)) {
+            if (! is_array($options)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Default value for select field must be a valid JSON array',
@@ -128,9 +127,9 @@ class CustomFieldController extends BaseController
     public function destroy(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', \App\Models\Setting::class);
-        
+
         $customField = CustomField::where('deleted_at', '=', null)->findOrFail($id);
-        
+
         // Soft delete the custom field using SoftDeletes trait
         $customField->delete();
 
@@ -146,7 +145,7 @@ class CustomFieldController extends BaseController
         $entityType = $request->input('entity_type'); // 'App\Models\Client' or 'App\Models\Provider'
         $entityId = $request->input('entity_id');
 
-        if (!$entityType || !$entityId) {
+        if (! $entityType || ! $entityId) {
             return response()->json([
                 'success' => false,
                 'message' => 'entity_type and entity_id are required',
@@ -201,7 +200,7 @@ class CustomFieldController extends BaseController
 
         // Validate required fields
         foreach ($customFields as $field) {
-            if ($field->is_required && !isset($values[$field->id])) {
+            if ($field->is_required && ! isset($values[$field->id])) {
                 return response()->json([
                     'success' => false,
                     'message' => "Field '{$field->name}' is required",
@@ -211,7 +210,7 @@ class CustomFieldController extends BaseController
 
         // Save or update values
         foreach ($values as $customFieldId => $value) {
-            if (!isset($customFields[$customFieldId])) {
+            if (! isset($customFields[$customFieldId])) {
                 continue; // Skip invalid field IDs
             }
 

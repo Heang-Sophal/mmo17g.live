@@ -34,8 +34,3 @@ class CreateDamageDetailsTable extends Migration
         Schema::drop('damage_details');
     }
 }
-
-
-
-
-

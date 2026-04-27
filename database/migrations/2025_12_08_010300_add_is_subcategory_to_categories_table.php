@@ -1,8 +1,6 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
 class AddIsSubcategoryToCategoriesTable extends Migration
 {
@@ -28,5 +26,3 @@ class AddIsSubcategoryToCategoriesTable extends Migration
         // No-op – see comment in up().
     }
 }
-
-

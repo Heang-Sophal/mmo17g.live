@@ -18,8 +18,3 @@ class PurchaseCreated
         $this->purchase = $purchase;
     }
 }
-
-
-
-
-

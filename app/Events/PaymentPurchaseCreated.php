@@ -18,8 +18,3 @@ class PaymentPurchaseCreated
         $this->payment = $payment;
     }
 }
-
-
-
-
-

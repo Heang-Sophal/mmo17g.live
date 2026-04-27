@@ -129,7 +129,7 @@ class CashRegisterController extends BaseController
         $register->difference = $difference;
         $register->status = 'closed';
         $register->closed_at = $now;
-        
+
         if (! empty($data['notes'])) {
             $register->notes = trim(($register->notes ?? '')."\n".$data['notes']);
         }

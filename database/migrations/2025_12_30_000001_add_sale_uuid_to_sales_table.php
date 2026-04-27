@@ -46,5 +46,3 @@ class AddSaleUuidToSalesTable extends Migration
         }
     }
 }
-
-

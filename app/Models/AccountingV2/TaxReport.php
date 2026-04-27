@@ -15,8 +15,3 @@ class TaxReport extends Model
         'period_start', 'period_end', 'type', 'taxable_sales', 'output_tax', 'taxable_purchases', 'input_tax', 'net_tax', 'source', 'generated_at',
     ];
 }
-
-
-
-
-

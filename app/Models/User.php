@@ -48,7 +48,7 @@ class User extends Authenticatable
      */
     public function getNameAttribute(): string
     {
-        return trim(($this->firstname ?? '') . ' ' . ($this->lastname ?? '')) ?: 'User';
+        return trim(($this->firstname ?? '').' '.($this->lastname ?? '')) ?: 'User';
     }
 
     /**
@@ -57,6 +57,7 @@ class User extends Authenticatable
     public function getRoleAttribute(): string
     {
         $role = $this->roles()->first();
+
         return $role ? $role->name : 'user';
     }
 
@@ -152,7 +153,7 @@ class User extends Authenticatable
 
     /**
      * Check if user has record_view permission (user-level boolean with backward compatibility)
-     * 
+     *
      * @return bool
      */
     public function hasRecordView()
@@ -168,7 +169,7 @@ class User extends Authenticatable
                 return $role->inRole('record_view');
             }
         }
-        
+
         return false;
     }
 }

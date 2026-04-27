@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Models\ServiceJob;
-use App\Models\ServiceJobChecklistItem;
 use App\Models\ServiceTechnician;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -257,5 +256,3 @@ class ServiceReportController extends BaseController
         ]);
     }
 }
-
-

@@ -32,8 +32,3 @@ class CreateAccJournalEntriesTable extends Migration
         Schema::dropIfExists('acc_journal_entries');
     }
 }
-
-
-
-
-

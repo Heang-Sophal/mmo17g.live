@@ -20,8 +20,3 @@ class Budget extends Model
         return $this->hasMany(BudgetLine::class, 'budget_id');
     }
 }
-
-
-
-
-

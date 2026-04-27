@@ -944,7 +944,7 @@ export default {
   .search-header h5 i,
   .products-header h5 i,
   .preview-header h5 i {
-    color: #8b5cf6;
+    color: #D6A735;
     margin-right: 0.5rem;
   }
 
@@ -956,8 +956,8 @@ export default {
   }
 
   .scan-btn {
-    background: #8b5cf6;
-    border: 1px solid #7c3aed;
+    background: #D6A735;
+    border: 1px solid #8D6208;
     color: white;
     padding: 0.625rem 1rem;
     border-radius: 6px 0 0 6px;
@@ -970,7 +970,7 @@ export default {
   }
 
   .scan-btn:hover {
-    background: #7c3aed;
+    background: #8D6208;
     border-color: #6d28d9;
   }
 
@@ -995,7 +995,7 @@ export default {
 
   .modern-input:focus {
     outline: none;
-    border-color: #8b5cf6;
+    border-color: #D6A735;
     box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
   }
 
@@ -1101,7 +1101,7 @@ export default {
   }
 
   .quantity-input:focus {
-    border-color: #8b5cf6;
+    border-color: #D6A735;
     box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
     outline: none;
   }
@@ -1143,7 +1143,7 @@ export default {
     width: 18px;
     height: 18px;
     cursor: pointer;
-    accent-color: #8b5cf6;
+    accent-color: #D6A735;
   }
 
   .checkbox-label {
@@ -1163,8 +1163,8 @@ export default {
 
   .print-btn,
   .print-btn-large {
-    background: #8b5cf6;
-    border: 1px solid #7c3aed;
+    background: #D6A735;
+    border: 1px solid #8D6208;
     color: white;
     font-weight: 500;
     transition: all 0.2s ease;
@@ -1172,7 +1172,7 @@ export default {
 
   .print-btn:hover,
   .print-btn-large:hover {
-    background: #7c3aed;
+    background: #8D6208;
     border-color: #6d28d9;
     transform: translateY(-1px);
     box-shadow: 0 2px 4px rgba(139, 92, 246, 0.2);
@@ -1293,7 +1293,7 @@ export default {
   }
 
   .custom-dimensions-input .form-control:focus {
-    border-color: #8b5cf6;
+    border-color: #D6A735;
     box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
     outline: none;
   }
@@ -1325,11 +1325,11 @@ export default {
   }
 
   ::v-deep .v-select .vs__dropdown-toggle:focus-within {
-    border-color: #8b5cf6;
+    border-color: #D6A735;
     box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
   }
 
   ::v-deep .v-select.vs--open .vs__dropdown-toggle {
-    border-color: #8b5cf6;
+    border-color: #D6A735;
   }
 </style>

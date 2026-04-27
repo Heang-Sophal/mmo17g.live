@@ -90,8 +90,6 @@ class PosController extends BaseController
             }
         }
 
-       
-
         try {
             $sale = \DB::transaction(function () use ($request, $totalPaid, $saleUuid) {
                 $helpers = new helpers;
@@ -229,7 +227,7 @@ class PosController extends BaseController
 
                         if ($payment['payment_method_id'] == 1 || $payment['payment_method_id'] == '1') {
 
-                            $helpers  = new helpers();
+                            $helpers = new helpers;
                             $currency = strtolower($helpers->Get_Currency_Code() ?? 'usd');
 
                             $client = Client::findOrFail($request->client_id);
@@ -243,7 +241,7 @@ class PosController extends BaseController
                                 if (! $existing) {
                                     $customer = \Stripe\Customer::create([
                                         'email' => $client->email,
-                                        'name'  => $client->name,
+                                        'name' => $client->name,
                                     ]);
 
                                     $customerStripeId = $customer->id;
@@ -298,14 +296,12 @@ class PosController extends BaseController
 
                                 // ✅ Correct: Stripe card error → bubble up
                                 throw new \Exception($e->getError()->message);
-
                             } catch (\Throwable $e) {
 
                                 // ✅ Correct: Throwable has NO getError()
                                 throw new \Exception($e->getMessage());
                             }
                         }
-
 
                         $paymentSale = PaymentSale::create([
                             'sale_id' => $order->id,
@@ -318,8 +314,6 @@ class PosController extends BaseController
                             'notes' => $request['payment_note'] ?? null,
                             'user_id' => Auth::user()->id,
                         ]);
-
-
 
                         if ($payment['payment_method_id'] == 1 || $payment['payment_method_id'] == '1') {
                             PaymentWithCreditCard::create([
@@ -420,7 +414,6 @@ class PosController extends BaseController
             ], 422);
         }
 
-
         // ---------- AFTER COMMIT: QBO sync (best effort, non-blocking) ----------
         $qboSync = 'skipped';
         try {
@@ -488,7 +481,7 @@ class PosController extends BaseController
 
         // Send Telegram notification to warehouse group
         try {
-            \Log::info('Sending Telegram notification for sale ID: ' . $sale->id);
+            \Log::info('Sending Telegram notification for sale ID: '.$sale->id);
             $this->sendTelegramNotification($sale);
         } catch (\Throwable $e) {
             \Log::error('Telegram notification failed: '.$e->getMessage());
@@ -707,43 +700,58 @@ class PosController extends BaseController
      */
     private function sendTelegramNotification($sale)
     {
-        \Log::info('Telegram notification: Starting for sale ID ' . $sale->id);
-        
+        \Log::info('Telegram notification: Starting for sale ID '.$sale->id);
+
         // Get warehouse with Telegram settings
         $warehouse = \App\Models\Warehouse::find($sale->warehouse_id);
-        
-        \Log::info('Telegram notification: Warehouse ID ' . $sale->warehouse_id . ' found: ' . ($warehouse ? 'yes' : 'no'));
-        
-        if (!$warehouse) {
-            \Log::warning('Telegram notification: Warehouse not found for ID ' . $sale->warehouse_id);
+
+        \Log::info('Telegram notification: Warehouse ID '.$sale->warehouse_id.' found: '.($warehouse ? 'yes' : 'no'));
+
+        if (! $warehouse) {
+            \Log::warning('Telegram notification: Warehouse not found for ID '.$sale->warehouse_id);
+
             return;
         }
-        
-        if (!$warehouse->telegram_enabled) {
-            \Log::info('Telegram notification: Telegram not enabled for warehouse ' . $warehouse->name);
+
+        if (! $warehouse->telegram_enabled) {
+            \Log::info('Telegram notification: Telegram not enabled for warehouse '.$warehouse->name);
+
             return;
         }
-        
-        if (!$warehouse->telegram_chat_id) {
-            \Log::warning('Telegram notification: Chat ID missing for warehouse ' . $warehouse->name);
+
+        if (! $warehouse->telegram_chat_id) {
+            \Log::warning('Telegram notification: Chat ID missing for warehouse '.$warehouse->name);
+
             return;
         }
-        
-        \Log::info('Telegram notification: Sending to warehouse ' . $warehouse->name . ' (Chat ID: ' . $warehouse->telegram_chat_id . ')');
+
+        \Log::info('Telegram notification: Sending to warehouse '.$warehouse->name.' (Chat ID: '.$warehouse->telegram_chat_id.')');
 
         // Get sale details - use correct relationship name 'details' not 'saleDetails'
         $sale->load(['details.product', 'client', 'user', 'facture.payment_method']);
-        
+
         // Prepare product data
         $products = [];
         foreach ($sale->details as $detail) {
+            $productImage = $detail->product?->image;
+            if ($detail->product_variant_id) {
+                $variantImage = ProductVariant::where('id', $detail->product_variant_id)->value('image');
+                if (! empty($variantImage)) {
+                    $productImage = $variantImage;
+                }
+            }
+
             $products[] = [
                 'product_name' => $detail->product ? $detail->product->name : 'N/A',
                 'quantity' => $detail->quantity,
                 'price' => $detail->price,
+                'product_id' => $detail->product_id,
+                'product_variant_id' => $detail->product_variant_id,
+                'image' => $productImage,
+                'image_url' => $productImage ? product_image_url($productImage) : null,
             ];
         }
-        
+
         // Prepare sale data for notification
         $paymentMethods = $sale->facture
             ->pluck('payment_method.name')
@@ -752,7 +760,7 @@ class PosController extends BaseController
             ->values()
             ->all();
 
-        $paymentMethod = $sale->payment_method ?: (!empty($paymentMethods) ? implode(', ', $paymentMethods) : 'N/A');
+        $paymentMethod = $sale->payment_method ?: (! empty($paymentMethods) ? implode(', ', $paymentMethods) : 'N/A');
         $sellerName = $sale->user ? ($sale->user->name ?: $sale->user->username) : 'Unknown';
         $dateValue = $sale->date instanceof \Carbon\Carbon
             ? $sale->date->format('Y-m-d')
@@ -762,7 +770,7 @@ class PosController extends BaseController
             'ref' => $sale->Ref,
             'customer_name' => $sale->client ? $sale->client->name : 'Walk-in Customer',
             'date' => $sale->date,
-            'datetime' => trim($dateValue . ' ' . ($sale->time ?? '')),
+            'datetime' => trim($dateValue.' '.($sale->time ?? '')),
             'GrandTotal' => $sale->GrandTotal,
             'payment_status' => $sale->payment_statut,
             'payment_method' => $paymentMethod,
@@ -775,21 +783,20 @@ class PosController extends BaseController
             'customer_phone' => $sale->client->phone ?? 'N/A',
             'products' => $products,
         ];
-        
+
         \Log::info('Telegram notification: Calling TelegramService');
-        
+
         // Send notification via TelegramService with warehouse-specific bot token
         $telegramService = app(\App\Services\TelegramService::class);
         $result = $telegramService->sendSaleNotification(
-            $saleData, 
-            $warehouse->name, 
+            $saleData,
+            $warehouse->name,
             $warehouse->telegram_chat_id,
             $warehouse->telegram_bot_token  // Pass warehouse-specific bot token
         );
-        
-        \Log::info('Telegram notification: Result = ' . ($result ? 'success' : 'failed'));
-    }
 
+        \Log::info('Telegram notification: Result = '.($result ? 'success' : 'failed'));
+    }
 
     // ------------- get_draft_sales -----------\\
 
@@ -871,7 +878,7 @@ class PosController extends BaseController
             // If draft_sale_id present, update existing draft; otherwise create new
             if ($request->filled('draft_sale_id')) {
                 $order = DraftSale::whereNull('deleted_at')->findOrFail($request->draft_sale_id);
-               
+
                 // Update header
                 $order->update([
                     'date' => Carbon::now(),
@@ -964,7 +971,7 @@ class PosController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
 
-        \DB::transaction(function () use ($id, $request) {
+        \DB::transaction(function () use ($id) {
 
             $user = Auth::user();
             // New way: Check user's record_view field (user-level boolean)
@@ -1085,7 +1092,7 @@ class PosController extends BaseController
                 SaleDetail::insert($orderDetails);
 
                 $sale = Sale::findOrFail($order->id);
-               
+
                 try {
 
                     $total_paid = $sale->paid_amount + $request['amount'];

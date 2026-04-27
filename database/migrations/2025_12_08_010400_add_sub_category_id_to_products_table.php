@@ -49,5 +49,3 @@ class AddSubCategoryIdToProductsTable extends Migration
         }
     }
 }
-
-

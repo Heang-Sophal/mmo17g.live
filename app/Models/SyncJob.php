@@ -34,4 +34,3 @@ class SyncJob extends Model
         'worker_heartbeat_at' => 'datetime',
     ];
 }
-

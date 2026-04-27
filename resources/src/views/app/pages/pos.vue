@@ -1467,122 +1467,68 @@
 
   <!-- Quick Add Customer Modal -->
   <validation-observer ref="Quick_Add_Customer_Form">
-    <b-modal hide-footer size="lg" id="Quick_Add_Customer" :title="$t('Quick_Add_Customer')">
+    <b-modal hide-footer size="md" id="Quick_Add_Customer" :title="$t('Quick_Add_Customer')">
       <b-form @submit.prevent="Submit_Quick_Add_Customer" class="quick-add-customer-form">
         <b-row>
           <!-- Customer Name -->
-          <b-col md="6" sm="12">
-            <validation-provider
-              name="Name Customer"
-              :rules="{ required: true}"
-              v-slot="validationContext"
-            >
-              <b-form-group :label="$t('CustomerName') + ' ' + '*'">
-                <b-form-input
-                  :state="getValidationState(validationContext)"
-                  aria-describedby="name-feedback"
-                  label="name"
-                  :placeholder="$t('CustomerName')"
-                  v-model="client.name"
-                ></b-form-input>
-                <b-form-invalid-feedback id="name-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-              </b-form-group>
-            </validation-provider>
-          </b-col>
-          
-          <!-- Customer Email -->
-          <b-col md="6" sm="12">
-            <b-form-group :label="$t('Email')">
+          <b-col md="12" sm="12">
+            <b-form-group :label="$t('CustomerName') + ' (' + $t('Optional') + ')'">
               <b-form-input
-                label="email"
-                v-model="client.email"
-                :placeholder="$t('Email')"
+                label="name"
+                :placeholder="$t('CustomerName')"
+                v-model="client.name"
               ></b-form-input>
             </b-form-group>
           </b-col>
 
           <!-- Customer Phone -->
-          <b-col md="6" sm="12">
-            <b-form-group :label="$t('Phone')">
-              <b-form-input
-                label="Phone"
-                v-model="client.phone"
-                :placeholder="$t('Phone')"
-              ></b-form-input>
-            </b-form-group>
-          </b-col>
-
-          <!-- Customer Country -->
-          <b-col md="6" sm="12">
-            <b-form-group :label="$t('Country')">
-              <b-form-input
-                label="Country"
-                v-model="client.country"
-                :placeholder="$t('Country')"
-              ></b-form-input>
-            </b-form-group>
-          </b-col>
-
-          <!-- Customer City -->
-          <b-col md="6" sm="12">
-            <b-form-group :label="$t('City')">
-              <b-form-input
-                label="City"
-                v-model="client.city"
-                :placeholder="$t('City')"
-              ></b-form-input>
-            </b-form-group>
-          </b-col>
-
-          <!-- Customer Tax Number -->
-          <b-col md="6" sm="12">
-            <b-form-group :label="$t('Tax_Number')">
-              <b-form-input
-                label="Tax Number"
-                v-model="client.tax_number"
-                :placeholder="$t('Tax_Number')"
-              ></b-form-input>
-            </b-form-group>
+          <b-col md="12" sm="12">
+            <validation-provider
+              name="Phone"
+              :rules="{ required: true}"
+              v-slot="validationContext"
+            >
+              <b-form-group :label="$t('Phone') + ' *'">
+                <b-form-input
+                  :state="getValidationState(validationContext)"
+                  aria-describedby="phone-feedback"
+                  label="Phone"
+                  v-model="client.phone"
+                  :placeholder="$t('Phone')"
+                ></b-form-input>
+                <b-form-invalid-feedback id="phone-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
+              </b-form-group>
+            </validation-provider>
           </b-col>
 
           <!-- Customer Address -->
           <b-col md="12" sm="12">
-            <b-form-group :label="$t('Adress')">
-              <textarea
-                label="Adress"
-                class="form-control"
-                rows="4"
-                v-model="client.adresse"
-                :placeholder="$t('Adress')"
-              ></textarea>
-            </b-form-group>
+            <validation-provider
+              name="Address"
+              :rules="{ required: true}"
+              v-slot="validationContext"
+            >
+              <b-form-group :label="$t('Adress') + ' *'">
+                <textarea
+                  :class="['form-control', {'is-invalid': validationContext.errors.length}]"
+                  aria-describedby="address-feedback"
+                  label="Adress"
+                  rows="4"
+                  v-model="client.adresse"
+                  :placeholder="$t('Adress')"
+                ></textarea>
+                <b-form-invalid-feedback id="address-feedback" style="display: block;">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
+              </b-form-group>
+            </validation-provider>
           </b-col>
 
-          <b-col md="6" sm="12" class="mt-4 mb-4">
-            <div class="psx-form-check">
-              <input type="checkbox" v-model="client.is_royalty_eligible" class="psx-checkbox psx-form-check-input" id="is_royalty_eligible">
-              <label class="psx-form-check-label" for="is_royalty_eligible">
-                <h5>{{ $t('Is_Royalty_Eligible') }}</h5>
-              </label>
-            </div>
-          </b-col>
-
-          <!-- Custom Fields (same as CreateCustomer.vue, but for quick add) -->
-          <b-col md="12" sm="12" class="mt-3">
-            <CustomFieldsForm
-              entity-type="client"
-              v-model="quickAddCustomFieldValues"
-            />
-          </b-col>
-
-          <b-col md="12" class="mt-3">
+          <b-col md="12" class="mt-4">
             <b-button variant="secondary" class="mr-2" @click="$bvModal.hide('Quick_Add_Customer')">{{ $t('Cancel') }}</b-button>
             <b-button variant="primary" type="submit" :disabled="SubmitProcessing">{{$t('submit')}}</b-button>
             <div v-once class="typo__p" v-if="SubmitProcessing">
               <div class="spinner sm spinner-primary mt-3"></div>
             </div>
           </b-col>
-
         </b-row>
       </b-form>
     </b-modal>
@@ -5232,6 +5178,9 @@ export default {
             this.$t("Failed")
           );
           return;
+        }
+        if (!this.client.name) {
+          this.client.name = 'Walk-in Customer';
         }
         axios
           .post("clients", {

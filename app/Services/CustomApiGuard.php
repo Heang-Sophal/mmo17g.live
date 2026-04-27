@@ -18,7 +18,7 @@ class CustomApiGuard
     {
         $token = $this->getTokenForRequest($request);
 
-        if (!$token) {
+        if (! $token) {
             return null;
         }
 
@@ -50,14 +50,14 @@ class CustomApiGuard
 
             $payload = json_decode($decoded, true);
 
-            if (!$payload || !isset($payload['user_id'])) {
+            if (! $payload || ! isset($payload['user_id'])) {
                 return null;
             }
 
             // Find user by ID
             $user = User::find($payload['user_id']);
 
-            if (!$user) {
+            if (! $user) {
                 return null;
             }
 
@@ -72,6 +72,6 @@ class CustomApiGuard
      */
     public function validate(array $credentials = []): bool
     {
-        return !empty($credentials['token']) && $this->getUserFromToken($credentials['token']) !== null;
+        return ! empty($credentials['token']) && $this->getUserFromToken($credentials['token']) !== null;
     }
 }

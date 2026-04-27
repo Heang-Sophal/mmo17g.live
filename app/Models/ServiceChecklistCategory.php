@@ -31,20 +31,3 @@ class ServiceChecklistCategory extends Model
         return $this->hasMany(ServiceChecklistItem::class, 'category_id');
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

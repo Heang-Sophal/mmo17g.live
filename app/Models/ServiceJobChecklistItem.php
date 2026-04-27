@@ -48,20 +48,3 @@ class ServiceJobChecklistItem extends Model
         return $this->belongsTo(ServiceChecklistItem::class, 'item_id');
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

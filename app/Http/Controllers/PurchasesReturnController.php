@@ -960,8 +960,8 @@ class PurchasesReturnController extends BaseController
     {
         // Get prefix from settings, fallback to 'RT' if not set
         $setting = \App\Models\Setting::where('deleted_at', '=', null)->first();
-        $prefix = !empty($setting->purchase_return_prefix) ? $setting->purchase_return_prefix : 'RT';
-        
+        $prefix = ! empty($setting->purchase_return_prefix) ? $setting->purchase_return_prefix : 'RT';
+
         // Get the last purchase return with a reference that starts with the prefix
         $last = DB::table('purchase_returns')
             ->where('Ref', 'like', $prefix.'_%')
@@ -971,7 +971,7 @@ class PurchasesReturnController extends BaseController
         if ($last) {
             $item = $last->Ref;
             $nwMsg = explode('_', $item);
-            
+
             // Ensure valid structure before processing
             if (isset($nwMsg[1]) && is_numeric($nwMsg[1])) {
                 $inMsg = $nwMsg[1] + 1;

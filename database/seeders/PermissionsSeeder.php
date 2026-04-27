@@ -276,7 +276,7 @@ class PermissionsSeeder extends Seeder
                     'id' => 65,
                     'name' => 'category',
                 ],
-              
+
                 [
                     'id' => 66,
                     'name' => 'backup',

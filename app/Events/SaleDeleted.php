@@ -18,8 +18,3 @@ class SaleDeleted
         $this->sale = $sale;
     }
 }
-
-
-
-
-

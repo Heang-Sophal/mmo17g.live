@@ -44,6 +44,7 @@ class CustomField extends Model
         if ($this->field_type === 'select' && $this->default_value) {
             return is_array($this->default_value) ? $this->default_value : json_decode($this->default_value, true);
         }
+
         return [];
     }
 }

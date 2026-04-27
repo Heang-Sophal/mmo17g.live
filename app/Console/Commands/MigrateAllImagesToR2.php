@@ -4,12 +4,12 @@ namespace App\Console\Commands;
 
 use App\Models\Brand;
 use App\Models\Language;
+use App\Models\Leave;
 use App\Models\Product;
 use App\Models\Setting;
 use App\Models\StoreBanner;
 use App\Models\StoreSetting;
 use App\Models\User;
-use App\Models\Leave;
 use Illuminate\Console\Command;
 
 class MigrateAllImagesToR2 extends Command

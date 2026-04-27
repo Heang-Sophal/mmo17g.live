@@ -2,8 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\OauthAccessToken;
-use App\Models\OauthRefreshToken;
 use App\Models\UserLoginSession;
 use Carbon\Carbon;
 use Closure;
@@ -86,6 +84,7 @@ class EnforceApiTokenTimeout
         if ($passportToken instanceof EloquentModel) {
             $key = (string) $passportToken->getKey();
             $loginAt = $passportToken->created_at instanceof Carbon ? $passportToken->created_at : $now;
+
             return [$key !== '' ? $key : null, $loginAt, false];
         }
 
@@ -152,4 +151,3 @@ class EnforceApiTokenTimeout
         return $response;
     }
 }
-

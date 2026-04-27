@@ -46,8 +46,8 @@ function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
       form: {
         enabled: true,
         store_name: '',
-        primary_color: '#6c5ce7',
-        secondary_color: '#00c2ff',
+        primary_color: '#D6A735',
+        secondary_color: '#8D6208',
         font_family: 'Arial, sans-serif',
         language: 'en',
         default_warehouse_id: '',
@@ -87,6 +87,9 @@ function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
       }, {
         value: 'ar',
         text: 'العربية'
+      }, {
+        value: 'kh',
+        text: 'Khmer'
       }]
     };
   },

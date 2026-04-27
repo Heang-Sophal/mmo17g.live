@@ -4,17 +4,17 @@ namespace App\Services;
 
 use App\utils\helpers;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class TelegramService
 {
     /**
      * Send message to Telegram chat
      *
-     * @param string $chatId Telegram Chat ID
-     * @param string $message Message to send
-     * @param string|null $botToken Optional bot token (if null, uses global config)
+     * @param  string  $chatId  Telegram Chat ID
+     * @param  string  $message  Message to send
+     * @param  string|null  $botToken  Optional bot token (if null, uses global config)
      * @return bool Success status
      */
     public function sendMessage(string $chatId, string $message, ?string $botToken = null, ?int $replyToMessageId = null): bool
@@ -27,20 +27,21 @@ class TelegramService
         string $message,
         ?string $botToken = null,
         ?int $replyToMessageId = null
-    ): ?array
-    {
+    ): ?array {
         // Use provided bot token or fallback to global config
         $token = $botToken ?: config('services.telegram.bot_token');
-        
-        \Log::info('TelegramService: Sending message with token: ' . (substr($token, 0, 20) . '...') . ' to chat: ' . $chatId);
-        
+
+        \Log::info('TelegramService: Sending message with token: '.(substr($token, 0, 20).'...').' to chat: '.$chatId);
+
         if (empty($token)) {
             \Log::error('TelegramService: Bot token is empty');
+
             return null;
         }
-        
+
         if (empty($chatId)) {
             \Log::error('TelegramService: Chat ID is empty');
+
             return null;
         }
 
@@ -62,11 +63,11 @@ class TelegramService
                 'verify' => false,  // Disable SSL verification for self-signed certs
             ])->timeout(30)->post("https://api.telegram.org/bot{$token}/sendMessage", $payload);
 
-            \Log::info('TelegramService: API Response Status: ' . $response->status());
+            \Log::info('TelegramService: API Response Status: '.$response->status());
 
             if ($response->successful()) {
                 $data = $response->json();
-                \Log::info('TelegramService: Message sent successfully, ok=' . ($data['ok'] ?? 'false'));
+                \Log::info('TelegramService: Message sent successfully, ok='.($data['ok'] ?? 'false'));
                 if ($data['ok'] ?? false) {
                     return $data['result'] ?? [];
                 }
@@ -94,10 +95,10 @@ class TelegramService
     /**
      * Send sale notification to warehouse Telegram group
      *
-     * @param array $saleData Sale data
-     * @param string $warehouseName Warehouse name
-     * @param string $chatId Telegram Chat ID
-     * @param string|null $botToken Optional bot token for this warehouse
+     * @param  array  $saleData  Sale data
+     * @param  string  $warehouseName  Warehouse name
+     * @param  string  $chatId  Telegram Chat ID
+     * @param  string|null  $botToken  Optional bot token for this warehouse
      * @return bool Success status
      */
     public function sendSaleNotification(array $saleData, string $warehouseName, string $chatId, ?string $botToken = null): bool
@@ -207,13 +208,13 @@ class TelegramService
     /**
      * Format sale message for Telegram
      *
-     * @param array $saleData Sale data
-     * @param string $warehouseName Warehouse name
+     * @param  array  $saleData  Sale data
+     * @param  string  $warehouseName  Warehouse name
      * @return string Formatted message
      */
     private function formatSaleMessage(array $saleData, string $warehouseName): string
     {
-        $helpers = new helpers();
+        $helpers = new helpers;
         $currency = strtoupper($helpers->Get_Currency_Code() ?? 'USD');
 
         $warehouse = $this->escape((string) $warehouseName);
@@ -248,14 +249,14 @@ class TelegramService
         $message .= "👨‍💼 <b>អ្នកលក់:</b> {$sellerName}\n";
         $message .= "📞 <b>លេខអ្នកលក់:</b> {$sellerPhone}\n";
         $message .= "📅 <b>កាលបរិច្ឆេទ/ម៉ោង:</b> {$dateTime}\n\n";
-        $message .= "<i>ប្រព័ន្ធ MMO 17G POS</i>";
+        $message .= '<i>ប្រព័ន្ធ MMO 17G POS</i>';
 
         return $message;
     }
 
     private function formatDeliveryCompletedMessage(array $deliveryData, string $warehouseName): string
     {
-        $helpers = new helpers();
+        $helpers = new helpers;
         $currency = strtoupper($helpers->Get_Currency_Code() ?? 'USD');
 
         $saleRef = $this->escape((string) ($deliveryData['ref'] ?? 'N/A'));
@@ -293,6 +294,7 @@ class TelegramService
                     'path' => $imagePath,
                     'caption' => $this->formatSaleProductPhotoCaption($saleRef, $product),
                 ];
+
                 continue;
             }
 
@@ -449,7 +451,7 @@ class TelegramService
                         continue;
                     }
 
-                    $attachmentName = 'photo_' . $index;
+                    $attachmentName = 'photo_'.$index;
                     $handle = fopen($path, 'r');
                     if ($handle === false) {
                         continue;
@@ -457,7 +459,7 @@ class TelegramService
 
                     $handles[] = $handle;
                     $request = $request->attach($attachmentName, $handle, basename($path));
-                    $mediaItem['media'] = 'attach://' . $attachmentName;
+                    $mediaItem['media'] = 'attach://'.$attachmentName;
                 } else {
                     $url = trim((string) ($item['url'] ?? ''));
                     if ($url === '') {
@@ -529,8 +531,8 @@ class TelegramService
         }
 
         $paths = [
-            public_path('images/products/' . $filename),
-            storage_path('app/public/images/products/' . $filename),
+            public_path('images/products/'.$filename),
+            storage_path('app/public/images/products/'.$filename),
         ];
 
         foreach ($paths as $path) {
@@ -592,16 +594,17 @@ class TelegramService
     public function getBotInfo(): ?array
     {
         $botToken = config('services.telegram.bot_token');
-        
+
         if (empty($botToken)) {
             return null;
         }
 
         try {
             $response = Http::timeout(10)->get("https://api.telegram.org/bot{$botToken}/getMe");
-            
+
             if ($response->successful()) {
                 $data = $response->json();
+
                 return $data['result'] ?? null;
             }
 

@@ -37,7 +37,7 @@ class ClientController extends BaseController
         $order = $request->SortField ?: 'id';
         $dir = strtolower($request->SortType ?: 'desc');
         // Validate sort direction
-        if (!in_array($dir, ['asc', 'desc'], true)) {
+        if (! in_array($dir, ['asc', 'desc'], true)) {
             $dir = 'desc';
         }
         $helpers = new helpers;
@@ -59,7 +59,7 @@ class ClientController extends BaseController
                 });
             });
         $totalRows = $Filtred->count();
-        
+
         // Handle pagination - MySQL requires LIMIT when using OFFSET
         if ($perPage == '-1' || empty($perPage) || $perPage <= 0) {
             // Get all records without pagination (no offset/limit)
@@ -206,10 +206,10 @@ class ClientController extends BaseController
     public function show($id)
     {
         $client = Client::where('deleted_at', '=', null)->findOrFail($id);
-        
+
         $accounts = Account::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'account_name']);
         $payment_methods = PaymentMethod::whereNull('deleted_at')->get(['id', 'name']);
-        
+
         return response()->json([
             'client' => $client,
             'accounts' => $accounts,
@@ -386,7 +386,7 @@ class ClientController extends BaseController
             $lastPart = end($nwMsg); // Get the number part
             $prefix = implode('_', array_slice($nwMsg, 0, -1)); // Get everything before the number
             $inMsg = (int) $lastPart + 1;
-            $code = $prefix . '_' . $inMsg;
+            $code = $prefix.'_'.$inMsg;
         } else {
             $code = 'OB_PAY_1111';
         }
@@ -1014,7 +1014,7 @@ class ClientController extends BaseController
                 'client_opening_balance_payments.id',
                 'client_opening_balance_payments.date',
                 'client_opening_balance_payments.Ref as Ref',
-                DB::raw("NULL as Sale_Ref"),
+                DB::raw('NULL as Sale_Ref'),
                 'payment_methods.name as payment_method',
                 'client_opening_balance_payments.montant',
                 DB::raw("'opening_balance' as payment_type")
@@ -1200,7 +1200,7 @@ class ClientController extends BaseController
             ->select(
                 'client_opening_balance_payments.date',
                 'client_opening_balance_payments.Ref',
-                DB::raw("NULL as Sale_Ref"),
+                DB::raw('NULL as Sale_Ref'),
                 'payment_methods.name as payment_method',
                 'client_opening_balance_payments.montant',
                 DB::raw("'opening_balance' as payment_type")
@@ -1209,7 +1209,7 @@ class ClientController extends BaseController
 
         // Combine both payment types
         $payments = $salesPayments->merge($openingBalancePayments)
-            ->sortByDesc(function($payment) {
+            ->sortByDesc(function ($payment) {
                 return $payment->date;
             })
             ->values();

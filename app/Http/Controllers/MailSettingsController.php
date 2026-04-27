@@ -73,13 +73,13 @@ class MailSettingsController extends BaseController
                     ->subject('Test Mail Configuration');
 
                 // Prefer sender_email from server, then fallback to settings email
-                $fromEmail = ($server && $server->sender_email) 
-                    ? $server->sender_email 
+                $fromEmail = ($server && $server->sender_email)
+                    ? $server->sender_email
                     : ($settings && $settings->email ? $settings->email : null);
-                
+
                 if ($fromEmail) {
-                    $fromName = ($server && $server->sender_name) 
-                        ? $server->sender_name 
+                    $fromName = ($server && $server->sender_name)
+                        ? $server->sender_name
                         : ($settings && $settings->CompanyName ? $settings->CompanyName : 'Stocky');
                     $message->from($fromEmail, $fromName);
                 }

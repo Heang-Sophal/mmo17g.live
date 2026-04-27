@@ -5,14 +5,13 @@ namespace App\Services\WooCommerce;
 use App\Models\Brand as PosBrand;
 use App\Models\Category as PosCategory;
 use App\Models\Client as PosClient;
+use App\Models\PaymentMethod;
+use App\Models\PaymentSale;
 use App\Models\Product;
 use App\Models\product_warehouse;
 use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\SaleDetail;
-use App\Models\PaymentSale;
-use App\Models\PaymentMethod;
-use App\Models\Account;
 use App\Models\Setting;
 use App\Models\Unit;
 use App\Models\Warehouse;
@@ -29,9 +28,12 @@ class SyncService
 {
     // ---- Meta keys used to create a deterministic mapping POS <-> Woo ----
     private const WOO_META_EXTERNAL_PRODUCT_ID = 'external_product_id';
-    private const WOO_META_STOCKY_PRODUCT_ID   = '_stocky_product_id';
+
+    private const WOO_META_STOCKY_PRODUCT_ID = '_stocky_product_id';
+
     private const WOO_META_EXTERNAL_VARIANT_ID = 'external_variant_id';
-    private const WOO_SYNC_ABORT_EXCEPTION     = '__WOO_SYNC_ABORT__';
+
+    private const WOO_SYNC_ABORT_EXCEPTION = '__WOO_SYNC_ABORT__';
 
     private Client $client;
 
@@ -111,20 +113,24 @@ class SyncService
                     'page' => $page,
                 ], 12, 5);
 
-                if (!$res->successful()) {
+                if (! $res->successful()) {
                     break;
                 }
 
                 $data = $res->json();
                 $notesArr = is_array($data) ? ($data['notes'] ?? $data['order_notes'] ?? $data) : [];
-                if (!is_array($notesArr) || empty($notesArr)) {
+                if (! is_array($notesArr) || empty($notesArr)) {
                     break;
                 }
 
                 foreach ($notesArr as $n) {
-                    if (!is_array($n)) continue;
+                    if (! is_array($n)) {
+                        continue;
+                    }
                     $txt = trim(strip_tags((string) ($n['note'] ?? '')));
-                    if ($txt === '') continue;
+                    if ($txt === '') {
+                        continue;
+                    }
 
                     // avoid duplicating customer_note if Woo also returns it in notes list
                     if ($customerNote !== '' && $txt === trim(strip_tags($customerNote))) {
@@ -148,7 +154,7 @@ class SyncService
                 $page++;
             }
 
-            if (!empty($collected)) {
+            if (! empty($collected)) {
                 $parts[] = "Order notes:\n".implode("\n", $collected);
             }
         } catch (\Throwable $e) {
@@ -181,6 +187,7 @@ class SyncService
         if (in_array($s, ['processing', 'on-hold'], true)) {
             return 'ordered';
         }
+
         return 'pending';
     }
 
@@ -200,7 +207,7 @@ class SyncService
         $processed = 0;
 
         // Pick default warehouse if not provided
-        if (!$warehouseId || $warehouseId <= 0) {
+        if (! $warehouseId || $warehouseId <= 0) {
             $settings = Setting::whereNull('deleted_at')->first();
             $candidate = $settings ? (int) ($settings->warehouse_id ?? 0) : 0;
             $warehouseId = $candidate > 0 && Warehouse::where('id', $candidate)->whereNull('deleted_at')->exists()
@@ -208,7 +215,7 @@ class SyncService
                 : (int) (Warehouse::whereNull('deleted_at')->min('id') ?? 0);
         }
 
-        if (!$warehouseId || $warehouseId <= 0) {
+        if (! $warehouseId || $warehouseId <= 0) {
             return ['ok' => false, 'error' => 'No warehouse configured for order import'];
         }
 
@@ -229,7 +236,7 @@ class SyncService
                     // default: all statuses; Woo API returns recent
                 ], 20, 5);
 
-                if (!$res->successful()) {
+                if (! $res->successful()) {
                     $errors++;
                     $this->log('orders.pull', 'error', 'Failed to fetch WooCommerce orders', [
                         'status' => $res->status(),
@@ -241,7 +248,7 @@ class SyncService
 
                 $body = $res->json();
                 $orders = is_array($body) ? ($body['orders'] ?? $body) : [];
-                if (!is_array($orders) || empty($orders)) {
+                if (! is_array($orders) || empty($orders)) {
                     break;
                 }
 
@@ -252,6 +259,7 @@ class SyncService
                         $wooOrderId = (int) ($order['id'] ?? 0);
                         if ($wooOrderId <= 0) {
                             $skipped++;
+
                             continue;
                         }
 
@@ -266,6 +274,7 @@ class SyncService
                             $existingActiveSale->woocommerce_order_number = (string) ($order['number'] ?? $existingActiveSale->woocommerce_order_number ?? '');
                             $existingActiveSale->save();
                             $updated++;
+
                             continue;
                         }
 
@@ -279,12 +288,12 @@ class SyncService
                         if ($wooCustomerId > 0) {
                             $client = PosClient::whereNull('deleted_at')->where('woocommerce_id', $wooCustomerId)->first();
                         }
-                        if (!$client && $normalizedEmail !== '') {
+                        if (! $client && $normalizedEmail !== '') {
                             $client = PosClient::whereNull('deleted_at')
                                 ->whereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail])
                                 ->first();
                         }
-                        if (!$client) {
+                        if (! $client) {
                             $settings = Setting::whereNull('deleted_at')->with('Client')->first();
                             $defaultClientId = $settings ? (int) ($settings->client_id ?? 0) : 0;
                             if ($defaultClientId > 0) {
@@ -293,7 +302,7 @@ class SyncService
                         }
 
                         // If no client and we have an email, create one
-                        if (!$client && $normalizedEmail !== '') {
+                        if (! $client && $normalizedEmail !== '') {
                             $maxCode = PosClient::max('code') ?? 0;
                             $newCode = $maxCode + 1;
 
@@ -319,6 +328,7 @@ class SyncService
                                     'email' => $billingEmail,
                                     'error' => $validator->errors()->first('email'),
                                 ]);
+
                                 continue;
                             }
 
@@ -336,7 +346,7 @@ class SyncService
                             ]);
                         }
 
-                        if (!$client) {
+                        if (! $client) {
                             $skipped++;
                             $errors++;
                             $this->log('orders.pull', 'warning', 'Skipped order: could not resolve customer', [
@@ -344,6 +354,7 @@ class SyncService
                                 'customer_id' => $wooCustomerId,
                                 'billing_email' => $billingEmail,
                             ]);
+
                             continue;
                         }
 
@@ -371,8 +382,9 @@ class SyncService
                         $notes = $this->composeSaleNotesFromWooOrder($order, $wooOrderId);
 
                         $lineItems = $order['line_items'] ?? [];
-                        if (!is_array($lineItems) || empty($lineItems)) {
+                        if (! is_array($lineItems) || empty($lineItems)) {
                             $skipped++;
+
                             continue;
                         }
 
@@ -381,7 +393,7 @@ class SyncService
                         $stockAdjustments = [];
 
                         foreach ($lineItems as $li) {
-                            if (!is_array($li)) {
+                            if (! is_array($li)) {
                                 continue;
                             }
 
@@ -402,14 +414,14 @@ class SyncService
                                     $product = Product::where('id', $variant->product_id)->whereNull('deleted_at')->first();
                                 }
                             }
-                            if (!$product && $wooProductId > 0) {
+                            if (! $product && $wooProductId > 0) {
                                 $product = Product::where('woocommerce_id', $wooProductId)->whereNull('deleted_at')->first();
                             }
-                            if (!$product && $sku !== '') {
+                            if (! $product && $sku !== '') {
                                 $product = Product::where('code', $sku)->whereNull('deleted_at')->first();
                             }
 
-                            if (!$product) {
+                            if (! $product) {
                                 $errors++;
                                 $skipped++;
                                 $this->log('orders.pull', 'warning', 'Skipped order: could not map line item product', [
@@ -551,7 +563,7 @@ class SyncService
                                             $paymentMethodId = (int) $pm->id;
                                         }
                                     }
-                                    if (!$paymentMethodId) {
+                                    if (! $paymentMethodId) {
                                         // Fallback: first payment method
                                         $pm = PaymentMethod::orderBy('id')->first();
                                         $paymentMethodId = $pm ? (int) $pm->id : null;
@@ -635,14 +647,14 @@ class SyncService
         }
 
         // Pick default warehouse if not provided (same as pullOrders)
-        if (!$warehouseId || $warehouseId <= 0) {
+        if (! $warehouseId || $warehouseId <= 0) {
             $settings = Setting::whereNull('deleted_at')->first();
             $candidate = $settings ? (int) ($settings->warehouse_id ?? 0) : 0;
             $warehouseId = $candidate > 0 && Warehouse::where('id', $candidate)->whereNull('deleted_at')->exists()
                 ? $candidate
                 : (int) (Warehouse::whereNull('deleted_at')->min('id') ?? 0);
         }
-        if (!$warehouseId || $warehouseId <= 0) {
+        if (! $warehouseId || $warehouseId <= 0) {
             return ['ok' => false, 'error' => 'No warehouse configured for order import'];
         }
 
@@ -652,12 +664,12 @@ class SyncService
         $existingActiveSale = Sale::whereNull('deleted_at')->where('woocommerce_order_id', $wooOrderId)->first();
 
         $res = $this->client->getNoRetry('orders/'.$wooOrderId, [], 20, 5);
-        if (!$res->successful()) {
+        if (! $res->successful()) {
             return ['ok' => false, 'error' => 'Failed to fetch WooCommerce order', 'status' => $res->status(), 'body' => $res->body()];
         }
 
         $order = $res->json();
-        if (!is_array($order)) {
+        if (! is_array($order)) {
             return ['ok' => false, 'error' => 'Invalid response from WooCommerce'];
         }
 
@@ -688,12 +700,12 @@ class SyncService
             if ($wooCustomerId > 0) {
                 $client = PosClient::whereNull('deleted_at')->where('woocommerce_id', $wooCustomerId)->first();
             }
-            if (!$client && $normalizedEmail !== '') {
+            if (! $client && $normalizedEmail !== '') {
                 $client = PosClient::whereNull('deleted_at')
                     ->whereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail])
                     ->first();
             }
-            if (!$client) {
+            if (! $client) {
                 $settings = Setting::whereNull('deleted_at')->with('Client')->first();
                 $defaultClientId = $settings ? (int) ($settings->client_id ?? 0) : 0;
                 if ($defaultClientId > 0) {
@@ -702,7 +714,7 @@ class SyncService
             }
 
             // If no client and we have an email, create one (only if unique)
-            if (!$client && $normalizedEmail !== '') {
+            if (! $client && $normalizedEmail !== '') {
                 $validator = Validator::make(
                     ['email' => $billingEmail],
                     ['email' => ['required', 'email', Rule::unique('clients', 'email')->whereNull('deleted_at')]]
@@ -738,7 +750,7 @@ class SyncService
                 ]);
             }
 
-            if (!$client) {
+            if (! $client) {
                 return ['ok' => false, 'error' => 'Could not resolve order customer'];
             }
 
@@ -765,7 +777,7 @@ class SyncService
             $notes = $this->composeSaleNotesFromWooOrder($order, $wooOrderId);
 
             $lineItems = $order['line_items'] ?? [];
-            if (!is_array($lineItems) || empty($lineItems)) {
+            if (! is_array($lineItems) || empty($lineItems)) {
                 return ['ok' => false, 'error' => 'Order has no line items'];
             }
 
@@ -773,9 +785,13 @@ class SyncService
             $stockAdjustments = [];
 
             foreach ($lineItems as $li) {
-                if (!is_array($li)) continue;
+                if (! is_array($li)) {
+                    continue;
+                }
                 $qty = (float) ($li['quantity'] ?? 0);
-                if ($qty <= 0) continue;
+                if ($qty <= 0) {
+                    continue;
+                }
 
                 $wooProductId = (int) ($li['product_id'] ?? 0);
                 $wooVariationId = (int) ($li['variation_id'] ?? 0);
@@ -789,13 +805,13 @@ class SyncService
                         $product = Product::where('id', $variant->product_id)->whereNull('deleted_at')->first();
                     }
                 }
-                if (!$product && $wooProductId > 0) {
+                if (! $product && $wooProductId > 0) {
                     $product = Product::where('woocommerce_id', $wooProductId)->whereNull('deleted_at')->first();
                 }
-                if (!$product && $sku !== '') {
+                if (! $product && $sku !== '') {
                     $product = Product::where('code', $sku)->whereNull('deleted_at')->first();
                 }
-                if (!$product) {
+                if (! $product) {
                     return ['ok' => false, 'error' => 'Order contains unmapped products'];
                 }
 
@@ -922,7 +938,7 @@ class SyncService
                                 $paymentMethodId = (int) $pm->id;
                             }
                         }
-                        if (!$paymentMethodId) {
+                        if (! $paymentMethodId) {
                             $pm = PaymentMethod::orderBy('id')->first();
                             $paymentMethodId = $pm ? (int) $pm->id : null;
                         }
@@ -997,12 +1013,12 @@ class SyncService
     private function wooMetaValue(array $wooProduct, string $key): ?string
     {
         $meta = $wooProduct['meta_data'] ?? null;
-        if (!is_array($meta)) {
+        if (! is_array($meta)) {
             return null;
         }
 
         foreach ($meta as $m) {
-            if (!is_array($m)) {
+            if (! is_array($m)) {
                 continue;
             }
             if (($m['key'] ?? null) === $key) {
@@ -1011,6 +1027,7 @@ class SyncService
                     return null;
                 }
                 $s = trim((string) $v);
+
                 return $s === '' ? null : $s;
             }
         }
@@ -1037,8 +1054,9 @@ class SyncService
                 '_fields' => 'id,slug',
                 'context' => 'edit',
             ], 20, 5);
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 $cached = 1;
+
                 return $cached;
             }
 
@@ -1046,11 +1064,14 @@ class SyncService
             $items = is_array($body) ? ($body['categories'] ?? $body) : [];
             if (is_array($items)) {
                 foreach ($items as $it) {
-                    if (!is_array($it)) continue;
+                    if (! is_array($it)) {
+                        continue;
+                    }
                     if (($it['slug'] ?? null) === 'uncategorized') {
                         $id = (int) ($it['id'] ?? 0);
                         if ($id > 0) {
                             $cached = $id;
+
                             return $cached;
                         }
                     }
@@ -1062,6 +1083,7 @@ class SyncService
 
         // Fallback (common default)
         $cached = 1;
+
         return $cached;
     }
 
@@ -1079,23 +1101,28 @@ class SyncService
                 '_fields' => 'id,categories',
                 'context' => 'edit',
             ], 20, 5);
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 return [];
             }
             $body = $res->json();
-            if (!is_array($body)) {
+            if (! is_array($body)) {
                 return [];
             }
             $cats = $body['categories'] ?? [];
-            if (!is_array($cats)) {
+            if (! is_array($cats)) {
                 return [];
             }
             $ids = [];
             foreach ($cats as $c) {
-                if (!is_array($c)) continue;
+                if (! is_array($c)) {
+                    continue;
+                }
                 $id = (int) ($c['id'] ?? 0);
-                if ($id > 0) $ids[$id] = true;
+                if ($id > 0) {
+                    $ids[$id] = true;
+                }
             }
+
             return array_map('intval', array_keys($ids));
         } catch (\Throwable $e) {
             return [];
@@ -1129,6 +1156,7 @@ class SyncService
                     $unique[$id] = true;
                 }
             }
+
             return count($unique) === 0 || (count($unique) === 1 && isset($unique[$uncatId]));
         }
 
@@ -1152,21 +1180,22 @@ class SyncService
                 'context' => 'edit',
                 'status' => 'any',
             ], 12, 5);
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 // Some stores block context=edit on GET (security plugins). Fallback to default context.
                 $res = $this->client->getNoRetry('products/'.$wooProductId, [
                     '_fields' => 'id,type',
                     'status' => 'any',
                 ], 12, 5);
             }
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 return null;
             }
             $body = $res->json();
-            if (!is_array($body)) {
+            if (! is_array($body)) {
                 return null;
             }
             $type = trim((string) ($body['type'] ?? ''));
+
             return $type !== '' ? $type : null;
         } catch (\Throwable $e) {
             return null;
@@ -1209,7 +1238,7 @@ class SyncService
                     'per_page' => $per,
                     'context' => 'edit',
                 ], 20, 5);
-                if (!$res->successful()) {
+                if (! $res->successful()) {
                     // Fallback: some stores block context=edit on GET.
                     $res = $this->client->getNoRetry('products/'.$wooProductId.'/variations', [
                         'page' => $page,
@@ -1218,17 +1247,19 @@ class SyncService
                     ], 20, 5);
                 }
 
-                if (!$res->successful()) {
+                if (! $res->successful()) {
                     break;
                 }
 
                 $list = $res->json();
-                if (!is_array($list) || empty($list)) {
+                if (! is_array($list) || empty($list)) {
                     break;
                 }
 
                 foreach ($list as $v) {
-                    if (!is_array($v)) continue;
+                    if (! is_array($v)) {
+                        continue;
+                    }
                     $vid = (int) ($v['id'] ?? 0);
                     if ($vid > 0) {
                         $ids[] = $vid;
@@ -1347,7 +1378,7 @@ class SyncService
                 '_fields' => 'id,sku,attributes,meta_data',
             ], 20, 5);
 
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 // Fallback: some stores block context=edit on GET.
                 $res = $this->client->getNoRetry('products/'.$wooProductId.'/variations', [
                     'page' => $page,
@@ -1356,26 +1387,32 @@ class SyncService
                 ], 20, 5);
             }
 
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 break;
             }
 
             $list = $res->json();
-            if (!is_array($list) || empty($list)) {
+            if (! is_array($list) || empty($list)) {
                 break;
             }
 
             foreach ($list as $v) {
-                if (!is_array($v)) continue;
+                if (! is_array($v)) {
+                    continue;
+                }
                 $vid = (int) ($v['id'] ?? 0);
-                if ($vid <= 0) continue;
+                if ($vid <= 0) {
+                    continue;
+                }
 
                 $sku = trim((string) ($v['sku'] ?? ''));
                 $option = null;
                 $attrs = $v['attributes'] ?? [];
                 if (is_array($attrs)) {
                     foreach ($attrs as $a) {
-                        if (!is_array($a)) continue;
+                        if (! is_array($a)) {
+                            continue;
+                        }
                         $opt = trim((string) ($a['option'] ?? ''));
                         if ($opt !== '') {
                             $option = $opt;
@@ -1388,7 +1425,9 @@ class SyncService
                 $meta = $v['meta_data'] ?? [];
                 if (is_array($meta)) {
                     foreach ($meta as $m) {
-                        if (!is_array($m)) continue;
+                        if (! is_array($m)) {
+                            continue;
+                        }
                         if (($m['key'] ?? null) === self::WOO_META_EXTERNAL_VARIANT_ID) {
                             $val = (string) ($m['value'] ?? '');
                             if ($val !== '') {
@@ -1458,6 +1497,7 @@ class SyncService
                             if (count($samples) < 20) {
                                 $samples[] = ['product_id' => $product->id ?? null, 'woocommerce_id' => $wooId, 'reason' => 'missing_woocommerce_id'];
                             }
+
                             continue;
                         }
 
@@ -1468,25 +1508,27 @@ class SyncService
                             $cat = null;
                         }
 
-                        $wooCatId = $cat && !empty($cat->woocommerce_id) ? (int) $cat->woocommerce_id : 0;
+                        $wooCatId = $cat && ! empty($cat->woocommerce_id) ? (int) $cat->woocommerce_id : 0;
                         if ($wooCatId <= 0) {
                             $skipped++;
                             $skippedNoCategoryMapping++;
                             if (count($samples) < 20) {
                                 $samples[] = ['product_id' => $product->id ?? null, 'woocommerce_id' => $wooId, 'reason' => 'missing_category_mapping'];
                             }
+
                             continue;
                         }
 
                         // If the Woo product has Uncategorized, replace it with the mapped Stocky category.
                         $existingIds = $this->wooProductCategoryIds($wooId);
                         $hasUncategorized = in_array((int) $uncatId, $existingIds, true);
-                        if (!$hasUncategorized) {
+                        if (! $hasUncategorized) {
                             $skipped++;
                             $skippedNoUncategorized++;
                             if (count($samples) < 20) {
                                 $samples[] = ['product_id' => $product->id ?? null, 'woocommerce_id' => $wooId, 'reason' => 'no_uncategorized'];
                             }
+
                             continue;
                         }
 
@@ -1494,7 +1536,7 @@ class SyncService
                         $newIds = array_values(array_unique(array_filter($existingIds, function ($id) use ($uncatId) {
                             return (int) $id > 0 && (int) $id !== (int) $uncatId;
                         })));
-                        if (!in_array($wooCatId, $newIds, true)) {
+                        if (! in_array($wooCatId, $newIds, true)) {
                             $newIds[] = $wooCatId;
                         }
                         $payloadCats = array_map(fn ($id) => ['id' => (int) $id], $newIds);
@@ -1503,7 +1545,7 @@ class SyncService
                             'categories' => $payloadCats,
                         ], 20, 5);
 
-                        if (!$res->successful()) {
+                        if (! $res->successful()) {
                             $errors++;
                             $this->log('products.fix_categories', 'error', 'Woo request failed', [
                                 'product_id' => $product->id,
@@ -1511,6 +1553,7 @@ class SyncService
                                 'status' => $res->status(),
                                 'body' => $res->body(),
                             ]);
+
                             continue;
                         }
 
@@ -1552,17 +1595,17 @@ class SyncService
 
         $expectedSku = trim((string) ($expectedSku ?? ''));
         $res = $this->client->getNoRetry('products/'.$wooId, ['status' => 'any', 'context' => 'edit'], 10, 5);
-        if (!$res->successful()) {
+        if (! $res->successful()) {
             // Fallback for stores that block context=edit on GET.
             $res = $this->client->getNoRetry('products/'.$wooId, ['status' => 'any'], 10, 5);
         }
 
-        if (!$res->successful()) {
+        if (! $res->successful()) {
             return false;
         }
 
         $data = $res->json();
-        if (!is_array($data)) {
+        if (! is_array($data)) {
             return false;
         }
 
@@ -1596,7 +1639,7 @@ class SyncService
             $status = $res->status();
             $data = $res->json();
 
-            if (!$res->successful() || !is_array($data)) {
+            if (! $res->successful() || ! is_array($data)) {
                 return ['ok' => false, 'status' => $status, 'body' => $res->body()];
             }
 
@@ -1604,9 +1647,9 @@ class SyncService
                 'ok' => true,
                 'status' => $status,
                 'type' => (string) ($data['type'] ?? ''),
-                'sku'  => (string) ($data['sku'] ?? ''),
+                'sku' => (string) ($data['sku'] ?? ''),
                 'external_product_id' => $this->wooMetaValue($data, self::WOO_META_EXTERNAL_PRODUCT_ID),
-                'stocky_product_id'   => $this->wooMetaValue($data, self::WOO_META_STOCKY_PRODUCT_ID),
+                'stocky_product_id' => $this->wooMetaValue($data, self::WOO_META_STOCKY_PRODUCT_ID),
             ];
         } catch (\Throwable $e) {
             return ['ok' => false, 'status' => null, 'body' => $e->getMessage()];
@@ -1630,7 +1673,7 @@ class SyncService
 
         try {
             $page = 1;
-            $per  = 100;
+            $per = 100;
 
             while (true) {
                 if ($progress) {
@@ -1638,20 +1681,20 @@ class SyncService
                 }
 
                 $res = $this->client->getNoRetry('products', [
-                    'page'     => $page,
+                    'page' => $page,
                     'per_page' => $per,
-                    'status'   => 'any',
-                    'context'  => 'edit',
-                    '_fields'  => 'id,type,sku,meta_data',
+                    'status' => 'any',
+                    'context' => 'edit',
+                    '_fields' => 'id,type,sku,meta_data',
                 ], 20, 5);
                 $hasMeta = true;
-                if (!$res->successful()) {
+                if (! $res->successful()) {
                     // Fallback: remove context=edit (some stores block it).
                     $res2 = $this->client->getNoRetry('products', [
-                        'page'     => $page,
+                        'page' => $page,
                         'per_page' => $per,
-                        'status'   => 'any',
-                        '_fields'  => 'id,type,sku',
+                        'status' => 'any',
+                        '_fields' => 'id,type,sku',
                     ], 20, 5);
                     if ($res2->successful()) {
                         $res = $res2;
@@ -1659,22 +1702,22 @@ class SyncService
                     }
                 }
 
-                if (!$res->successful()) {
+                if (! $res->successful()) {
                     $this->log('products.push', 'warning', 'Failed building remote index', [
                         'status' => $res->status(),
-                        'body'   => $res->body(),
-                        'page'   => $page,
+                        'body' => $res->body(),
+                        'page' => $page,
                     ]);
                     break;
                 }
 
                 $items = $res->json();
-                if (empty($items) || !is_array($items)) {
+                if (empty($items) || ! is_array($items)) {
                     break;
                 }
 
                 foreach ($items as $it) {
-                    if (!is_array($it)) {
+                    if (! is_array($it)) {
                         continue;
                     }
                     $rid = (int) ($it['id'] ?? 0);
@@ -1692,19 +1735,19 @@ class SyncService
                     if ($sku !== '') {
                         $key = mb_strtolower($sku);
                         // Keep first occurrence; duplicates -> ambiguous, but we handle later via strict validation.
-                        if (!isset($remoteBySku[$key])) {
+                        if (! isset($remoteBySku[$key])) {
                             $remoteBySku[$key] = $rid;
                         }
                     }
 
                     if ($hasMeta) {
                         $external = $this->wooMetaValue($it, self::WOO_META_EXTERNAL_PRODUCT_ID);
-                        if ($external !== null && !isset($remoteByExternalId[$external])) {
+                        if ($external !== null && ! isset($remoteByExternalId[$external])) {
                             $remoteByExternalId[$external] = $rid;
                         }
 
                         $stocky = $this->wooMetaValue($it, self::WOO_META_STOCKY_PRODUCT_ID);
-                        if ($stocky !== null && !isset($remoteByExternalId[$stocky])) {
+                        if ($stocky !== null && ! isset($remoteByExternalId[$stocky])) {
                             $remoteByExternalId[$stocky] = $rid;
                         }
                     }
@@ -1803,7 +1846,7 @@ class SyncService
                 '_fields' => 'id,type,sku,meta_data',
                 'context' => 'edit',
             ], 10, 5);
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 // Fallback: some stores block context=edit on GET.
                 $res = $this->client->getNoRetry('products', [
                     'sku' => $sku,
@@ -1822,12 +1865,12 @@ class SyncService
                 ]);
             }
 
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 return 0;
             }
 
             $list = $res->json();
-            if (!is_array($list) || count($list) === 0) {
+            if (! is_array($list) || count($list) === 0) {
                 // Woo can keep SKUs reserved in lookup table even when product is trashed.
                 // Try to resolve in trash before declaring "not found".
                 try {
@@ -1849,7 +1892,7 @@ class SyncService
                         '_fields' => 'id,type,sku,meta_data,parent_id',
                         'context' => 'edit',
                     ], 10, 5);
-                    if (!$trashRes->successful()) {
+                    if (! $trashRes->successful()) {
                         $trashRes = $this->client->getNoRetry('products', [
                             'sku' => $sku,
                             'status' => 'trash',
@@ -1872,7 +1915,7 @@ class SyncService
                         if (is_array($trashList) && count($trashList) > 0) {
                             $matches = [];
                             foreach ($trashList as $it) {
-                                if (!is_array($it)) {
+                                if (! is_array($it)) {
                                     continue;
                                 }
                                 if ((string) ($it['type'] ?? '') === 'variation') {
@@ -1881,6 +1924,7 @@ class SyncService
                                     if ($pid > 0) {
                                         $matches[$pid] = true;
                                     }
+
                                     continue;
                                 }
                                 $remoteSku = trim((string) ($it['sku'] ?? ''));
@@ -1893,8 +1937,10 @@ class SyncService
                             }
                             if (count($matches) === 1) {
                                 $wooId = (int) array_key_first($matches);
+
                                 return $this->validateWooProductIdStrict($wooId, $sku, $localId) ? $wooId : -1;
                             }
+
                             return count($matches) === 0 ? 0 : -1;
                         }
                     }
@@ -1906,7 +1952,7 @@ class SyncService
 
             $matches = [];
             foreach ($list as $it) {
-                if (!is_array($it)) {
+                if (! is_array($it)) {
                     continue;
                 }
                 if ((string) ($it['type'] ?? '') === 'variation') {
@@ -1940,6 +1986,7 @@ class SyncService
                     'worker_heartbeat_at' => now()->toDateTimeString(),
                 ]);
             }
+
             return 0;
         }
     }
@@ -1956,6 +2003,7 @@ class SyncService
     private function ensureDefaultCategoryId(): int
     {
         $id = (int) (\App\Models\Category::whereNull('deleted_at')->min('id') ?? 0);
+
         return $id > 0 ? $id : 1;
     }
 
@@ -1981,6 +2029,7 @@ class SyncService
                 $cat->save();
             }
             $cache[$wooCatId] = $cat;
+
             return $cat;
         }
 
@@ -2011,7 +2060,7 @@ class SyncService
             DB::transaction(function () use ($wooCatId, $name, &$cat) {
                 // Link by woocommerce_id, else by exact name.
                 $cat = PosCategory::withTrashed()->firstOrNew(['woocommerce_id' => $wooCatId]);
-                if (!$cat->exists) {
+                if (! $cat->exists) {
                     $cat = PosCategory::withTrashed()->where('name', $name)->first() ?? $cat;
                 }
 
@@ -2027,6 +2076,7 @@ class SyncService
                 'name' => $name,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
 
@@ -2058,6 +2108,7 @@ class SyncService
                 $brand->save();
             }
             $cache[$wooBrandId] = $brand;
+
             return $brand;
         }
 
@@ -2098,7 +2149,7 @@ class SyncService
         try {
             DB::transaction(function () use ($wooBrandId, $name, $description, $imageSrc, &$brand) {
                 $brand = PosBrand::withTrashed()->firstOrNew(['woocommerce_id' => $wooBrandId]);
-                if (!$brand->exists) {
+                if (! $brand->exists) {
                     $brand = PosBrand::withTrashed()->where('name', $name)->first() ?? $brand;
                 }
 
@@ -2130,6 +2181,7 @@ class SyncService
                 'name' => $name,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
 
@@ -2144,6 +2196,7 @@ class SyncService
     {
         try {
             $id = (int) (\App\Models\Unit::whereNull('deleted_at')->min('id') ?? 0);
+
             return $id > 0 ? $id : 1;
         } catch (\Throwable $e) {
             return 1;
@@ -2159,6 +2212,7 @@ class SyncService
                 return $candidate;
             }
             $id = (int) (Warehouse::whereNull('deleted_at')->min('id') ?? 0);
+
             return $id > 0 ? $id : 1;
         } catch (\Throwable $e) {
             return 1;
@@ -2201,8 +2255,10 @@ class SyncService
             $existingDeleted = [];
             foreach ($rows as $r) {
                 $wid = (int) ($r->warehouse_id ?? 0);
-                if ($wid <= 0) continue;
-                if (!empty($r->deleted_at)) {
+                if ($wid <= 0) {
+                    continue;
+                }
+                if (! empty($r->deleted_at)) {
                     $existingDeleted[$wid] = true;
                 } else {
                     $existingActive[$wid] = true;
@@ -2227,11 +2283,11 @@ class SyncService
                     'deleted_at' => null,
                 ];
             }
-            if (!empty($toInsert)) {
+            if (! empty($toInsert)) {
                 DB::table('product_warehouse')->insert($toInsert);
             }
 
-            if (!empty($existingDeleted)) {
+            if (! empty($existingDeleted)) {
                 DB::table('product_warehouse')
                     ->where('product_id', $productId)
                     ->whereNull('product_variant_id')
@@ -2281,8 +2337,10 @@ class SyncService
             $existingDeleted = [];
             foreach ($rows as $r) {
                 $wid = (int) ($r->warehouse_id ?? 0);
-                if ($wid <= 0) continue;
-                if (!empty($r->deleted_at)) {
+                if ($wid <= 0) {
+                    continue;
+                }
+                if (! empty($r->deleted_at)) {
                     $existingDeleted[$wid] = true;
                 } else {
                     $existingActive[$wid] = true;
@@ -2307,11 +2365,11 @@ class SyncService
                     'deleted_at' => null,
                 ];
             }
-            if (!empty($toInsert)) {
+            if (! empty($toInsert)) {
                 DB::table('product_warehouse')->insert($toInsert);
             }
 
-            if (!empty($existingDeleted)) {
+            if (! empty($existingDeleted)) {
                 DB::table('product_warehouse')
                     ->where('product_id', $productId)
                     ->where('product_variant_id', $variantId)
@@ -2356,7 +2414,7 @@ class SyncService
                 'context' => 'edit',
             ], 30, 5);
 
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 // Fallback for stores that block context=edit
                 $res = $this->client->getNoRetry('products/'.$wooProductId.'/variations', [
                     'page' => $page,
@@ -2367,7 +2425,7 @@ class SyncService
                 ], 30, 5);
             }
 
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 $this->log('variants.pull', 'warning', 'Failed fetching Woo variations', [
                     'woocommerce_id' => $wooProductId,
                     'status' => $res->status(),
@@ -2378,14 +2436,18 @@ class SyncService
             }
 
             $items = $res->json();
-            if (!is_array($items) || empty($items)) {
+            if (! is_array($items) || empty($items)) {
                 break;
             }
 
             foreach ($items as $v) {
-                if (!is_array($v)) continue;
+                if (! is_array($v)) {
+                    continue;
+                }
                 $varWooId = (int) ($v['id'] ?? 0);
-                if ($varWooId <= 0) continue;
+                if ($varWooId <= 0) {
+                    continue;
+                }
 
                 $sku = trim((string) ($v['sku'] ?? ''));
                 if ($sku === '') {
@@ -2397,7 +2459,9 @@ class SyncService
                 $attrs = $v['attributes'] ?? [];
                 if (is_array($attrs)) {
                     foreach ($attrs as $a) {
-                        if (!is_array($a)) continue;
+                        if (! is_array($a)) {
+                            continue;
+                        }
                         $opt = trim((string) ($a['option'] ?? ''));
                         if ($opt !== '') {
                             $optParts[] = $opt;
@@ -2424,8 +2488,8 @@ class SyncService
                         })
                         ->first();
 
-                    if (!$pv) {
-                        $pv = new ProductVariant();
+                    if (! $pv) {
+                        $pv = new ProductVariant;
                         $pv->product_id = (int) $product->id;
                     }
 
@@ -2494,8 +2558,8 @@ class SyncService
                             ->where('warehouse_id', (int) $defaultWarehouseId)
                             ->where('product_variant_id', (int) $pv->id)
                             ->first();
-                        if (!$pw) {
-                            $pw = new product_warehouse();
+                        if (! $pw) {
+                            $pw = new product_warehouse;
                             $pw->product_id = (int) $product->id;
                             $pw->warehouse_id = (int) $defaultWarehouseId;
                             $pw->product_variant_id = (int) $pv->id;
@@ -2537,13 +2601,14 @@ class SyncService
                 ])
                 ->get($url);
 
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 $this->log('products.pull', 'warning', 'Failed downloading product image', [
                     'woocommerce_id' => $wooId,
                     'url' => $url,
                     'status' => $res->status(),
                     'content_type' => (string) ($res->header('Content-Type') ?? ''),
                 ]);
+
                 return null;
             }
 
@@ -2554,17 +2619,22 @@ class SyncService
                     'url' => $url,
                     'status' => $res->status(),
                 ]);
+
                 return null;
             }
 
             // Determine extension from Content-Type (preferred), fall back to url path.
             $ext = 'jpg';
             $ct = strtolower((string) ($res->header('Content-Type') ?? ''));
-            if (str_contains($ct, 'png')) $ext = 'png';
-            elseif (str_contains($ct, 'webp')) $ext = 'webp';
-            elseif (str_contains($ct, 'gif')) $ext = 'gif';
-            elseif (str_contains($ct, 'jpeg') || str_contains($ct, 'jpg')) $ext = 'jpg';
-            else {
+            if (str_contains($ct, 'png')) {
+                $ext = 'png';
+            } elseif (str_contains($ct, 'webp')) {
+                $ext = 'webp';
+            } elseif (str_contains($ct, 'gif')) {
+                $ext = 'gif';
+            } elseif (str_contains($ct, 'jpeg') || str_contains($ct, 'jpg')) {
+                $ext = 'jpg';
+            } else {
                 $path = parse_url($url, PHP_URL_PATH);
                 $guess = is_string($path) ? strtolower(pathinfo($path, PATHINFO_EXTENSION)) : '';
                 if (in_array($guess, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) {
@@ -2585,6 +2655,7 @@ class SyncService
                     'path' => $filePath,
                     'url' => $url,
                 ]);
+
                 return null;
             }
 
@@ -2594,6 +2665,7 @@ class SyncService
                 'woocommerce_id' => $wooId,
                 'url' => $url,
             ]);
+
             return null;
         }
     }
@@ -2610,18 +2682,24 @@ class SyncService
         foreach ($directKeys as $k) {
             if (array_key_exists($k, $wp)) {
                 $v = $wp[$k];
-                if ($v === null || $v === '') continue;
-                if (is_numeric($v)) return (float) $v;
+                if ($v === null || $v === '') {
+                    continue;
+                }
+                if (is_numeric($v)) {
+                    return (float) $v;
+                }
                 if (is_string($v)) {
                     $v2 = trim(str_replace([',', ' '], ['', ''], $v));
-                    if ($v2 !== '' && is_numeric($v2)) return (float) $v2;
+                    if ($v2 !== '' && is_numeric($v2)) {
+                        return (float) $v2;
+                    }
                 }
             }
         }
 
         // Meta data array: [{id,key,value}, ...]
         $meta = $wp['meta_data'] ?? null;
-        if (!is_array($meta) || empty($meta)) {
+        if (! is_array($meta) || empty($meta)) {
             return null;
         }
 
@@ -2641,16 +2719,28 @@ class SyncService
         ];
 
         foreach ($meta as $m) {
-            if (!is_array($m)) continue;
+            if (! is_array($m)) {
+                continue;
+            }
             $key = (string) ($m['key'] ?? '');
-            if ($key === '') continue;
-            if (!in_array($key, $metaKeys, true)) continue;
+            if ($key === '') {
+                continue;
+            }
+            if (! in_array($key, $metaKeys, true)) {
+                continue;
+            }
             $val = $m['value'] ?? null;
-            if ($val === null || $val === '') continue;
-            if (is_numeric($val)) return (float) $val;
+            if ($val === null || $val === '') {
+                continue;
+            }
+            if (is_numeric($val)) {
+                return (float) $val;
+            }
             if (is_string($val)) {
                 $v2 = trim(str_replace([',', ' '], ['', ''], $val));
-                if ($v2 !== '' && is_numeric($v2)) return (float) $v2;
+                if ($v2 !== '' && is_numeric($v2)) {
+                    return (float) $v2;
+                }
             }
         }
 
@@ -2703,7 +2793,7 @@ class SyncService
                 'order' => 'asc',
             ], 30, 5);
 
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 $this->log('products.pull', 'error', 'Failed fetching products page', [
                     'page' => $page,
                     'status' => $res->status(),
@@ -2720,7 +2810,7 @@ class SyncService
             }
 
             $items = $res->json();
-            if (!is_array($items) || empty($items)) {
+            if (! is_array($items) || empty($items)) {
                 $done = true;
                 break;
             }
@@ -2743,12 +2833,14 @@ class SyncService
 
                 if ($wooId <= 0 || $name === '') {
                     $skipped++;
+
                     continue;
                 }
 
                 // We keep initial pull conservative: skip variations (handled via local variants in Stocky)
                 if ($type === 'variation') {
                     $skipped++;
+
                     continue;
                 }
 
@@ -2763,6 +2855,7 @@ class SyncService
                         ->exists();
                     if ($exists) {
                         $skipped++;
+
                         continue;
                     }
                 }
@@ -2778,13 +2871,13 @@ class SyncService
                         &$localProductId, $isVariable
                     ) {
                         $product = Product::whereNull('deleted_at')->where('woocommerce_id', $wooId)->first();
-                        if (!$product && $sku !== '') {
+                        if (! $product && $sku !== '') {
                             $product = Product::whereNull('deleted_at')->where('code', $sku)->first();
                         }
                         $isNew = false;
-                        if (!$product) {
+                        if (! $product) {
                             $isNew = true;
-                            $product = new Product();
+                            $product = new Product;
                             $product->Type_barcode = 'CODE128';
                             $product->type = $isVariable ? 'is_variant' : 'is_single';
                             $product->is_variant = $isVariable ? 1 : 0;
@@ -2866,7 +2959,7 @@ class SyncService
 
                         // Category mapping (first Woo category)
                         $cats = $wp['categories'] ?? [];
-                        if (is_array($cats) && !empty($cats)) {
+                        if (is_array($cats) && ! empty($cats)) {
                             $first = $cats[0];
                             $wooCatId = is_array($first) ? (int) ($first['id'] ?? 0) : (int) $first;
                             if ($wooCatId > 0) {
@@ -2880,7 +2973,7 @@ class SyncService
 
                         // Brand mapping (first Woo brand)
                         $brands = $wp['brands'] ?? [];
-                        if (is_array($brands) && !empty($brands)) {
+                        if (is_array($brands) && ! empty($brands)) {
                             $firstB = $brands[0];
                             $wooBrandId = is_array($firstB) ? (int) ($firstB['id'] ?? 0) : (int) $firstB;
                             if ($wooBrandId > 0) {
@@ -2895,7 +2988,7 @@ class SyncService
                         // Image (first Woo image) -> download
                         $src = '';
                         $images = $wp['images'] ?? null;
-                        if (is_array($images) && !empty($images)) {
+                        if (is_array($images) && ! empty($images)) {
                             $img0 = $images[0];
                             if (is_array($img0)) {
                                 $src = (string) ($img0['src'] ?? ($img0['url'] ?? ''));
@@ -2945,8 +3038,8 @@ class SyncService
                                 ->where('warehouse_id', (int) $defaultWarehouseId)
                                 ->whereNull('product_variant_id')
                                 ->first();
-                            if (!$pw) {
-                                $pw = new product_warehouse();
+                            if (! $pw) {
+                                $pw = new product_warehouse;
                                 $pw->product_id = (int) $product->id;
                                 $pw->warehouse_id = (int) $defaultWarehouseId;
                                 $pw->product_variant_id = null;
@@ -3032,14 +3125,13 @@ class SyncService
         ?int $startAfterId = null,
         ?int $maxProducts = null,
         array $initial = []
-    ): array
-    {
+    ): array {
         ini_set('max_execution_time', 2000);
         ini_set('memory_limit', '512M');
 
         $created = (int) ($initial['created'] ?? 0);
         $updated = (int) ($initial['updated'] ?? 0);
-        $errors  = (int) ($initial['errors'] ?? 0);
+        $errors = (int) ($initial['errors'] ?? 0);
         $processed = (int) ($initial['processed'] ?? 0);
         $missingSku = (int) ($initial['missing_sku'] ?? 0);
         $maxConsecutiveWooFailures = (int) env('WOO_MAX_CONSECUTIVE_FAILURES', 7);
@@ -3084,14 +3176,14 @@ class SyncService
                 $emit = function (array $extra = []) use (
                     $progress, &$created, &$updated, &$errors, &$processed, &$missingSku, $product
                 ) {
-                    if (!$progress) {
+                    if (! $progress) {
                         return;
                     }
                     $progress(array_merge([
                         'processed' => $processed,
-                        'created'   => $created,
-                        'updated'   => $updated,
-                        'errors'    => $errors,
+                        'created' => $created,
+                        'updated' => $updated,
+                        'errors' => $errors,
                         'missing_sku' => $missingSku,
                         'current_product_id' => (int) $product->id,
                         'current_sku' => (string) ($product->code ?? ''),
@@ -3140,7 +3232,7 @@ class SyncService
 
                     // Clear missing SKU marker if it was set before
                     try {
-                        if (!empty($product->woocommerce_missing_sku)) {
+                        if (! empty($product->woocommerce_missing_sku)) {
                             $product->woocommerce_missing_sku = 0;
                             $product->save();
                         }
@@ -3187,6 +3279,7 @@ class SyncService
                             'product_id' => $product->id,
                             'sku' => $sku,
                         ]);
+
                         continue;
                     }
 
@@ -3204,7 +3297,7 @@ class SyncService
                         $emit(['stage' => 'sku_found', 'woocommerce_id' => (int) $resolvedWooId]);
                     } else {
                         // Not found remotely (or fallback failed) => we will create
-                        if (!empty($product->woocommerce_id)) {
+                        if (! empty($product->woocommerce_id)) {
                             $product->woocommerce_id = null;
                             $product->save();
                         }
@@ -3215,7 +3308,7 @@ class SyncService
                     $categoriesPayload = [];
                     try {
                         $cat = $product->category;
-                        if ($cat && !empty($cat->woocommerce_id)) {
+                        if ($cat && ! empty($cat->woocommerce_id)) {
                             $categoriesPayload[] = ['id' => (int) $cat->woocommerce_id];
                         } elseif ($cat) {
                             $this->log('products.push', 'warning', 'Missing Woo category mapping', [
@@ -3232,7 +3325,7 @@ class SyncService
                     $tagsPayload = [];
                     try {
                         $brand = $product->brand;
-                        if ($brand && !empty($brand->woocommerce_id)) {
+                        if ($brand && ! empty($brand->woocommerce_id)) {
                             $tagsPayload[] = ['id' => (int) $brand->woocommerce_id];
                         } elseif ($brand) {
                             $this->log('products.push', 'warning', 'Missing Woo brand mapping', [
@@ -3249,9 +3342,9 @@ class SyncService
 
                     // ---- Base payload ----
                     $payload = [
-                        'name'   => (string) ($product->name ?? ''),
-                        'type'   => $isVariant ? 'variable' : 'simple',
-                        'sku'    => $sku,
+                        'name' => (string) ($product->name ?? ''),
+                        'type' => $isVariant ? 'variable' : 'simple',
+                        'sku' => $sku,
                         'status' => 'publish',
                         'meta_data' => [
                             ['key' => self::WOO_META_EXTERNAL_PRODUCT_ID, 'value' => (string) $product->id],
@@ -3282,7 +3375,7 @@ class SyncService
                     $payload['description'] = $note;
                     $payload['short_description'] = $note;
 
-                    if (!$isVariant) {
+                    if (! $isVariant) {
                         $payload['regular_price'] = number_format((float) ($product->price ?? 0), 2, '.', '');
 
                         // Discount sync (Stocky -> Woo via sale_price)
@@ -3334,7 +3427,7 @@ class SyncService
                                 ->values()
                                 ->all();
 
-                            if (!empty($variantNames)) {
+                            if (! empty($variantNames)) {
                                 $payload['attributes'] = [[
                                     'name' => 'Variant',
                                     'visible' => true,
@@ -3347,10 +3440,10 @@ class SyncService
                         }
                     }
 
-                    if (!empty($categoriesPayload)) {
+                    if (! empty($categoriesPayload)) {
                         $payload['categories'] = $categoriesPayload;
                     }
-                    if (!empty($tagsPayload)) {
+                    if (! empty($tagsPayload)) {
                         $payload['brands'] = $tagsPayload;
                     }
 
@@ -3374,16 +3467,16 @@ class SyncService
                     $res = null;
                     $wasUpdate = false;
 
-                    if (!empty($product->woocommerce_id)) {
+                    if (! empty($product->woocommerce_id)) {
                         $emit(['stage' => 'woo_update']);
 
                         // Keep updates minimal to avoid expensive operations
                         $updatePayload = $payload;
                         // Categories can be expensive to update; only apply them if the remote
                         // product is currently uncategorized and we have a mapped category.
-                        if (!empty($categoriesPayload)) {
+                        if (! empty($categoriesPayload)) {
                             $needsFix = $this->wooProductNeedsCategoryFix((int) $product->woocommerce_id);
-                            if (!$needsFix) {
+                            if (! $needsFix) {
                                 unset($updatePayload['categories']);
                             }
                         } else {
@@ -3398,7 +3491,7 @@ class SyncService
                             $remoteType = $this->wooProductType((int) $product->woocommerce_id);
 
                             if ($remoteType !== null && $remoteType !== $desiredType) {
-                                if (!$isVariant && $remoteType === 'variable') {
+                                if (! $isVariant && $remoteType === 'variable') {
                                     $emit([
                                         'stage' => 'type_convert',
                                         'from' => $remoteType,
@@ -3435,7 +3528,7 @@ class SyncService
                                     $updatePayload['sale_price'] = '';
 
                                     // Ensure we send at least the attribute scaffold.
-                                    if (empty($updatePayload['attributes']) || !is_array($updatePayload['attributes'])) {
+                                    if (empty($updatePayload['attributes']) || ! is_array($updatePayload['attributes'])) {
                                         try {
                                             $variantNames = ProductVariant::where('product_id', $product->id)
                                                 ->whereNull('deleted_at')
@@ -3445,7 +3538,7 @@ class SyncService
                                                 ->values()
                                                 ->all();
 
-                                            if (!empty($variantNames)) {
+                                            if (! empty($variantNames)) {
                                                 $updatePayload['attributes'] = [[
                                                     'name' => 'Variant',
                                                     'visible' => true,
@@ -3528,6 +3621,7 @@ class SyncService
                                 $norm = function (string $s): string {
                                     $s = html_entity_decode($s, ENT_QUOTES | ENT_HTML5, 'UTF-8');
                                     $s = preg_replace('/\s+/', ' ', $s);
+
                                     return trim((string) $s);
                                 };
 
@@ -3545,7 +3639,7 @@ class SyncService
                                         'name' => $localName,
                                     ], 20, 5);
 
-                                    if (!$resName->successful()) {
+                                    if (! $resName->successful()) {
                                         $this->log('products.push', 'warning', 'Woo name update did not apply (retry failed)', [
                                             'product_id' => (int) $product->id,
                                             'woocommerce_id' => (int) $product->woocommerce_id,
@@ -3569,7 +3663,7 @@ class SyncService
                         }
 
                         // Remote id invalid / not found -> create fallback
-                        if (!$res || $res->status() === 404) {
+                        if (! $res || $res->status() === 404) {
                             $emit(['stage' => 'woo_create_fallback']);
                             // If we are forced to create, attach media (and upload only if missing).
                             try {
@@ -3594,7 +3688,7 @@ class SyncService
                         $wasUpdate = false;
                     }
 
-                    if (!$res || !$res->successful()) {
+                    if (! $res || ! $res->successful()) {
                         // Woo can respond 400 when SKU exists but our lookup/index didn't find it.
                         // In that case:
                         // - First, try to find/link the existing product by SKU and treat as update.
@@ -3637,7 +3731,7 @@ class SyncService
                                     $list = $find->json();
                                     if (is_array($list)) {
                                         foreach ($list as $it) {
-                                            if (!is_array($it)) {
+                                            if (! is_array($it)) {
                                                 continue;
                                             }
                                             $rid = (int) ($it['id'] ?? 0);
@@ -3667,7 +3761,7 @@ class SyncService
                                         $listT = $findTrash->json();
                                         if (is_array($listT)) {
                                             foreach ($listT as $it) {
-                                                if (!is_array($it)) {
+                                                if (! is_array($it)) {
                                                     continue;
                                                 }
                                                 $rid = (int) ($it['id'] ?? 0);
@@ -3699,17 +3793,17 @@ class SyncService
                                             '_fields' => 'id,sku,type,parent_id',
                                         ], 10, 5);
 
-                                        if (!$find2->successful()) {
+                                        if (! $find2->successful()) {
                                             break;
                                         }
 
                                         $list2 = $find2->json();
-                                        if (!is_array($list2) || count($list2) === 0) {
+                                        if (! is_array($list2) || count($list2) === 0) {
                                             break;
                                         }
 
                                         foreach ($list2 as $it) {
-                                            if (!is_array($it)) {
+                                            if (! is_array($it)) {
                                                 continue;
                                             }
                                             $rid = (int) ($it['id'] ?? 0);
@@ -3746,17 +3840,17 @@ class SyncService
                                             'context' => 'edit',
                                         ], 10, 5);
 
-                                        if (!$find3->successful()) {
+                                        if (! $find3->successful()) {
                                             break;
                                         }
 
                                         $list3 = $find3->json();
-                                        if (!is_array($list3) || count($list3) === 0) {
+                                        if (! is_array($list3) || count($list3) === 0) {
                                             break;
                                         }
 
                                         foreach ($list3 as $it) {
-                                            if (!is_array($it)) {
+                                            if (! is_array($it)) {
                                                 continue;
                                             }
                                             $rid = (int) ($it['id'] ?? 0);
@@ -3793,6 +3887,7 @@ class SyncService
                                         $res2 = $this->client->putNoRetry('products/'.$existingId, $updatePayload, 20, 5);
                                         if ($res2->successful()) {
                                             $updated++;
+
                                             continue;
                                         }
                                     } catch (\Throwable $e) {
@@ -3800,13 +3895,14 @@ class SyncService
 
                                     // Even if update fails, we linked the mapping; don't block the whole sync on this SKU conflict.
                                     $updated++;
+
                                     continue;
                                 }
 
                                 // SKU is blocked in lookup table but we couldn't find the product (often TRASH or Woo lookup bug).
                                 // Default behavior: DO NOT create. Instead log and skip so user can restore or permanently delete in Woo.
                                 $allowAlt = (bool) env('WOO_ALLOW_ALT_SKU_ON_LOOKUP_CONFLICT', false);
-                                if (!$allowAlt) {
+                                if (! $allowAlt) {
                                     $errors++;
                                     $emit(['stage' => 'sku_conflict_blocked', 'sku' => $sku]);
                                     $this->log('products.push', 'error', 'SKU is blocked in Woo lookup table; cannot create. Restore or permanently delete the trashed Woo product, then re-sync.', [
@@ -3816,6 +3912,7 @@ class SyncService
                                         'woo_error_code' => $errCode,
                                         'woo_error_message' => $errMessage,
                                     ]);
+
                                     continue;
                                 }
 
@@ -3838,7 +3935,7 @@ class SyncService
 
                         // If our conflict-handling managed to recover (link or alt-create),
                         // we may now have a successful response in $res. Only error out if still failing.
-                        if (!$res || !$res->successful()) {
+                        if (! $res || ! $res->successful()) {
                             $errors++;
                             if ($emit) {
                                 $emit([
@@ -3851,7 +3948,7 @@ class SyncService
                             }
                             $this->log('products.push', 'error', 'Woo request failed', [
                                 'status' => $res ? $res->status() : null,
-                                'body'   => $res ? $res->body() : 'null response',
+                                'body' => $res ? $res->body() : 'null response',
                                 'product_id' => $product->id,
                                 'sku' => $sku,
                             ]);
@@ -3867,6 +3964,7 @@ class SyncService
                                 ]);
                                 throw new \RuntimeException(self::WOO_SYNC_ABORT_EXCEPTION);
                             }
+
                             continue;
                         }
                     }
@@ -3884,7 +3982,7 @@ class SyncService
                         $finalWooId = $remoteByExternalId[(string) $product->id] ?? ($remoteBySku[mb_strtolower($sku)] ?? 0);
                         $finalWooId = (int) $finalWooId;
 
-                        if ($finalWooId > 0 && !$this->validateWooProductIdStrict($finalWooId, $sku, (int) $product->id)) {
+                        if ($finalWooId > 0 && ! $this->validateWooProductIdStrict($finalWooId, $sku, (int) $product->id)) {
                             $finalWooId = 0;
                         }
 
@@ -3905,6 +4003,7 @@ class SyncService
                             'candidate_woocommerce_id' => $remoteId,
                             'candidate_identity' => $remoteId > 0 ? $this->wooIdentityForLog($remoteId) : null,
                         ]);
+
                         continue;
                     }
 
@@ -3988,7 +4087,7 @@ class SyncService
                 ->values()
                 ->all();
 
-            if (!empty($variantNames)) {
+            if (! empty($variantNames)) {
                 if ($shouldCancel) {
                     $shouldCancel();
                 }
@@ -4002,7 +4101,7 @@ class SyncService
                     ]],
                 ], 20, 5);
 
-                if (!$res->successful()) {
+                if (! $res->successful()) {
                     throw new \RuntimeException('Failed updating parent attributes (status '.$res->status().').');
                 }
             }
@@ -4067,17 +4166,23 @@ class SyncService
                 $updates = [];
                 foreach ($localVariants as $lv) {
                     $lid = (int) ($lv['local_id'] ?? 0);
-                    if ($lid <= 0) continue;
+                    if ($lid <= 0) {
+                        continue;
+                    }
                     $wid = (int) ($result['syncedMap'][$lid] ?? 0);
-                    if ($wid <= 0) continue;
+                    if ($wid <= 0) {
+                        continue;
+                    }
 
                     $payload = is_array($lv['payload'] ?? null) ? $lv['payload'] : [];
-                    if (empty($payload)) continue;
+                    if (empty($payload)) {
+                        continue;
+                    }
                     $payload['id'] = $wid;
                     $updates[] = $payload;
                 }
 
-                if (!empty($updates)) {
+                if (! empty($updates)) {
                     $chunks = array_chunk($updates, 50);
                     $uAttempt = 0;
                     foreach ($chunks as $chunk) {
@@ -4102,7 +4207,7 @@ class SyncService
                             $resU = $this->client->postNoRetry('products/'.$wooProductId.'/variations/batch', [
                                 'update' => array_values($chunk),
                             ], $batchTimeoutSec, 5);
-                            if (!$resU->successful()) {
+                            if (! $resU->successful()) {
                                 $lastErrU = 'HTTP '.$resU->status().': '.$resU->body();
                             }
                         } catch (\Throwable $e) {
@@ -4144,7 +4249,7 @@ class SyncService
             $batchTimeoutMs = (int) env('WOO_TIMEOUT_MS_BATCH', 30000);
             $batchTimeoutSec = max(1, (int) ceil($batchTimeoutMs / 1000));
 
-            while (!empty($missing) && $attempt < $maxAttempts) {
+            while (! empty($missing) && $attempt < $maxAttempts) {
                 if ($shouldCancel) {
                     $shouldCancel();
                 }
@@ -4174,7 +4279,7 @@ class SyncService
                         $shouldCancel();
                     }
                     $res = $this->client->postNoRetry('products/'.$wooProductId.'/variations/batch', $payload, $batchTimeoutSec, 5);
-                    if (!$res->successful()) {
+                    if (! $res->successful()) {
                         $lastError = 'HTTP '.$res->status().': '.$res->body();
                     }
                 } catch (\Throwable $e) {
@@ -4213,7 +4318,7 @@ class SyncService
                     ]);
                 }
 
-                if (!empty($missing)) {
+                if (! empty($missing)) {
                     if ($shouldCancel) {
                         $shouldCancel();
                     }
@@ -4221,7 +4326,7 @@ class SyncService
                 }
             }
 
-            if (!empty($missing)) {
+            if (! empty($missing)) {
                 $missingSkus = [];
                 foreach ($missing as $mv) {
                     $s = trim((string) ($mv['sku'] ?? ''));
@@ -4259,11 +4364,17 @@ class SyncService
                 $localOptSet = [];
                 foreach ($localVariants as $lv) {
                     $lid = (int) ($lv['local_id'] ?? 0);
-                    if ($lid > 0) $localIdSet[(string) $lid] = true;
+                    if ($lid > 0) {
+                        $localIdSet[(string) $lid] = true;
+                    }
                     $s = trim((string) ($lv['sku'] ?? ''));
-                    if ($s !== '') $localSkuSet[mb_strtolower($s)] = true;
+                    if ($s !== '') {
+                        $localSkuSet[mb_strtolower($s)] = true;
+                    }
                     $o = trim((string) ($lv['option'] ?? ''));
-                    if ($o !== '') $localOptSet[mb_strtolower($o)] = true;
+                    if ($o !== '') {
+                        $localOptSet[mb_strtolower($o)] = true;
+                    }
                 }
 
                 $wooVars = $this->listWooVariations($wooProductId, $emit, $shouldCancel);
@@ -4272,15 +4383,18 @@ class SyncService
 
                 foreach ($wooVars as $wv) {
                     $vid = (int) ($wv['id'] ?? 0);
-                    if ($vid <= 0) continue;
+                    if ($vid <= 0) {
+                        continue;
+                    }
 
                     $ext = trim((string) ($wv['external_variant_id'] ?? ''));
                     if ($ext !== '') {
                         // Meta-based deletion (strong)
-                        if (!isset($localIdSet[$ext])) {
+                        if (! isset($localIdSet[$ext])) {
                             $toDelete[] = $vid;
                             $staleLocalIds[$ext] = true;
                         }
+
                         continue;
                     }
 
@@ -4289,7 +4403,7 @@ class SyncService
                 }
 
                 $toDelete = array_values(array_unique(array_map('intval', $toDelete)));
-                if (!empty($toDelete)) {
+                if (! empty($toDelete)) {
                     $batchTimeoutMs = (int) env('WOO_TIMEOUT_MS_BATCH', 30000);
                     $batchTimeoutSec = max(1, (int) ceil($batchTimeoutMs / 1000));
 
@@ -4312,7 +4426,7 @@ class SyncService
                         $batchOk = false;
                     }
 
-                    if (!$batchOk) {
+                    if (! $batchOk) {
                         // Fallback to individual deletes
                         foreach ($toDelete as $vid) {
                             if ($shouldCancel) {
@@ -4332,9 +4446,11 @@ class SyncService
                         $ids = [];
                         foreach (array_keys($staleLocalIds) as $k) {
                             $id = (int) $k;
-                            if ($id > 0) $ids[] = $id;
+                            if ($id > 0) {
+                                $ids[] = $id;
+                            }
                         }
-                        if (!empty($ids)) {
+                        if (! empty($ids)) {
                             ProductVariant::whereIn('id', $ids)->update(['woocommerce_variation_id' => null]);
                         }
                     } catch (\Throwable $e) {
@@ -4367,7 +4483,7 @@ class SyncService
     {
         $cache = $cache ?? [];
 
-        if (!$forceRefresh && isset($cache['bySku'], $cache['byExternal'], $cache['byOption'])) {
+        if (! $forceRefresh && isset($cache['bySku'], $cache['byExternal'], $cache['byOption'])) {
             $bySku = $cache['bySku'];
             $byExternal = $cache['byExternal'];
             $byOption = $cache['byOption'];
@@ -4409,7 +4525,7 @@ class SyncService
                             20,
                             5
                         );
-                        if (!$res->successful()) {
+                        if (! $res->successful()) {
                             // Fallback: some stores block context=edit on GET.
                             $res2 = $this->client->getNoRetry(
                                 'products/'.$wooProductId.'/variations',
@@ -4456,12 +4572,12 @@ class SyncService
                     sleep(min(5, $attempt));
                 }
 
-                if (!$res || !$res->successful()) {
+                if (! $res || ! $res->successful()) {
                     throw new \RuntimeException('Failed verifying variations page '.$page.' (attempts '.$maxAttempts.'). Last error: '.($lastErr ?? 'n/a'));
                 }
 
                 $list = $res->json();
-                if (empty($list) || !is_array($list)) {
+                if (empty($list) || ! is_array($list)) {
                     break;
                 }
 
@@ -4480,7 +4596,7 @@ class SyncService
                     $attrs = $v['attributes'] ?? [];
                     if (is_array($attrs)) {
                         foreach ($attrs as $a) {
-                            if (!is_array($a)) {
+                            if (! is_array($a)) {
                                 continue;
                             }
                             $opt = trim((string) ($a['option'] ?? ''));
@@ -4493,7 +4609,7 @@ class SyncService
                     $meta = $v['meta_data'] ?? [];
                     if (is_array($meta)) {
                         foreach ($meta as $m) {
-                            if (!is_array($m)) {
+                            if (! is_array($m)) {
                                 continue;
                             }
                             if (($m['key'] ?? null) === self::WOO_META_EXTERNAL_VARIANT_ID) {
@@ -4531,10 +4647,10 @@ class SyncService
             if ($sku !== '') {
                 $wooId = $bySku[mb_strtolower($sku)] ?? null;
             }
-            if (!$wooId) {
+            if (! $wooId) {
                 $wooId = $byExternal[(string) $localId] ?? null;
             }
-            if (!$wooId && $opt !== '') {
+            if (! $wooId && $opt !== '') {
                 $wooId = $byOption[mb_strtolower($opt)] ?? null;
             }
 
@@ -4569,6 +4685,7 @@ class SyncService
                             if ($progress) {
                                 $progress(['processed' => $processed, 'updated' => $updated, 'errors' => $errors]);
                             }
+
                             continue;
                         }
 
@@ -4591,12 +4708,12 @@ class SyncService
                                     5
                                 );
 
-                                if (!$vres->successful()) {
+                                if (! $vres->successful()) {
                                     break;
                                 }
 
                                 $list = $vres->json();
-                                if (empty($list) || !is_array($list)) {
+                                if (empty($list) || ! is_array($list)) {
                                     break;
                                 }
 
@@ -4702,6 +4819,7 @@ class SyncService
                             if ($progress) {
                                 $progress(['processed' => $processed, 'updated' => $updated, 'errors' => $errors]);
                             }
+
                             continue;
                         }
 
@@ -4723,6 +4841,7 @@ class SyncService
                             if ($progress) {
                                 $progress(['processed' => $processed, 'updated' => $updated, 'errors' => $errors]);
                             }
+
                             continue;
                         }
 
@@ -4765,6 +4884,7 @@ class SyncService
             ->sum('qte');
 
         $qty = (int) round($sum);
+
         return $qty < 0 ? 0 : $qty;
     }
 
@@ -4776,6 +4896,7 @@ class SyncService
             ->sum('qte');
 
         $qty = (int) round($sum);
+
         return $qty < 0 ? 0 : $qty;
     }
 
@@ -4816,17 +4937,17 @@ class SyncService
                 '_fields' => 'id,images',
             ], 10, 5);
 
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 return null;
             }
 
             $data = $res->json();
-            if (!is_array($data)) {
+            if (! is_array($data)) {
                 return null;
             }
 
             $images = $data['images'] ?? null;
-            if (!is_array($images)) {
+            if (! is_array($images)) {
                 // If field missing/invalid, treat as “no images”
                 return false;
             }
@@ -4888,13 +5009,13 @@ class SyncService
                 $shouldCancel();
             }
             $settings = WooCommerceSetting::first();
-            if (!$settings) {
+            if (! $settings) {
                 return null;
             }
 
             $username = (string) ($settings->wp_username ?? '');
-            $appPass  = (string) ($settings->wp_app_password ?? '');
-            $baseUrl  = rtrim((string) ($settings->store_url ?? ''), '/');
+            $appPass = (string) ($settings->wp_app_password ?? '');
+            $baseUrl = rtrim((string) ($settings->store_url ?? ''), '/');
 
             if ($username === '' || $appPass === '' || $baseUrl === '') {
                 return null;
@@ -4951,6 +5072,7 @@ class SyncService
                     if (is_resource($stream)) {
                         fclose($stream);
                     }
+
                     return null;
                 }
             } catch (\Throwable $e) {
@@ -4970,7 +5092,7 @@ class SyncService
                     $shouldCancel();
                 }
                 $matches = function ($m) use ($imageName, $filenameBase): bool {
-                    if (!is_array($m)) {
+                    if (! is_array($m)) {
                         return false;
                     }
                     $src = (string) ($m['source_url'] ?? '');
@@ -5015,15 +5137,15 @@ class SyncService
                             '_fields' => 'id,source_url,media_details',
                         ]);
 
-                    if (!$mediaList->successful()) {
+                    if (! $mediaList->successful()) {
                         return null;
                     }
                     $items = $mediaList->json();
-                    if (!is_array($items)) {
+                    if (! is_array($items)) {
                         return null;
                     }
                     foreach ($items as $m) {
-                        if (!$matches($m)) {
+                        if (! $matches($m)) {
                             continue;
                         }
                         $id = (int) ($m['id'] ?? 0);
@@ -5032,6 +5154,7 @@ class SyncService
                             return ['id' => $id, 'src' => $src];
                         }
                     }
+
                     return null;
                 };
 
@@ -5046,15 +5169,15 @@ class SyncService
                             '_fields' => 'id,source_url,media_details',
                         ]);
 
-                    if (!$mediaList->successful()) {
+                    if (! $mediaList->successful()) {
                         return null;
                     }
                     $items = $mediaList->json();
-                    if (!is_array($items)) {
+                    if (! is_array($items)) {
                         return null;
                     }
                     foreach ($items as $m) {
-                        if (!$matches($m)) {
+                        if (! $matches($m)) {
                             continue;
                         }
                         $id = (int) ($m['id'] ?? 0);
@@ -5063,15 +5186,16 @@ class SyncService
                             return ['id' => $id, 'src' => $src];
                         }
                     }
+
                     return null;
                 };
 
                 // Try exact filename first, then base name, then slug(base name)
                 $found = $trySearch($imageName);
-                if (!$found && $filenameBase !== '' && $filenameBase !== $imageName) {
+                if (! $found && $filenameBase !== '' && $filenameBase !== $imageName) {
                     $found = $trySearch($filenameBase);
                 }
-                if (!$found && $filenameBase !== '') {
+                if (! $found && $filenameBase !== '') {
                     // WP stores media as attachment posts; slug is often the filename base
                     $found = $trySlug($filenameBase);
                 }
@@ -5079,6 +5203,7 @@ class SyncService
                     if (is_resource($stream)) {
                         fclose($stream);
                     }
+
                     return $found;
                 }
             } catch (\Throwable $e) {
@@ -5098,6 +5223,7 @@ class SyncService
                 if (is_resource($stream)) {
                     fclose($stream);
                 }
+
                 return null;
             }
 
@@ -5124,7 +5250,7 @@ class SyncService
 
                 if ($upload->successful() || $upload->status() === 201) {
                     $body = $upload->json();
-                    $id  = (int) ($body['id'] ?? 0);
+                    $id = (int) ($body['id'] ?? 0);
                     $src = (string) ($body['source_url'] ?? '');
                     if ($id > 0) {
                         return ['id' => $id, 'src' => $src];
@@ -5159,6 +5285,7 @@ class SyncService
                     ]);
                 } catch (\Throwable $e2) {
                 }
+
                 return null;
             }
         } catch (\Throwable $e) {
@@ -5196,12 +5323,12 @@ class SyncService
                 'status' => 'any',
             ], 20, 5);
 
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 break;
             }
 
             $orders = $res->json();
-            if (empty($orders) || !is_array($orders)) {
+            if (empty($orders) || ! is_array($orders)) {
                 break;
             }
 
@@ -5226,7 +5353,7 @@ class SyncService
                         foreach (($o['line_items'] ?? []) as $item) {
                             $code = (string) ($item['sku'] ?? ('WC-'.($item['product_id'] ?? '')));
                             $product = Product::where('code', $code)->first();
-                            if (!$product) {
+                            if (! $product) {
                                 continue;
                             }
 
@@ -5284,7 +5411,7 @@ class SyncService
                 'hide_empty' => false,
             ], 20, 5);
 
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 $this->log('categories.pull', 'error', 'Failed fetching categories page', [
                     'page' => $page,
                     'status' => $res->status(),
@@ -5294,7 +5421,7 @@ class SyncService
             }
 
             $items = $res->json();
-            if (empty($items) || !is_array($items)) {
+            if (empty($items) || ! is_array($items)) {
                 break;
             }
 
@@ -5302,14 +5429,14 @@ class SyncService
                 try {
                     DB::transaction(function () use ($c) {
                         $wooId = (int) ($c['id'] ?? 0);
-                        $name  = (string) ($c['name'] ?? '');
+                        $name = (string) ($c['name'] ?? '');
 
                         if ($wooId <= 0 || $name === '') {
                             return;
                         }
 
                         $cat = PosCategory::firstOrNew(['woocommerce_id' => $wooId]);
-                        if (!$cat->exists) {
+                        if (! $cat->exists) {
                             $cat = PosCategory::where('name', $name)->first() ?? $cat;
                         }
 
@@ -5399,7 +5526,7 @@ class SyncService
                     $res = null;
                     $wasUpdate = false;
 
-                    if (!empty($cat->woocommerce_id)) {
+                    if (! empty($cat->woocommerce_id)) {
                         $res = $this->client->putNoRetry('products/categories/'.$cat->woocommerce_id, $payload, 20, 5);
                         $wasUpdate = true;
 
@@ -5411,13 +5538,14 @@ class SyncService
                         $res = $this->client->postNoRetry('products/categories', $payload, 20, 5);
                     }
 
-                    if (!$res->successful()) {
+                    if (! $res->successful()) {
                         $errors++;
                         $this->log('categories.push', 'error', 'Woo request failed', [
                             'status' => $res->status(),
                             'body' => $res->body(),
                             'category_id' => $cat->id,
                         ]);
+
                         continue;
                     }
 
@@ -5470,7 +5598,7 @@ class SyncService
     {
         try {
             $settings = WooCommerceSetting::first();
-            if (!$settings) {
+            if (! $settings) {
                 return null;
             }
 
@@ -5503,9 +5631,9 @@ class SyncService
                 $stream = null;
             }
 
-            if (!is_resource($stream)) {
+            if (! is_resource($stream)) {
                 $abs = public_path('images/brands/'.$imageName);
-                if (!is_file($abs)) {
+                if (! is_file($abs)) {
                     return null;
                 }
 
@@ -5528,6 +5656,7 @@ class SyncService
                 if (is_resource($stream)) {
                     fclose($stream);
                 }
+
                 return null;
             }
 
@@ -5579,7 +5708,7 @@ class SyncService
     {
         try {
             $res = Http::timeout(15)->get($url);
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 return null;
             }
             $body = $res->body();
@@ -5624,7 +5753,7 @@ class SyncService
                 'hide_empty' => false,
             ], 20, 5);
 
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 $this->log('brands.pull', 'error', 'Failed fetching brands page', [
                     'page' => $page,
                     'status' => $res->status(),
@@ -5634,7 +5763,7 @@ class SyncService
             }
 
             $items = $res->json();
-            if (empty($items) || !is_array($items)) {
+            if (empty($items) || ! is_array($items)) {
                 break;
             }
 
@@ -5649,7 +5778,7 @@ class SyncService
                         }
 
                         $brand = PosBrand::withTrashed()->firstOrNew(['woocommerce_id' => $wooId]);
-                        if (!$brand->exists) {
+                        if (! $brand->exists) {
                             $brand = PosBrand::withTrashed()->where('name', $name)->first() ?? $brand;
                         }
 
@@ -5659,7 +5788,7 @@ class SyncService
                         $brand->deleted_at = null;
 
                         $img = $t['image'] ?? null;
-                        if (is_array($img) && !empty($img['src'])) {
+                        if (is_array($img) && ! empty($img['src'])) {
                             $filename = $this->downloadBrandImage((string) $img['src'], $wooId);
                             if ($filename !== null) {
                                 $brand->image = $filename;
@@ -5759,7 +5888,7 @@ class SyncService
                     $media = $this->resolveOrUploadBrandImage($brand);
                     if ($media && isset($media['id'])) {
                         $payload['image'] = ['id' => (int) $media['id']];
-                    } elseif ($media && !empty($media['src'])) {
+                    } elseif ($media && ! empty($media['src'])) {
                         $payload['image'] = ['src' => $media['src']];
                     } else {
                         $imageFile = trim((string) ($brand->image ?? ''));
@@ -5771,7 +5900,7 @@ class SyncService
                     $res = null;
                     $wasUpdate = false;
 
-                    if (!empty($brand->woocommerce_id)) {
+                    if (! empty($brand->woocommerce_id)) {
                         $res = $this->client->putNoRetry('products/brands/'.$brand->woocommerce_id, $payload, 20, 5);
                         $wasUpdate = true;
 
@@ -5783,13 +5912,14 @@ class SyncService
                         $res = $this->client->postNoRetry('products/brands', $payload, 20, 5);
                     }
 
-                    if (!$res->successful()) {
+                    if (! $res->successful()) {
                         $errors++;
                         $this->log('brands.push', 'error', 'Woo request failed', [
                             'status' => $res->status(),
                             'body' => $res->body(),
                             'brand_id' => $brand->id,
                         ]);
+
                         continue;
                     }
 
@@ -5948,7 +6078,7 @@ class SyncService
                         $meta[] = ['key' => 'tax_number', 'value' => (string) $client->tax_number];
                         $meta[] = ['key' => 'vat_number', 'value' => (string) $client->tax_number];
                     }
-                    if (!empty($meta)) {
+                    if (! empty($meta)) {
                         $payload['meta_data'] = $meta;
                     }
 
@@ -5962,6 +6092,7 @@ class SyncService
                         $this->log('customers.push', 'info', 'Skipped client without email (requires manual link)', ['client_id' => $client->id]);
                         $this->setClientSyncIssue($client, 'missing_email', 'Stocky customer has no email. Add an email or manually link to a Woo customer.', 'push');
                         $processed++;
+
                         continue;
                     }
 
@@ -5974,8 +6105,12 @@ class SyncService
                             $emailOwnerId = $this->findWooCustomerIdByEmail($normalizedEmail);
                             if ($emailOwnerId === -1 || ($emailOwnerId > 0 && $emailOwnerId !== $wooId)) {
                                 unset($payload['email']);
-                                if (isset($payload['billing']) && is_array($payload['billing'])) unset($payload['billing']['email']);
-                                if (isset($payload['billing_address']) && is_array($payload['billing_address'])) unset($payload['billing_address']['email']);
+                                if (isset($payload['billing']) && is_array($payload['billing'])) {
+                                    unset($payload['billing']['email']);
+                                }
+                                if (isset($payload['billing_address']) && is_array($payload['billing_address'])) {
+                                    unset($payload['billing_address']['email']);
+                                }
                                 $this->log('customers.push', 'warning', 'Skipped email overwrite due to Woo email uniqueness conflict (woocommerce_id match)', [
                                     'client_id' => $client->id,
                                     'woocommerce_id' => $wooId,
@@ -5991,8 +6126,12 @@ class SyncService
                             }
                         } else {
                             unset($payload['email']);
-                            if (isset($payload['billing']) && is_array($payload['billing'])) unset($payload['billing']['email']);
-                            if (isset($payload['billing_address']) && is_array($payload['billing_address'])) unset($payload['billing_address']['email']);
+                            if (isset($payload['billing']) && is_array($payload['billing'])) {
+                                unset($payload['billing']['email']);
+                            }
+                            if (isset($payload['billing_address']) && is_array($payload['billing_address'])) {
+                                unset($payload['billing_address']['email']);
+                            }
                         }
 
                         $res = $this->client->putNoRetry('customers/'.$wooId, $payload, 20, 5);
@@ -6014,11 +6153,12 @@ class SyncService
                             $this->log('customers.push', 'info', 'Skipped client without email after Woo ID cleared (requires manual link)', ['client_id' => $client->id]);
                             $this->setClientSyncIssue($client, 'missing_email', 'Stocky customer has no email. Add an email or manually link to a Woo customer.', 'push');
                             $processed++;
+
                             continue;
                         }
 
                         $foundId = $this->findWooCustomerIdByEmail($normalizedEmail);
-                        
+
                         if ($foundId === -1) {
                             // Multiple Woo customers share same email → ambiguous, require manual link
                             $skipped++;
@@ -6029,6 +6169,7 @@ class SyncService
                             $hadIssue = true;
                             $this->setClientSyncIssue($client, 'ambiguous_email', 'Multiple WooCommerce customers match this email. Manual link required.', 'push');
                             $processed++;
+
                             continue;
                         } elseif ($foundId > 0) {
                             // If a Woo customer with that email exists → link it by saving woocommerce_id locally
@@ -6054,12 +6195,12 @@ class SyncService
                     if (! $res->successful()) {
                         $status = $res->status();
                         $body = $res->body();
-                        
+
                         // Check if error is due to duplicate email (enforce email uniqueness)
                         if ($status === 400 || $status === 422) {
                             $errorData = json_decode($body, true);
                             $errorMessage = is_array($errorData) ? ($errorData['message'] ?? $errorData['error'] ?? $body) : $body;
-                            
+
                             if (stripos($errorMessage, 'email') !== false && (stripos($errorMessage, 'already') !== false || stripos($errorMessage, 'exists') !== false || stripos($errorMessage, 'duplicate') !== false)) {
                                 // Email already exists in WooCommerce, try to find and update
                                 $foundId = $this->findWooCustomerIdByEmail($normalizedEmail);
@@ -6071,6 +6212,7 @@ class SyncService
                                         'email' => $email,
                                     ]);
                                     $processed++;
+
                                     continue;
                                 } elseif ($foundId > 0) {
                                     $client->woocommerce_id = $foundId;
@@ -6079,7 +6221,7 @@ class SyncService
                                     $wooId = $foundId;
                                     $res = $this->client->putNoRetry('customers/'.$wooId, $payload, 20, 5);
                                     $wasUpdate = true;
-                                    
+
                                     if ($res->successful()) {
                                         $body = $res->json();
                                         $data = is_array($body) ? ($body['customer'] ?? $body) : [];
@@ -6092,13 +6234,14 @@ class SyncService
                                             $wasUpdate ? $updated++ : $created++;
                                         }
                                         $processed++;
+
                                         continue;
                                     }
                                 }
                                 // $foundId === 0 means no match found, continue to error handling
                             }
                         }
-                        
+
                         $errors++;
                         $this->log('customers.push', 'error', 'Woo request failed', [
                             'status' => $status,
@@ -6109,6 +6252,7 @@ class SyncService
                         $hadIssue = true;
                         $this->setClientSyncIssue($client, 'woo_request_failed', 'WooCommerce request failed. Check logs / credentials and retry sync.', 'push');
                         $processed++;
+
                         continue;
                     }
 
@@ -6122,7 +6266,7 @@ class SyncService
                             $client->save();
                         }
                         $wasUpdate ? $updated++ : $created++;
-                        if (!$hadIssue) {
+                        if (! $hadIssue) {
                             $this->clearClientSyncIssue($client);
                         }
                     } else {
@@ -6166,7 +6310,7 @@ class SyncService
     public function pushSingleCustomer(int $customerId): array
     {
         $client = PosClient::whereNull('deleted_at')->find($customerId);
-        if (!$client) {
+        if (! $client) {
             return ['ok' => false, 'error' => 'Customer not found'];
         }
 
@@ -6255,17 +6399,18 @@ class SyncService
                 $meta[] = ['key' => 'tax_number', 'value' => (string) $client->tax_number];
                 $meta[] = ['key' => 'vat_number', 'value' => (string) $client->tax_number];
             }
-            if (!empty($meta)) {
+            if (! empty($meta)) {
                 $payload['meta_data'] = $meta;
             }
 
-            $wooId = !empty($client->woocommerce_id) ? (int) $client->woocommerce_id : null;
+            $wooId = ! empty($client->woocommerce_id) ? (int) $client->woocommerce_id : null;
             $wasUpdate = false;
             $hadIssue = false;
 
             // If email is empty and we don't have a Woo ID → can't match/create (manual link required)
             if ($email === '' && $wooId === null) {
                 $this->setClientSyncIssue($client, 'missing_email', 'Stocky customer has no email. Add an email or manually link to a Woo customer.', 'push');
+
                 return ['ok' => false, 'error' => 'Customer must have an email to sync (requires manual link)'];
             }
 
@@ -6278,8 +6423,12 @@ class SyncService
                     $emailOwnerId = $this->findWooCustomerIdByEmail($normalizedEmail);
                     if ($emailOwnerId === -1 || ($emailOwnerId > 0 && $emailOwnerId !== $wooId)) {
                         unset($payload['email']);
-                        if (isset($payload['billing']) && is_array($payload['billing'])) unset($payload['billing']['email']);
-                        if (isset($payload['billing_address']) && is_array($payload['billing_address'])) unset($payload['billing_address']['email']);
+                        if (isset($payload['billing']) && is_array($payload['billing'])) {
+                            unset($payload['billing']['email']);
+                        }
+                        if (isset($payload['billing_address']) && is_array($payload['billing_address'])) {
+                            unset($payload['billing_address']['email']);
+                        }
                         $this->log('customers.push', 'warning', 'Skipped email overwrite due to Woo email uniqueness conflict (woocommerce_id match)', [
                             'client_id' => $client->id,
                             'woocommerce_id' => $wooId,
@@ -6295,8 +6444,12 @@ class SyncService
                     }
                 } else {
                     unset($payload['email']);
-                    if (isset($payload['billing']) && is_array($payload['billing'])) unset($payload['billing']['email']);
-                    if (isset($payload['billing_address']) && is_array($payload['billing_address'])) unset($payload['billing_address']['email']);
+                    if (isset($payload['billing']) && is_array($payload['billing'])) {
+                        unset($payload['billing']['email']);
+                    }
+                    if (isset($payload['billing_address']) && is_array($payload['billing_address'])) {
+                        unset($payload['billing_address']['email']);
+                    }
                 }
 
                 $res = $this->client->putNoRetry('customers/'.$wooId, $payload, 20, 5);
@@ -6315,14 +6468,16 @@ class SyncService
                 // If woocommerce_id IS null → Match by email (normalize: trim + lowercase)
                 if ($email === '') {
                     $this->setClientSyncIssue($client, 'missing_email', 'Stocky customer has no email. Add an email or manually link to a Woo customer.', 'push');
+
                     return ['ok' => false, 'error' => 'Customer must have an email to sync (requires manual link)'];
                 }
 
                 $foundId = $this->findWooCustomerIdByEmail($normalizedEmail);
-                
+
                 if ($foundId === -1) {
                     // Multiple Woo customers share same email → ambiguous, require manual link
                     $this->setClientSyncIssue($client, 'ambiguous_email', 'Multiple WooCommerce customers match this email. Manual link required.', 'push');
+
                     return ['ok' => false, 'error' => 'Ambiguous email match: multiple WooCommerce customers found with this email. Please link manually.'];
                 } elseif ($foundId > 0) {
                     // If a Woo customer with that email exists → link it by saving woocommerce_id locally
@@ -6338,15 +6493,15 @@ class SyncService
                 }
             }
 
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 $status = $res->status();
                 $body = $res->body();
-                
+
                 // Check if error is due to duplicate email
                 if ($status === 400 || $status === 422) {
                     $errorData = json_decode($body, true);
                     $errorMessage = is_array($errorData) ? ($errorData['message'] ?? $errorData['error'] ?? $body) : $body;
-                    
+
                     if (stripos($errorMessage, 'email') !== false && (stripos($errorMessage, 'already') !== false || stripos($errorMessage, 'exists') !== false || stripos($errorMessage, 'duplicate') !== false)) {
                         // Email already exists, try to find and update
                         $foundId = $this->findWooCustomerIdByEmail($normalizedEmail);
@@ -6358,7 +6513,7 @@ class SyncService
                             $wooId = $foundId;
                             $res = $this->client->putNoRetry('customers/'.$wooId, $payload, 20, 5);
                             $wasUpdate = true;
-                            
+
                             if ($res->successful()) {
                                 $body = $res->json();
                                 $data = is_array($body) ? ($body['customer'] ?? $body) : [];
@@ -6368,15 +6523,17 @@ class SyncService
                                         $client->woocommerce_id = $remoteId;
                                         $client->save();
                                     }
+
                                     return ['ok' => true, 'created' => $wasUpdate ? 0 : 1, 'updated' => $wasUpdate ? 1 : 0];
                                 }
                             }
                         }
+
                         // $foundId === 0 means no match found
                         return ['ok' => false, 'error' => 'Email already exists in WooCommerce but could not be updated'];
                     }
                 }
-                
+
                 return ['ok' => false, 'error' => 'WooCommerce request failed', 'status' => $status, 'body' => $body];
             }
 
@@ -6389,16 +6546,19 @@ class SyncService
                     $client->woocommerce_id = $remoteId;
                     $client->save();
                 }
-                if (!$hadIssue) {
+                if (! $hadIssue) {
                     $this->clearClientSyncIssue($client);
                 }
+
                 return ['ok' => true, 'created' => $wasUpdate ? 0 : 1, 'updated' => $wasUpdate ? 1 : 0];
             }
 
             $this->setClientSyncIssue($client, 'woo_request_failed', 'WooCommerce response missing customer id. Retry sync.', 'push');
+
             return ['ok' => false, 'error' => 'Missing id in WooCommerce response'];
         } catch (Throwable $e) {
             $this->setClientSyncIssue($client, 'woo_request_failed', 'Unexpected error during sync. Retry sync.', 'push');
+
             return ['ok' => false, 'error' => $e->getMessage()];
         }
     }
@@ -6435,7 +6595,7 @@ class SyncService
                     'order' => 'asc',
                 ], 20, 5);
 
-                if (!$res->successful()) {
+                if (! $res->successful()) {
                     $this->log('customers.pull', 'error', 'Failed to fetch WooCommerce customers', [
                         'status' => $res->status(),
                         'body' => $res->body(),
@@ -6447,7 +6607,7 @@ class SyncService
                 $body = $res->json();
                 $customers = is_array($body) ? ($body['customers'] ?? $body) : [];
 
-                if (!is_array($customers) || empty($customers)) {
+                if (! is_array($customers) || empty($customers)) {
                     break;
                 }
 
@@ -6458,6 +6618,7 @@ class SyncService
                         $wooId = (int) ($wooCustomer['id'] ?? 0);
                         if ($wooId <= 0) {
                             $skipped++;
+
                             continue;
                         }
 
@@ -6472,7 +6633,7 @@ class SyncService
                         $lastName = trim((string) ($wooCustomer['last_name'] ?? ''));
                         $username = trim((string) ($wooCustomer['username'] ?? ''));
                         $wooName = trim((string) ($wooCustomer['name'] ?? ''));
-                        $name = $username !== '' ? $username : ($wooName !== '' ? $wooName : trim($firstName . ' ' . $lastName));
+                        $name = $username !== '' ? $username : ($wooName !== '' ? $wooName : trim($firstName.' '.$lastName));
                         if ($name === '') {
                             $name = $email;
                         }
@@ -6525,14 +6686,15 @@ class SyncService
                         $client = PosClient::where('woocommerce_id', $wooId)
                             ->whereNull('deleted_at')
                             ->first();
-                        
-                        if (!$client) {
+
+                        if (! $client) {
                             // If email is empty → don't auto-match by email; require manual link
                             if ($email === '') {
                                 $skipped++;
                                 $this->log('customers.pull', 'info', 'Skipped WooCommerce customer without email (requires manual link)', [
                                     'woocommerce_id' => $wooCustomer['id'] ?? null,
                                 ]);
+
                                 continue;
                             }
 
@@ -6568,7 +6730,7 @@ class SyncService
                                         ->whereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail])
                                         ->exists();
 
-                                    if (!$emailConflict) {
+                                    if (! $emailConflict) {
                                         $client->email = $email;
                                     } else {
                                         $this->log('customers.pull', 'warning', 'Skipped email overwrite due to uniqueness conflict (woocommerce_id match)', [
@@ -6603,7 +6765,7 @@ class SyncService
                             $client->save();
                             $updated++;
                             $wasUpdate = true;
-                            if (!$hadIssue) {
+                            if (! $hadIssue) {
                                 $this->clearClientSyncIssue($client);
                             }
                         } else {
@@ -6628,6 +6790,7 @@ class SyncService
                                     'error' => $validator->errors()->first('email'),
                                 ]);
                                 $processed++;
+
                                 continue;
                             }
 
@@ -6665,13 +6828,14 @@ class SyncService
                                         'error' => $e->getMessage(),
                                     ]);
                                     $processed++;
+
                                     continue;
                                 }
                                 throw $e;
                             }
                         }
 
-                        $this->log('customers.pull', 'info', ($wasUpdate ? 'Updated' : 'Created') . ' customer from WooCommerce', [
+                        $this->log('customers.pull', 'info', ($wasUpdate ? 'Updated' : 'Created').' customer from WooCommerce', [
                             'client_id' => $client->id,
                             'woocommerce_id' => $wooId,
                             'email' => $email,
@@ -6695,7 +6859,7 @@ class SyncService
             }
 
         } catch (Throwable $e) {
-            $this->log('customers.pull', 'error', 'Fatal error during customers pull: ' . $e->getMessage(), [
+            $this->log('customers.pull', 'error', 'Fatal error during customers pull: '.$e->getMessage(), [
                 'processed' => $processed,
             ]);
         }
@@ -6732,12 +6896,12 @@ class SyncService
 
             $res = $this->client->getNoRetry('customers/'.$wooCustomerId, [], 20, 5);
 
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 return ['ok' => false, 'error' => 'Failed to fetch WooCommerce customer', 'status' => $res->status()];
             }
 
             $wooCustomer = $res->json();
-            if (!is_array($wooCustomer)) {
+            if (! is_array($wooCustomer)) {
                 return ['ok' => false, 'error' => 'Invalid response from WooCommerce'];
             }
 
@@ -6754,7 +6918,7 @@ class SyncService
             $lastName = trim((string) ($wooCustomer['last_name'] ?? ''));
             $username = trim((string) ($wooCustomer['username'] ?? ''));
             $wooName = trim((string) ($wooCustomer['name'] ?? ''));
-            $name = $username !== '' ? $username : ($wooName !== '' ? $wooName : trim($firstName . ' ' . $lastName));
+            $name = $username !== '' ? $username : ($wooName !== '' ? $wooName : trim($firstName.' '.$lastName));
             if ($name === '') {
                 $name = $email;
             }
@@ -6801,7 +6965,7 @@ class SyncService
             $client = PosClient::where('woocommerce_id', $wooId)
                 ->whereNull('deleted_at')
                 ->first();
-            
+
             if ($client) {
                 // If woocommerce_id exists → USE AS PRIMARY KEY → UPDATE
                 $hadIssue = false;
@@ -6826,7 +6990,7 @@ class SyncService
                         ->whereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail])
                         ->exists();
 
-                    if (!$emailConflict) {
+                    if (! $emailConflict) {
                         $client->email = $email;
                     } else {
                         $this->log('customers.pull', 'warning', 'Skipped email overwrite due to uniqueness conflict (woocommerce_id match)', [
@@ -6842,12 +7006,13 @@ class SyncService
                     $this->setClientSyncIssue($client, 'missing_email', 'WooCommerce customer has no email. Email was not overwritten; other fields updated.', 'pull');
                 }
                 $client->save();
-                if (!$hadIssue) {
+                if (! $hadIssue) {
                     $this->clearClientSyncIssue($client);
                 }
+
                 return ['ok' => true, 'created' => 0, 'updated' => 1];
             }
-            
+
             // If email is empty and we didn't match by woocommerce_id → don't auto-match; require manual link
             if ($email === '') {
                 return ['ok' => false, 'error' => 'WooCommerce customer has no email (requires manual link)'];
@@ -6875,6 +7040,7 @@ class SyncService
                 }
                 $client->woocommerce_id = $wooId;
                 $client->save();
+
                 return ['ok' => true, 'created' => 0, 'updated' => 1];
             } else {
                 // If not found → CREATE → store that Woo ID in the new row
@@ -6891,7 +7057,7 @@ class SyncService
                 );
 
                 if ($validator->fails()) {
-                    return ['ok' => false, 'error' => 'Email already exists: ' . $validator->errors()->first('email')];
+                    return ['ok' => false, 'error' => 'Email already exists: '.$validator->errors()->first('email')];
                 }
 
                 $maxCode = PosClient::max('code') ?? 0;
@@ -6913,6 +7079,7 @@ class SyncService
                         'tax_number' => $taxPresent ? ($taxNumber !== '' ? $taxNumber : null) : null,
                         'woocommerce_id' => $wooId,
                     ]);
+
                     return ['ok' => true, 'created' => 1, 'updated' => 0];
                 } catch (\Illuminate\Database\QueryException $e) {
                     // Handle database constraint violations
@@ -6949,6 +7116,7 @@ class SyncService
             }
             $a1 = (string) array_shift($parts);
             $a2 = trim(implode(' ', $parts));
+
             return [$a1, $a2];
         }
 
@@ -6968,6 +7136,7 @@ class SyncService
         if ($a2 === '') {
             return $a1;
         }
+
         return trim($a1.' '.$a2);
     }
 
@@ -7008,11 +7177,17 @@ class SyncService
             $wanted = array_fill_keys($keys, true);
 
             foreach ($meta as $m) {
-                if (!is_array($m)) continue;
+                if (! is_array($m)) {
+                    continue;
+                }
                 $key = trim((string) ($m['key'] ?? ''));
-                if ($key === '') continue;
+                if ($key === '') {
+                    continue;
+                }
                 $keyLower = mb_strtolower($key);
-                if (!isset($wanted[$keyLower])) continue;
+                if (! isset($wanted[$keyLower])) {
+                    continue;
+                }
                 $present = true;
                 $val = trim((string) ($m['value'] ?? ''));
                 if ($val !== '') {
@@ -7030,6 +7205,7 @@ class SyncService
         $s = preg_replace('/\s+/u', ' ', $s);
         // Keep letters/numbers/spaces only (works across locales)
         $s = preg_replace('/[^\p{L}\p{N} ]/u', '', $s);
+
         return trim((string) $s);
     }
 
@@ -7058,36 +7234,44 @@ class SyncService
 
         try {
             $res = $this->client->getNoRetry('data/countries', [], 20, 5);
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 return $idx;
             }
 
             $rows = $res->json();
-            if (!is_array($rows)) {
+            if (! is_array($rows)) {
                 return $idx;
             }
 
             foreach ($rows as $row) {
-                if (!is_array($row)) continue;
+                if (! is_array($row)) {
+                    continue;
+                }
                 $code = strtoupper(trim((string) ($row['code'] ?? '')));
                 $name = trim((string) ($row['name'] ?? ''));
-                if ($code === '') continue;
+                if ($code === '') {
+                    continue;
+                }
                 if ($name !== '') {
                     $idx['countriesByCode'][$code] = $name;
                     $idx['countryCodeByName'][$this->normKey($name)] = $code;
                 }
 
                 $states = $row['states'] ?? null;
-                if (is_array($states) && !empty($states)) {
+                if (is_array($states) && ! empty($states)) {
                     foreach ($states as $st) {
-                        if (!is_array($st)) continue;
+                        if (! is_array($st)) {
+                            continue;
+                        }
                         $sc = strtoupper(trim((string) ($st['code'] ?? '')));
                         $sn = trim((string) ($st['name'] ?? ''));
-                        if ($sc === '' || $sn === '') continue;
-                        if (!isset($idx['statesByCountryCode'][$code])) {
+                        if ($sc === '' || $sn === '') {
+                            continue;
+                        }
+                        if (! isset($idx['statesByCountryCode'][$code])) {
                             $idx['statesByCountryCode'][$code] = [];
                         }
-                        if (!isset($idx['stateCodeByName'][$code])) {
+                        if (! isset($idx['stateCodeByName'][$code])) {
                             $idx['stateCodeByName'][$code] = [];
                         }
                         $idx['statesByCountryCode'][$code][$sc] = $sn;
@@ -7105,7 +7289,9 @@ class SyncService
     private function resolveWooCountryName(string $countryCodeOrName): string
     {
         $raw = trim((string) $countryCodeOrName);
-        if ($raw === '') return '';
+        if ($raw === '') {
+            return '';
+        }
 
         $idx = $this->wooCountriesIndex();
         $upper = strtoupper($raw);
@@ -7125,7 +7311,9 @@ class SyncService
     private function resolveWooCountryCode(string $countryNameOrCode): string
     {
         $raw = trim((string) $countryNameOrCode);
-        if ($raw === '') return '';
+        if ($raw === '') {
+            return '';
+        }
 
         $idx = $this->wooCountriesIndex();
         $upper = strtoupper($raw);
@@ -7145,10 +7333,14 @@ class SyncService
     private function resolveWooStateName(string $stateCodeOrName, string $countryCodeOrName): string
     {
         $rawState = trim((string) $stateCodeOrName);
-        if ($rawState === '') return '';
+        if ($rawState === '') {
+            return '';
+        }
 
         $countryCode = $this->resolveWooCountryCode($countryCodeOrName);
-        if ($countryCode === '') return $rawState;
+        if ($countryCode === '') {
+            return $rawState;
+        }
 
         $idx = $this->wooCountriesIndex();
         $stateUpper = strtoupper($rawState);
@@ -7164,20 +7356,24 @@ class SyncService
     private function resolveWooStateCode(string $stateNameOrCode, string $countryCodeOrName): string
     {
         $rawState = trim((string) $stateNameOrCode);
-        if ($rawState === '') return '';
+        if ($rawState === '') {
+            return '';
+        }
 
         $countryCode = $this->resolveWooCountryCode($countryCodeOrName);
-        if ($countryCode === '') return '';
+        if ($countryCode === '') {
+            return '';
+        }
 
         $idx = $this->wooCountriesIndex();
         $stateUpper = strtoupper($rawState);
         $byCode = $idx['statesByCountryCode'][$countryCode] ?? null;
-        if (is_array($byCode) && !empty($byCode) && isset($byCode[$stateUpper])) {
+        if (is_array($byCode) && ! empty($byCode) && isset($byCode[$stateUpper])) {
             return $stateUpper;
         }
 
         // If Woo doesn't define states for this country, accept free text (Woo stores it as-is).
-        if (!is_array($byCode) || empty($byCode)) {
+        if (! is_array($byCode) || empty($byCode)) {
             return $rawState;
         }
 
@@ -7258,7 +7454,7 @@ class SyncService
                     $remoteEmail = $this->normalizeEmail((string) ($remote['email'] ?? ''));
                     if ($remoteEmail === $normalizedEmail && ! empty($remote['id'])) {
                         $matches[] = (int) $remote['id'];
-                        
+
                         // Early exit: if more than one match found, return -1 immediately (ambiguous)
                         if (count($matches) > 1) {
                             return -1;
@@ -7307,7 +7503,7 @@ class SyncService
                 return 0; // No match
             }
         } catch (\Throwable $e) {
-            $this->log('customers.find_by_email', 'error', 'Error finding WooCommerce customer by email: ' . $e->getMessage(), [
+            $this->log('customers.find_by_email', 'error', 'Error finding WooCommerce customer by email: '.$e->getMessage(), [
                 'email' => $email,
             ]);
         }

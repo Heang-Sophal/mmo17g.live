@@ -18,8 +18,3 @@ class PaymentDeleted
         $this->payment = $payment;
     }
 }
-
-
-
-
-

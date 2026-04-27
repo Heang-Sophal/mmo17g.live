@@ -21,14 +21,16 @@ class ClearAllSales extends Command
         $this->line('  - Sale documents & shipments');
         $this->line('  - Draft sales');
 
-        if (!$this->option('force')) {
-            if (!$this->confirm('Are you absolutely sure you want to proceed?')) {
+        if (! $this->option('force')) {
+            if (! $this->confirm('Are you absolutely sure you want to proceed?')) {
                 $this->info('Operation cancelled.');
+
                 return 0;
             }
 
-            if (!$this->confirm('This action CANNOT be undone. Confirm?')) {
+            if (! $this->confirm('This action CANNOT be undone. Confirm?')) {
                 $this->info('Operation cancelled.');
+
                 return 0;
             }
         }
@@ -87,7 +89,8 @@ class ClearAllSales extends Command
 
         } catch (\Exception $e) {
             DB::statement('SET FOREIGN_KEY_CHECKS=1;');
-            $this->error('❌ Error occurred: ' . $e->getMessage());
+            $this->error('❌ Error occurred: '.$e->getMessage());
+
             return 1;
         }
     }

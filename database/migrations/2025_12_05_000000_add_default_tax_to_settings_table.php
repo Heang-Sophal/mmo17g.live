@@ -30,4 +30,3 @@ class AddDefaultTaxToSettingsTable extends Migration
         });
     }
 }
-

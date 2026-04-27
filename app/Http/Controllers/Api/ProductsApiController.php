@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
-use App\Models\Category;
 use App\Models\Brand;
+use App\Models\Category;
+use App\Models\Product;
 use App\Models\Warehouse;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ProductsApiController extends Controller
@@ -63,7 +63,7 @@ class ProductsApiController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to load products: ' . $e->getMessage(),
+                'message' => 'Failed to load products: '.$e->getMessage(),
                 'error' => $e->getMessage(),
             ], 500);
         }

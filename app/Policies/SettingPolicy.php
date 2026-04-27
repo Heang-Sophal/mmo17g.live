@@ -87,52 +87,49 @@ class SettingPolicy
     }
 
     public function pos_settings(User $user)
-{
-    $posPermission = Permission::where('name', 'pos_settings')->first();
-    $systemPermission = Permission::where('name', 'setting_system')->first();
+    {
+        $posPermission = Permission::where('name', 'pos_settings')->first();
+        $systemPermission = Permission::where('name', 'setting_system')->first();
 
-    if (
-        ($posPermission && $user->hasRole($posPermission->roles)) ||
-        ($systemPermission && $user->hasRole($systemPermission->roles))
-    ) {
-        return true;
+        if (
+            ($posPermission && $user->hasRole($posPermission->roles)) ||
+            ($systemPermission && $user->hasRole($systemPermission->roles))
+        ) {
+            return true;
+        }
+
+        return false;
     }
 
-    return false;
-}
+    public function payment_gateway(User $user)
+    {
+        $paymentPermission = Permission::where('name', 'payment_gateway')->first();
+        $systemPermission = Permission::where('name', 'setting_system')->first();
 
-public function payment_gateway(User $user)
-{
-    $paymentPermission = Permission::where('name', 'payment_gateway')->first();
-    $systemPermission = Permission::where('name', 'setting_system')->first();
+        if (
+            ($paymentPermission && $user->hasRole($paymentPermission->roles)) ||
+            ($systemPermission && $user->hasRole($systemPermission->roles))
+        ) {
+            return true;
+        }
 
-    if (
-        ($paymentPermission && $user->hasRole($paymentPermission->roles)) ||
-        ($systemPermission && $user->hasRole($systemPermission->roles))
-    ) {
-        return true;
+        return false;
     }
 
-    return false;
-}
+    public function mail_settings(User $user)
+    {
+        $mailPermission = Permission::where('name', 'mail_settings')->first();
+        $systemPermission = Permission::where('name', 'setting_system')->first();
 
-public function mail_settings(User $user)
-{
-    $mailPermission = Permission::where('name', 'mail_settings')->first();
-    $systemPermission = Permission::where('name', 'setting_system')->first();
+        if (
+            ($mailPermission && $user->hasRole($mailPermission->roles)) ||
+            ($systemPermission && $user->hasRole($systemPermission->roles))
+        ) {
+            return true;
+        }
 
-    if (
-        ($mailPermission && $user->hasRole($mailPermission->roles)) ||
-        ($systemPermission && $user->hasRole($systemPermission->roles))
-    ) {
-        return true;
+        return false;
     }
-
-    return false;
-}
-
-
-
 
     public function module_settings(User $user)
     {
@@ -152,17 +149,16 @@ public function mail_settings(User $user)
     {
         $appearancePermission = Permission::where('name', 'appearance_settings')->first();
         $systemPermission = Permission::where('name', 'setting_system')->first();
-    
+
         if (
             ($appearancePermission && $user->hasRole($appearancePermission->roles)) ||
             ($systemPermission && $user->hasRole($systemPermission->roles))
         ) {
             return true;
         }
-    
+
         return false;
     }
-    
 
     public function translations_settings(User $user)
     {
@@ -175,18 +171,17 @@ public function mail_settings(User $user)
     {
         $loginDevicePermission = Permission::where('name', 'login_device_management')->first();
         $systemPermission = Permission::where('name', 'setting_system')->first();
-    
+
         if (
             ($loginDevicePermission && $user->hasRole($loginDevicePermission->roles)) ||
             ($systemPermission && $user->hasRole($systemPermission->roles))
         ) {
             return true;
         }
-    
+
         return false;
     }
-    
-    
+
     public function report_device_management(User $user)
     {
         $permission = Permission::where('name', 'report_device_management')->first();
@@ -200,7 +195,6 @@ public function mail_settings(User $user)
 
         return $user->hasRole($permission->roles);
     }
-
 
     /**
      * Determine whether the user can restore the model.

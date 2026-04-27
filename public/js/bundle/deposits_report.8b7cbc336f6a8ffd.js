@@ -1,4 +1,4 @@
-(self["webpackChunk"] = self["webpackChunk"] || []).push([["expenses_report"],{
+(self["webpackChunk"] = self["webpackChunk"] || []).push([["deposits_report"],{
 
 /***/ "./node_modules/@babel/runtime/helpers/esm/arrayLikeToArray.js":
 /*!*********************************************************************!*\
@@ -220,9 +220,9 @@ function as(t,e,i,a=null){return function(s){s.preventDefault(),s.stopPropagatio
 
 /***/ }),
 
-/***/ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/expenses_report.vue?vue&type=script&lang=js":
+/***/ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/deposits_report.vue?vue&type=script&lang=js":
 /*!***********************************************************************************************************************************************************************************************************************!*\
-  !*** ./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/expenses_report.vue?vue&type=script&lang=js ***!
+  !*** ./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/deposits_report.vue?vue&type=script&lang=js ***!
   \***********************************************************************************************************************************************************************************************************************/
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
@@ -266,7 +266,7 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
     apexchart: (vue_apexcharts__WEBPACK_IMPORTED_MODULE_3___default())
   },
   metaInfo: {
-    title: "Expenses Report"
+    title: "Deposits Report"
   },
   data: function data() {
     return {
@@ -309,23 +309,20 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
       totalRows: "",
       reports: [],
       report: {},
-      warehouses: [],
-      warehouse_id: 0,
-      // Optional price format key for frontend display (loaded from system settings/localStorage)
-      price_format_key: null
+      warehouse_id: 0
     };
   },
   computed: _objectSpread(_objectSpread({}, (0,vuex__WEBPACK_IMPORTED_MODULE_7__.mapGetters)(["currentUser"])), {}, {
     columns: function columns() {
       return [{
-        label: this.$t("Expense_Category"),
+        label: this.$t("Deposit_Category"),
         field: "category_name",
         tdClass: "text-left",
         thClass: "text-left",
         sortable: false
       }, {
-        label: this.$t("Total_Expenses"),
-        field: "total_expenses",
+        label: this.$t("Total_Deposits"),
+        field: "total_deposits",
         type: "decimal",
         headerField: this.sumCount,
         tdClass: "text-left",
@@ -333,9 +330,9 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
         sortable: false
       }];
     },
-    totalExpenses: function totalExpenses() {
+    totalDeposits: function totalDeposits() {
       return (this.reports || []).reduce(function (sum, r) {
-        return sum + parseFloat(r.total_expenses || 0);
+        return sum + parseFloat(r.total_deposits || 0);
       }, 0);
     },
     categoryCount: function categoryCount() {
@@ -345,8 +342,8 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
       var reports = this.reports || [];
       if (!reports.length) return '';
       var top = reports.reduce(function (best, r) {
-        var val = parseFloat(r.total_expenses || 0);
-        return val > (best ? parseFloat(best.total_expenses || 0) : 0) ? r : best;
+        var val = parseFloat(r.total_deposits || 0);
+        return val > (best ? parseFloat(best.total_deposits || 0) : 0) ? r : best;
       }, null);
       return top ? top.category_name : '';
     },
@@ -354,25 +351,24 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
       var reports = this.reports || [];
       if (!reports.length) return null;
       var top = reports.reduce(function (best, r) {
-        var val = parseFloat(r.total_expenses || 0);
-        return val > (best ? parseFloat(best.total_expenses || 0) : 0) ? r : best;
+        var val = parseFloat(r.total_deposits || 0);
+        return val > (best ? parseFloat(best.total_deposits || 0) : 0) ? r : best;
       }, null);
-      return top ? parseFloat(top.total_expenses || 0) : null;
+      return top ? parseFloat(top.total_deposits || 0) : null;
     },
     chartDataLength: function chartDataLength() {
-      var list = this.reports || [];
-      return list.length;
+      return (this.reports || []).length;
     },
     apexPieSeries: function apexPieSeries() {
       return (this.reports || []).map(function (r) {
-        return parseFloat(r.total_expenses || 0);
+        return parseFloat(r.total_deposits || 0);
       });
     },
     apexPieOptions: function apexPieOptions() {
-      var totalStr = this.currentUser && this.currentUser.currency ? "".concat(this.currentUser.currency, " ").concat(Number(this.totalExpenses).toLocaleString(undefined, {
+      var totalStr = this.currentUser && this.currentUser.currency ? "".concat(this.currentUser.currency, " ").concat(Number(this.totalDeposits).toLocaleString(undefined, {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
-      })) : String(this.totalExpenses);
+      })) : String(this.totalDeposits);
       return {
         chart: {
           type: 'donut',
@@ -387,7 +383,7 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
           position: 'bottom',
           fontSize: '12px'
         },
-        colors: ['#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#f97316', '#eab308', '#22c55e', '#14b8a6'],
+        colors: ['#0ea5e9', '#06b6d4', '#14b8a6', '#10b981', '#22c55e', '#84cc16', '#eab308', '#f59e0b', '#f97316', '#ef4444'],
         dataLabels: {
           enabled: true,
           formatter: function formatter(val) {
@@ -402,7 +398,7 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
                 show: true,
                 total: {
                   show: true,
-                  label: this.$t('Total_Expenses'),
+                  label: this.$t('Total_Deposits'),
                   formatter: function formatter() {
                     return totalStr;
                   }
@@ -415,9 +411,9 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
     },
     apexBarSeries: function apexBarSeries() {
       return [{
-        name: this.$t('Total_Expenses'),
+        name: this.$t('Total_Deposits'),
         data: (this.reports || []).map(function (r) {
-          return parseFloat(r.total_expenses || 0);
+          return parseFloat(r.total_deposits || 0);
         })
       }];
     },
@@ -461,7 +457,7 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
             }
           }
         },
-        colors: ['#6366f1'],
+        colors: ['#0ea5e9'],
         legend: {
           show: false
         },
@@ -481,32 +477,32 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
     sumCount: function sumCount(rowObj) {
       var sum = 0;
       for (var i = 0; i < rowObj.children.length; i++) {
-        sum += rowObj.children[i].total_expenses;
+        sum += rowObj.children[i].total_deposits;
       }
       return sum;
     },
     //----------------------------------- Sales PDF ------------------------------\\
-    Expenses_report_pdf: function Expenses_report_pdf() {
+    deposits_report_pdf: function deposits_report_pdf() {
       var self = this;
       var pdf = new jspdf__WEBPACK_IMPORTED_MODULE_1__["default"]("p", "pt");
       var fontPath = "/fonts/Vazirmatn-Bold.ttf";
       pdf.addFont(fontPath, "VazirmatnBold", "bold");
       pdf.setFont("VazirmatnBold");
       var columns = [{
-        header: self.$t("Expense_Category"),
+        header: self.$t("Deposit_Category"),
         dataKey: "category_name"
       }, {
-        header: self.$t("Total_Expenses"),
-        dataKey: "total_expenses"
+        header: self.$t("Total_Deposits"),
+        dataKey: "total_deposits"
       }];
 
       // Calculate totals
       var totalGrandTotal = self.reports.reduce(function (sum, report) {
-        return sum + parseFloat(report.total_expenses || 0);
+        return sum + parseFloat(report.total_deposits || 0);
       }, 0);
       var footer = [{
         category_name: self.$t("Total"),
-        total_expenses: "".concat(totalGrandTotal.toFixed(2))
+        total_deposits: "".concat(totalGrandTotal.toFixed(2))
       }];
       (0,jspdf_autotable__WEBPACK_IMPORTED_MODULE_2__["default"])(pdf, {
         columns: columns,
@@ -517,7 +513,7 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
         didDrawPage: function didDrawPage(data) {
           pdf.setFont("VazirmatnBold");
           pdf.setFontSize(18);
-          pdf.text("Expenses Report", 40, 25);
+          pdf.text("Deposits Report", 40, 25);
         },
         styles: {
           font: "VazirmatnBold",
@@ -534,7 +530,7 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
           fontStyle: "bold"
         }
       });
-      pdf.save("expenses_report.pdf");
+      pdf.save("deposits_report.pdf");
     },
     //---- update Params Table
     updateParams: function updateParams(newProps) {
@@ -547,7 +543,7 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
         this.updateParams({
           page: currentPage
         });
-        this.get_expenses_report(currentPage);
+        this.get_deposits_report(currentPage);
       }
     },
     //---- Event Per Page Change
@@ -559,7 +555,7 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
           page: 1,
           perPage: currentPerPage
         });
-        this.get_expenses_report(1);
+        this.get_deposits_report(1);
       }
     },
     //---- Event on Sort Change
@@ -570,12 +566,12 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
           field: params[0].field
         }
       });
-      this.get_expenses_report(this.serverParams.page);
+      this.get_deposits_report(this.serverParams.page);
     },
     //---- Event on Search
     onSearch: function onSearch(value) {
       this.search = value.searchTerm;
-      this.get_expenses_report(this.serverParams.page);
+      this.get_deposits_report(this.serverParams.page);
     },
     //------------------------------Formetted Numbers -------------------------\\
     formatNumber: function formatNumber(number, dec) {
@@ -609,11 +605,11 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
       var value = this.formatPriceDisplay(number, dec);
       return safeSymbol ? "".concat(safeSymbol, " ").concat(value) : value;
     },
-    //------ Print Table Only - Print ALL expenses data with all columns
+    //------ Print Table Only - Print ALL deposits data with all columns
     printTableOnly: function printTableOnly() {
       var _this$rows$,
         _this2 = this;
-      var title = "".concat(this.$t("Reports"), " / ").concat(this.$t("Expense_Report"));
+      var title = "".concat(this.$t("Reports"), " / ").concat(this.$t("Deposits_Report"));
       var reports = Array.isArray((_this$rows$ = this.rows[0]) === null || _this$rows$ === void 0 ? void 0 : _this$rows$.children) ? this.rows[0].children : [];
 
       // Build table header with all columns
@@ -631,9 +627,9 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
           var cellValue = '';
           if (col.field === 'category_name') {
             cellValue = report.category_name || '';
-          } else if (col.field === 'total_expenses') {
+          } else if (col.field === 'total_deposits') {
             var _this2$currentUser;
-            cellValue = _this2.formatPriceWithSymbol((_this2$currentUser = _this2.currentUser) === null || _this2$currentUser === void 0 ? void 0 : _this2$currentUser.currency, report.total_expenses, 2);
+            cellValue = _this2.formatPriceWithSymbol((_this2$currentUser = _this2.currentUser) === null || _this2$currentUser === void 0 ? void 0 : _this2$currentUser.currency, report.total_deposits, 2);
           } else {
             // Default: get value directly from report object
             cellValue = report[col.field] || '';
@@ -661,13 +657,6 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
         w.close();
       }, 400);
     },
-    //---------------------- Event Select Warehouse ------------------------------\\
-    Selected_Warehouse: function Selected_Warehouse(value) {
-      if (value === null) {
-        this.warehouse_id = "";
-      }
-      this.get_expenses_report(1);
-    },
     //----------------------------- Submit Date Picker -------------------\\
     Submit_filter_dateRange: function Submit_filter_dateRange() {
       var pad = function pad(n) {
@@ -678,7 +667,7 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
       };
       this.startDate = formatLocalDate(new Date(this.dateRange.startDate));
       this.endDate = formatLocalDate(new Date(this.dateRange.endDate));
-      this.get_expenses_report(1);
+      this.get_deposits_report(1);
     },
     get_data_loaded: function get_data_loaded() {
       var self = this;
@@ -702,17 +691,17 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
       return moment__WEBPACK_IMPORTED_MODULE_6___default()(d).format("YYYY-MM-DD");
     },
     //--------------------------- Get Customer Report -------------\\
-    get_expenses_report: function get_expenses_report(page) {
+    get_deposits_report: function get_deposits_report(page) {
       var _this3 = this;
       // Start the progress bar.
       nprogress__WEBPACK_IMPORTED_MODULE_0___default().start();
       nprogress__WEBPACK_IMPORTED_MODULE_0___default().set(0.1);
       this.get_data_loaded();
-      axios.get("report/expenses_report?page=" + page + "&SortField=" + this.serverParams.sort.field + "&SortType=" + this.serverParams.sort.type + "&warehouse_id=" + this.warehouse_id + "&search=" + this.search + "&limit=" + this.limit + "&to=" + this.endDate + "&from=" + this.startDate).then(function (response) {
+      axios.get("report/deposits_report?page=" + page + "&SortField=" + this.serverParams.sort.field + "&SortType=" + this.serverParams.sort.type + "&search=" + this.search + "&limit=" + this.limit + "&to=" + this.endDate + "&from=" + this.startDate).then(function (response) {
         _this3.reports = response.data.reports;
         _this3.totalRows = response.data.totalRows;
-        _this3.warehouses = response.data.warehouses;
         _this3.rows[0].children = _this3.reports;
+
         // Complete the animation of theprogress bar.
         nprogress__WEBPACK_IMPORTED_MODULE_0___default().done();
         _this3.isLoading = false;
@@ -732,15 +721,15 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
   //----------------------------- Created function------------------- \\
 
   created: function created() {
-    this.get_expenses_report(1);
+    this.get_deposits_report(1);
   }
 });
 
 /***/ }),
 
-/***/ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/expenses_report.vue?vue&type=template&id=d82e318a&scoped=true":
+/***/ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/deposits_report.vue?vue&type=template&id=312c06fe&scoped=true":
 /*!**********************************************************************************************************************************************************************************************************************************************************************************************************************!*\
-  !*** ./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/expenses_report.vue?vue&type=template&id=d82e318a&scoped=true ***!
+  !*** ./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/deposits_report.vue?vue&type=template&id=312c06fe&scoped=true ***!
   \**********************************************************************************************************************************************************************************************************************************************************************************************************************/
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
@@ -750,12 +739,6 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   render: () => (/* binding */ render),
 /* harmony export */   staticRenderFns: () => (/* binding */ staticRenderFns)
 /* harmony export */ });
-function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
-function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
-function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
-function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
-function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
-function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
 var render = function render() {
   var _vm = this,
     _c = _vm._self._c;
@@ -763,7 +746,7 @@ var render = function render() {
     staticClass: "main-content"
   }, [_c("breadcumb", {
     attrs: {
-      page: _vm.$t("Expense_Report"),
+      page: _vm.$t("Deposits_Report"),
       folder: _vm.$t("Reports")
     }
   }), _vm._v(" "), _vm.isLoading ? _c("div", {
@@ -803,7 +786,7 @@ var render = function render() {
       md: "4"
     }
   }, [_c("b-card", {
-    staticClass: "shadow-sm border-0 h-100 expense-summary-card expense-card-total"
+    staticClass: "shadow-sm border-0 h-100 deposit-summary-card deposit-card-total"
   }, [_c("div", {
     staticClass: "d-flex align-items-center"
   }, [_c("div", {
@@ -812,15 +795,15 @@ var render = function render() {
     staticClass: "i-Dollar"
   })]), _vm._v(" "), _c("div", [_c("div", {
     staticClass: "text-muted small text-uppercase"
-  }, [_vm._v(_vm._s(_vm.$t("Total_Expenses")))]), _vm._v(" "), _c("h4", {
+  }, [_vm._v(_vm._s(_vm.$t("Total_Deposits")))]), _vm._v(" "), _c("h4", {
     staticClass: "mb-0 font-weight-bold"
-  }, [_vm._v(_vm._s(_vm.formatPriceWithSymbol(_vm.currentUser && _vm.currentUser.currency, _vm.totalExpenses, 2)))])])])])], 1), _vm._v(" "), _c("b-col", {
+  }, [_vm._v(_vm._s(_vm.formatPriceWithSymbol(_vm.currentUser && _vm.currentUser.currency, _vm.totalDeposits, 2)))])])])])], 1), _vm._v(" "), _c("b-col", {
     staticClass: "mb-3",
     attrs: {
       md: "4"
     }
   }, [_c("b-card", {
-    staticClass: "shadow-sm border-0 h-100 expense-summary-card expense-card-categories"
+    staticClass: "shadow-sm border-0 h-100 deposit-summary-card deposit-card-categories"
   }, [_c("div", {
     staticClass: "d-flex align-items-center"
   }, [_c("div", {
@@ -829,7 +812,7 @@ var render = function render() {
     staticClass: "i-Bar-Chart"
   })]), _vm._v(" "), _c("div", [_c("div", {
     staticClass: "text-muted small text-uppercase"
-  }, [_vm._v(_vm._s(_vm.$t("Expense_Category")))]), _vm._v(" "), _c("h4", {
+  }, [_vm._v(_vm._s(_vm.$t("Deposit_Category")))]), _vm._v(" "), _c("h4", {
     staticClass: "mb-0 font-weight-bold"
   }, [_vm._v(_vm._s(_vm.categoryCount))])])])])], 1), _vm._v(" "), _c("b-col", {
     staticClass: "mb-3",
@@ -837,7 +820,7 @@ var render = function render() {
       md: "4"
     }
   }, [_c("b-card", {
-    staticClass: "shadow-sm border-0 h-100 expense-summary-card expense-card-top"
+    staticClass: "shadow-sm border-0 h-100 deposit-summary-card deposit-card-top"
   }, [_c("div", {
     staticClass: "d-flex align-items-center"
   }, [_c("div", {
@@ -864,7 +847,7 @@ var render = function render() {
     staticClass: "shadow-sm border-0 h-100"
   }, [_c("h5", {
     staticClass: "card-title mb-3"
-  }, [_vm._v(_vm._s(_vm.$t("Expenses_by_Category") || "Expenses by Category") + " (" + _vm._s(_vm.$t("Distribution") || "Distribution") + ")")]), _vm._v(" "), _vm.chartDataLength ? _c("div", {
+  }, [_vm._v(_vm._s(_vm.$t("Deposits_by_Category") || "Deposits by Category") + " (" + _vm._s(_vm.$t("Distribution") || "Distribution") + ")")]), _vm._v(" "), _vm.chartDataLength ? _c("div", {
     staticClass: "chart-wrapper"
   }, [_c("apexchart", {
     attrs: {
@@ -884,7 +867,7 @@ var render = function render() {
     staticClass: "shadow-sm border-0 h-100"
   }, [_c("h5", {
     staticClass: "card-title mb-3"
-  }, [_vm._v(_vm._s(_vm.$t("Expenses_by_Category") || "Expenses by Category") + " (" + _vm._s(_vm.$t("Total_Expenses")) + ")")]), _vm._v(" "), _vm.chartDataLength ? _c("div", {
+  }, [_vm._v(_vm._s(_vm.$t("Deposits_by_Category") || "Deposits by Category") + " (" + _vm._s(_vm.$t("Total_Deposits")) + ")")]), _vm._v(" "), _vm.chartDataLength ? _c("div", {
     staticClass: "chart-wrapper"
   }, [_c("apexchart", {
     attrs: {
@@ -924,44 +907,14 @@ var render = function render() {
       "on-per-page-change": _vm.onPerPageChange,
       "on-sort-change": _vm.onSortChange,
       "on-search": _vm.onSearch
-    }
-  }, [_c("div", {
-    staticClass: "mt-2 mb-3 quantity_alert_warehouse",
-    attrs: {
-      slot: "table-actions"
     },
-    slot: "table-actions"
-  }, [_c("b-form-group", {
-    attrs: {
-      label: _vm.$t("warehouse")
-    }
-  }, [_c("v-select", {
-    attrs: {
-      reduce: function reduce(label) {
-        return label.value;
-      },
-      placeholder: _vm.$t("Choose_Warehouse"),
-      options: [{
-        label: _vm.$t("All_Warehouses"),
-        value: 0
-      }].concat(_toConsumableArray(_vm.warehouses.map(function (warehouse) {
-        return {
-          label: warehouse.name,
-          value: warehouse.id
-        };
-      })))
-    },
-    on: {
-      input: _vm.Selected_Warehouse
-    },
-    model: {
-      value: _vm.warehouse_id,
-      callback: function callback($$v) {
-        _vm.warehouse_id = $$v;
-      },
-      expression: "warehouse_id"
-    }
-  })], 1)], 1), _vm._v(" "), _c("div", {
+    scopedSlots: _vm._u([{
+      key: "table-row",
+      fn: function fn(props) {
+        return [props.column.field == "total_deposits" ? _c("span", [_vm._v("\n          " + _vm._s(_vm.formatPriceWithSymbol(_vm.currentUser && _vm.currentUser.currency, props.row.total_deposits, 2)) + "\n        ")]) : _c("span", [_vm._v("\n          " + _vm._s(props.formattedRow[props.column.field]) + "\n        ")])];
+      }
+    }], null, false, 372383620)
+  }, [_vm._v(" "), _c("div", {
     staticClass: "mt-2 mb-3",
     attrs: {
       slot: "table-actions"
@@ -986,7 +939,7 @@ var render = function render() {
     },
     on: {
       click: function click($event) {
-        return _vm.Expenses_report_pdf();
+        return _vm.deposits_report_pdf();
       }
     }
   }, [_c("i", {
@@ -996,9 +949,9 @@ var render = function render() {
     attrs: {
       data: _vm.reports,
       columns: _vm.columns,
-      "file-name": "Expenses_report",
+      "file-name": "deposits_report",
       "file-type": "xlsx",
-      "sheet-name": "Expenses_report"
+      "sheet-name": "deposits_report"
     }
   }, [_c("i", {
     staticClass: "i-File-Excel"
@@ -1034,9 +987,9 @@ ___CSS_LOADER_EXPORT___.push([module.id, "td[data-v-98ac2448],th[data-v-98ac2448
 
 /***/ }),
 
-/***/ "./node_modules/css-loader/dist/cjs.js??clonedRuleSet-8.use[1]!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-8.use[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/expenses_report.vue?vue&type=style&index=0&id=d82e318a&scoped=true&lang=css":
+/***/ "./node_modules/css-loader/dist/cjs.js??clonedRuleSet-8.use[1]!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-8.use[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/deposits_report.vue?vue&type=style&index=0&id=312c06fe&scoped=true&lang=css":
 /*!*******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
-  !*** ./node_modules/css-loader/dist/cjs.js??clonedRuleSet-8.use[1]!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-8.use[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/expenses_report.vue?vue&type=style&index=0&id=d82e318a&scoped=true&lang=css ***!
+  !*** ./node_modules/css-loader/dist/cjs.js??clonedRuleSet-8.use[1]!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-8.use[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/deposits_report.vue?vue&type=style&index=0&id=312c06fe&scoped=true&lang=css ***!
   \*******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
 /***/ ((module, __webpack_exports__, __webpack_require__) => {
 
@@ -1051,7 +1004,7 @@ __webpack_require__.r(__webpack_exports__);
 
 var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_0___default()(function(i){return i[1]});
 // Module
-___CSS_LOADER_EXPORT___.push([module.id, "\n.expense-summary-card .summary-icon[data-v-d82e318a] {\n  width: 48px;\n  height: 48px;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  font-size: 1.4rem;\n  color: #fff;\n}\n.expense-card-total .summary-icon[data-v-d82e318a] { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);\n}\n.expense-card-categories .summary-icon[data-v-d82e318a] { background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);\n}\n.expense-card-top .summary-icon[data-v-d82e318a] { background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%);\n}\n.chart-wrapper[data-v-d82e318a] { min-height: 280px;\n}\n", ""]);
+___CSS_LOADER_EXPORT___.push([module.id, "\n.deposit-summary-card .summary-icon[data-v-312c06fe] {\n  width: 48px;\n  height: 48px;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  font-size: 1.4rem;\n  color: #fff;\n}\n.deposit-card-total .summary-icon[data-v-312c06fe] { background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);\n}\n.deposit-card-categories .summary-icon[data-v-312c06fe] { background: linear-gradient(135deg, #735F33 0%, #D6A735 100%);\n}\n.deposit-card-top .summary-icon[data-v-312c06fe] { background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%);\n}\n.chart-wrapper[data-v-312c06fe] { min-height: 280px;\n}\n", ""]);
 // Exports
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
 
@@ -21029,9 +20982,9 @@ module.exports = webpackEmptyContext;
 
 /***/ }),
 
-/***/ "./node_modules/style-loader/dist/cjs.js!./node_modules/css-loader/dist/cjs.js??clonedRuleSet-8.use[1]!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-8.use[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/expenses_report.vue?vue&type=style&index=0&id=d82e318a&scoped=true&lang=css":
+/***/ "./node_modules/style-loader/dist/cjs.js!./node_modules/css-loader/dist/cjs.js??clonedRuleSet-8.use[1]!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-8.use[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/deposits_report.vue?vue&type=style&index=0&id=312c06fe&scoped=true&lang=css":
 /*!***********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
-  !*** ./node_modules/style-loader/dist/cjs.js!./node_modules/css-loader/dist/cjs.js??clonedRuleSet-8.use[1]!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-8.use[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/expenses_report.vue?vue&type=style&index=0&id=d82e318a&scoped=true&lang=css ***!
+  !*** ./node_modules/style-loader/dist/cjs.js!./node_modules/css-loader/dist/cjs.js??clonedRuleSet-8.use[1]!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-8.use[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/deposits_report.vue?vue&type=style&index=0&id=312c06fe&scoped=true&lang=css ***!
   \***********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
@@ -21042,7 +20995,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _node_modules_style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! !../../../../../../node_modules/style-loader/dist/runtime/injectStylesIntoStyleTag.js */ "./node_modules/style-loader/dist/runtime/injectStylesIntoStyleTag.js");
 /* harmony import */ var _node_modules_style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_node_modules_style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var _node_modules_css_loader_dist_cjs_js_clonedRuleSet_8_use_1_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_postcss_loader_dist_cjs_js_clonedRuleSet_8_use_2_node_modules_vue_loader_lib_index_js_vue_loader_options_expenses_report_vue_vue_type_style_index_0_id_d82e318a_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! !!../../../../../../node_modules/css-loader/dist/cjs.js??clonedRuleSet-8.use[1]!../../../../../../node_modules/vue-loader/lib/loaders/stylePostLoader.js!../../../../../../node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-8.use[2]!../../../../../../node_modules/vue-loader/lib/index.js??vue-loader-options!./expenses_report.vue?vue&type=style&index=0&id=d82e318a&scoped=true&lang=css */ "./node_modules/css-loader/dist/cjs.js??clonedRuleSet-8.use[1]!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-8.use[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/expenses_report.vue?vue&type=style&index=0&id=d82e318a&scoped=true&lang=css");
+/* harmony import */ var _node_modules_css_loader_dist_cjs_js_clonedRuleSet_8_use_1_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_postcss_loader_dist_cjs_js_clonedRuleSet_8_use_2_node_modules_vue_loader_lib_index_js_vue_loader_options_deposits_report_vue_vue_type_style_index_0_id_312c06fe_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! !!../../../../../../node_modules/css-loader/dist/cjs.js??clonedRuleSet-8.use[1]!../../../../../../node_modules/vue-loader/lib/loaders/stylePostLoader.js!../../../../../../node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-8.use[2]!../../../../../../node_modules/vue-loader/lib/index.js??vue-loader-options!./deposits_report.vue?vue&type=style&index=0&id=312c06fe&scoped=true&lang=css */ "./node_modules/css-loader/dist/cjs.js??clonedRuleSet-8.use[1]!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-8.use[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/deposits_report.vue?vue&type=style&index=0&id=312c06fe&scoped=true&lang=css");
 
             
 
@@ -21051,11 +21004,11 @@ var options = {};
 options.insert = "head";
 options.singleton = false;
 
-var update = _node_modules_style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0___default()(_node_modules_css_loader_dist_cjs_js_clonedRuleSet_8_use_1_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_postcss_loader_dist_cjs_js_clonedRuleSet_8_use_2_node_modules_vue_loader_lib_index_js_vue_loader_options_expenses_report_vue_vue_type_style_index_0_id_d82e318a_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_1__["default"], options);
+var update = _node_modules_style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0___default()(_node_modules_css_loader_dist_cjs_js_clonedRuleSet_8_use_1_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_postcss_loader_dist_cjs_js_clonedRuleSet_8_use_2_node_modules_vue_loader_lib_index_js_vue_loader_options_deposits_report_vue_vue_type_style_index_0_id_312c06fe_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_1__["default"], options);
 
 
 
-/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_node_modules_css_loader_dist_cjs_js_clonedRuleSet_8_use_1_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_postcss_loader_dist_cjs_js_clonedRuleSet_8_use_2_node_modules_vue_loader_lib_index_js_vue_loader_options_expenses_report_vue_vue_type_style_index_0_id_d82e318a_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_1__["default"].locals || {});
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_node_modules_css_loader_dist_cjs_js_clonedRuleSet_8_use_1_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_postcss_loader_dist_cjs_js_clonedRuleSet_8_use_2_node_modules_vue_loader_lib_index_js_vue_loader_options_deposits_report_vue_vue_type_style_index_0_id_312c06fe_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_1__["default"].locals || {});
 
 /***/ }),
 
@@ -21814,9 +21767,9 @@ function cachePriceFormat(formatKey) {
 
 /***/ }),
 
-/***/ "./resources/src/views/app/pages/reports/expenses_report.vue":
+/***/ "./resources/src/views/app/pages/reports/deposits_report.vue":
 /*!*******************************************************************!*\
-  !*** ./resources/src/views/app/pages/reports/expenses_report.vue ***!
+  !*** ./resources/src/views/app/pages/reports/deposits_report.vue ***!
   \*******************************************************************/
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
@@ -21825,9 +21778,9 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
-/* harmony import */ var _expenses_report_vue_vue_type_template_id_d82e318a_scoped_true__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./expenses_report.vue?vue&type=template&id=d82e318a&scoped=true */ "./resources/src/views/app/pages/reports/expenses_report.vue?vue&type=template&id=d82e318a&scoped=true");
-/* harmony import */ var _expenses_report_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./expenses_report.vue?vue&type=script&lang=js */ "./resources/src/views/app/pages/reports/expenses_report.vue?vue&type=script&lang=js");
-/* harmony import */ var _expenses_report_vue_vue_type_style_index_0_id_d82e318a_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./expenses_report.vue?vue&type=style&index=0&id=d82e318a&scoped=true&lang=css */ "./resources/src/views/app/pages/reports/expenses_report.vue?vue&type=style&index=0&id=d82e318a&scoped=true&lang=css");
+/* harmony import */ var _deposits_report_vue_vue_type_template_id_312c06fe_scoped_true__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./deposits_report.vue?vue&type=template&id=312c06fe&scoped=true */ "./resources/src/views/app/pages/reports/deposits_report.vue?vue&type=template&id=312c06fe&scoped=true");
+/* harmony import */ var _deposits_report_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./deposits_report.vue?vue&type=script&lang=js */ "./resources/src/views/app/pages/reports/deposits_report.vue?vue&type=script&lang=js");
+/* harmony import */ var _deposits_report_vue_vue_type_style_index_0_id_312c06fe_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./deposits_report.vue?vue&type=style&index=0&id=312c06fe&scoped=true&lang=css */ "./resources/src/views/app/pages/reports/deposits_report.vue?vue&type=style&index=0&id=312c06fe&scoped=true&lang=css");
 /* harmony import */ var _node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! !../../../../../../node_modules/vue-loader/lib/runtime/componentNormalizer.js */ "./node_modules/vue-loader/lib/runtime/componentNormalizer.js");
 
 
@@ -21838,12 +21791,12 @@ __webpack_require__.r(__webpack_exports__);
 /* normalize component */
 
 var component = (0,_node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_3__["default"])(
-  _expenses_report_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__["default"],
-  _expenses_report_vue_vue_type_template_id_d82e318a_scoped_true__WEBPACK_IMPORTED_MODULE_0__.render,
-  _expenses_report_vue_vue_type_template_id_d82e318a_scoped_true__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns,
+  _deposits_report_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__["default"],
+  _deposits_report_vue_vue_type_template_id_312c06fe_scoped_true__WEBPACK_IMPORTED_MODULE_0__.render,
+  _deposits_report_vue_vue_type_template_id_312c06fe_scoped_true__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns,
   false,
   null,
-  "d82e318a",
+  "312c06fe",
   null
   
 )
@@ -21851,14 +21804,14 @@ var component = (0,_node_modules_vue_loader_lib_runtime_componentNormalizer_js__
 /* hot reload */
 if (false) // removed by dead control flow
 { var api; }
-component.options.__file = "resources/src/views/app/pages/reports/expenses_report.vue"
+component.options.__file = "resources/src/views/app/pages/reports/deposits_report.vue"
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (component.exports);
 
 /***/ }),
 
-/***/ "./resources/src/views/app/pages/reports/expenses_report.vue?vue&type=script&lang=js":
+/***/ "./resources/src/views/app/pages/reports/deposits_report.vue?vue&type=script&lang=js":
 /*!*******************************************************************************************!*\
-  !*** ./resources/src/views/app/pages/reports/expenses_report.vue?vue&type=script&lang=js ***!
+  !*** ./resources/src/views/app/pages/reports/deposits_report.vue?vue&type=script&lang=js ***!
   \*******************************************************************************************/
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
@@ -21867,37 +21820,37 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
-/* harmony import */ var _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_lib_index_js_vue_loader_options_expenses_report_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../../../../node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!../../../../../../node_modules/vue-loader/lib/index.js??vue-loader-options!./expenses_report.vue?vue&type=script&lang=js */ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/expenses_report.vue?vue&type=script&lang=js");
- /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_lib_index_js_vue_loader_options_expenses_report_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__["default"]); 
+/* harmony import */ var _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_lib_index_js_vue_loader_options_deposits_report_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../../../../node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!../../../../../../node_modules/vue-loader/lib/index.js??vue-loader-options!./deposits_report.vue?vue&type=script&lang=js */ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/deposits_report.vue?vue&type=script&lang=js");
+ /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_lib_index_js_vue_loader_options_deposits_report_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__["default"]); 
 
 /***/ }),
 
-/***/ "./resources/src/views/app/pages/reports/expenses_report.vue?vue&type=style&index=0&id=d82e318a&scoped=true&lang=css":
+/***/ "./resources/src/views/app/pages/reports/deposits_report.vue?vue&type=style&index=0&id=312c06fe&scoped=true&lang=css":
 /*!***************************************************************************************************************************!*\
-  !*** ./resources/src/views/app/pages/reports/expenses_report.vue?vue&type=style&index=0&id=d82e318a&scoped=true&lang=css ***!
+  !*** ./resources/src/views/app/pages/reports/deposits_report.vue?vue&type=style&index=0&id=312c06fe&scoped=true&lang=css ***!
   \***************************************************************************************************************************/
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* harmony import */ var _node_modules_style_loader_dist_cjs_js_node_modules_css_loader_dist_cjs_js_clonedRuleSet_8_use_1_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_postcss_loader_dist_cjs_js_clonedRuleSet_8_use_2_node_modules_vue_loader_lib_index_js_vue_loader_options_expenses_report_vue_vue_type_style_index_0_id_d82e318a_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../../../../node_modules/style-loader/dist/cjs.js!../../../../../../node_modules/css-loader/dist/cjs.js??clonedRuleSet-8.use[1]!../../../../../../node_modules/vue-loader/lib/loaders/stylePostLoader.js!../../../../../../node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-8.use[2]!../../../../../../node_modules/vue-loader/lib/index.js??vue-loader-options!./expenses_report.vue?vue&type=style&index=0&id=d82e318a&scoped=true&lang=css */ "./node_modules/style-loader/dist/cjs.js!./node_modules/css-loader/dist/cjs.js??clonedRuleSet-8.use[1]!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-8.use[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/expenses_report.vue?vue&type=style&index=0&id=d82e318a&scoped=true&lang=css");
+/* harmony import */ var _node_modules_style_loader_dist_cjs_js_node_modules_css_loader_dist_cjs_js_clonedRuleSet_8_use_1_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_postcss_loader_dist_cjs_js_clonedRuleSet_8_use_2_node_modules_vue_loader_lib_index_js_vue_loader_options_deposits_report_vue_vue_type_style_index_0_id_312c06fe_scoped_true_lang_css__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../../../../node_modules/style-loader/dist/cjs.js!../../../../../../node_modules/css-loader/dist/cjs.js??clonedRuleSet-8.use[1]!../../../../../../node_modules/vue-loader/lib/loaders/stylePostLoader.js!../../../../../../node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-8.use[2]!../../../../../../node_modules/vue-loader/lib/index.js??vue-loader-options!./deposits_report.vue?vue&type=style&index=0&id=312c06fe&scoped=true&lang=css */ "./node_modules/style-loader/dist/cjs.js!./node_modules/css-loader/dist/cjs.js??clonedRuleSet-8.use[1]!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-8.use[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/deposits_report.vue?vue&type=style&index=0&id=312c06fe&scoped=true&lang=css");
 
 
 /***/ }),
 
-/***/ "./resources/src/views/app/pages/reports/expenses_report.vue?vue&type=template&id=d82e318a&scoped=true":
+/***/ "./resources/src/views/app/pages/reports/deposits_report.vue?vue&type=template&id=312c06fe&scoped=true":
 /*!*************************************************************************************************************!*\
-  !*** ./resources/src/views/app/pages/reports/expenses_report.vue?vue&type=template&id=d82e318a&scoped=true ***!
+  !*** ./resources/src/views/app/pages/reports/deposits_report.vue?vue&type=template&id=312c06fe&scoped=true ***!
   \*************************************************************************************************************/
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   render: () => (/* reexport safe */ _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_2_node_modules_vue_loader_lib_index_js_vue_loader_options_expenses_report_vue_vue_type_template_id_d82e318a_scoped_true__WEBPACK_IMPORTED_MODULE_0__.render),
-/* harmony export */   staticRenderFns: () => (/* reexport safe */ _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_2_node_modules_vue_loader_lib_index_js_vue_loader_options_expenses_report_vue_vue_type_template_id_d82e318a_scoped_true__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns)
+/* harmony export */   render: () => (/* reexport safe */ _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_2_node_modules_vue_loader_lib_index_js_vue_loader_options_deposits_report_vue_vue_type_template_id_312c06fe_scoped_true__WEBPACK_IMPORTED_MODULE_0__.render),
+/* harmony export */   staticRenderFns: () => (/* reexport safe */ _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_2_node_modules_vue_loader_lib_index_js_vue_loader_options_deposits_report_vue_vue_type_template_id_312c06fe_scoped_true__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns)
 /* harmony export */ });
-/* harmony import */ var _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_2_node_modules_vue_loader_lib_index_js_vue_loader_options_expenses_report_vue_vue_type_template_id_d82e318a_scoped_true__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../../../../node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!../../../../../../node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[2]!../../../../../../node_modules/vue-loader/lib/index.js??vue-loader-options!./expenses_report.vue?vue&type=template&id=d82e318a&scoped=true */ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/expenses_report.vue?vue&type=template&id=d82e318a&scoped=true");
+/* harmony import */ var _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_2_node_modules_vue_loader_lib_index_js_vue_loader_options_deposits_report_vue_vue_type_template_id_312c06fe_scoped_true__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../../../../node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!../../../../../../node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[2]!../../../../../../node_modules/vue-loader/lib/index.js??vue-loader-options!./deposits_report.vue?vue&type=template&id=312c06fe&scoped=true */ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/reports/deposits_report.vue?vue&type=template&id=312c06fe&scoped=true");
 
 
 /***/ })

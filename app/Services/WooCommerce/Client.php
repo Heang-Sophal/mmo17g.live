@@ -5,8 +5,11 @@ namespace App\Services\WooCommerce;
 class Client
 {
     private string $baseUrl;
+
     private string $key;
+
     private string $secret;
+
     private ?string $hostHeader;
 
     public function __construct(string $baseUrl, string $key, string $secret)
@@ -31,24 +34,28 @@ class Client
     public function get(string $endpoint, array $query = [])
     {
         $url = $this->buildSignedUrl($endpoint, $query);
+
         return $this->execWithRetries('GET', $url, null, 20, 5);
     }
 
     public function post(string $endpoint, array $data = [])
     {
         $url = $this->buildSignedUrl($endpoint, []);
+
         return $this->execWithRetries('POST', $url, $data, 20, 5);
     }
 
     public function put(string $endpoint, array $data = [])
     {
         $url = $this->buildSignedUrl($endpoint, []);
+
         return $this->execWithRetries('PUT', $url, $data, 20, 5);
     }
 
     public function delete(string $endpoint, array $query = [])
     {
         $url = $this->buildSignedUrl($endpoint, $query);
+
         return $this->execWithRetries('DELETE', $url, null, 20, 5);
     }
 
@@ -56,30 +63,35 @@ class Client
     public function getNoRetry(string $endpoint, array $query = [], int $timeoutSeconds = 20, int $connectTimeoutSeconds = 5)
     {
         $url = $this->buildSignedUrl($endpoint, $query);
+
         return $this->execWithRetries('GET', $url, null, $timeoutSeconds, $connectTimeoutSeconds);
     }
 
     public function postNoRetry(string $endpoint, array $data = [], int $timeoutSeconds = 20, int $connectTimeoutSeconds = 5)
     {
         $url = $this->buildSignedUrl($endpoint, []);
+
         return $this->execWithRetries('POST', $url, $data, $timeoutSeconds, $connectTimeoutSeconds);
     }
 
     public function putNoRetry(string $endpoint, array $data = [], int $timeoutSeconds = 20, int $connectTimeoutSeconds = 5)
     {
         $url = $this->buildSignedUrl($endpoint, []);
+
         return $this->execWithRetries('PUT', $url, $data, $timeoutSeconds, $connectTimeoutSeconds);
     }
 
     public function deleteNoRetry(string $endpoint, array $query = [], int $timeoutSeconds = 20, int $connectTimeoutSeconds = 5)
     {
         $url = $this->buildSignedUrl($endpoint, $query);
+
         return $this->execWithRetries('DELETE', $url, null, $timeoutSeconds, $connectTimeoutSeconds);
     }
 
     private function buildUrl(string $endpoint): string
     {
         $endpoint = ltrim($endpoint, '/');
+
         return $this->baseUrl.'/wp-json/wc/v3/'.$endpoint;
     }
 
@@ -87,6 +99,7 @@ class Client
     {
         $query['consumer_key'] = $this->key;
         $query['consumer_secret'] = $this->secret;
+
         return $query;
     }
 
@@ -95,9 +108,10 @@ class Client
         $url = $this->buildUrl($endpoint);
         $query = $this->withAuthQuery($query);
 
-        if (!empty($query)) {
+        if (! empty($query)) {
             $url .= (str_contains($url, '?') ? '&' : '?').http_build_query($query);
         }
+
         return $url;
     }
 
@@ -219,8 +233,10 @@ class Client
                     }
                     $k = strtolower(trim(substr($line, 0, $pos)));
                     $v = trim(substr($line, $pos + 1));
-                    if ($k === '') continue;
-                    if (!isset($headersAssoc[$k])) {
+                    if ($k === '') {
+                        continue;
+                    }
+                    if (! isset($headersAssoc[$k])) {
                         $headersAssoc[$k] = [];
                     }
                     $headersAssoc[$k][] = $v;
@@ -228,12 +244,18 @@ class Client
             }
         }
 
-        return new class($status, $body, $headersAssoc, $errno, $error, $durationMs) {
+        return new class($status, $body, $headersAssoc, $errno, $error, $durationMs)
+        {
             private int $status;
+
             private string $body;
+
             private array $headers;
+
             private int $errno;
+
             private string $error;
+
             private int $durationMs;
 
             public function __construct(int $status, string $body, array $headers, int $errno, string $error, int $durationMs)
@@ -246,22 +268,55 @@ class Client
                 $this->durationMs = $durationMs;
             }
 
-            public function successful(): bool { return $this->status >= 200 && $this->status < 300; }
-            public function status(): int { return $this->status; }
-            public function body(): string { return $this->body; }
-            public function json() { return json_decode($this->body, true); }
+            public function successful(): bool
+            {
+                return $this->status >= 200 && $this->status < 300;
+            }
+
+            public function status(): int
+            {
+                return $this->status;
+            }
+
+            public function body(): string
+            {
+                return $this->body;
+            }
+
+            public function json()
+            {
+                return json_decode($this->body, true);
+            }
+
             public function header(string $name): ?string
             {
                 $k = strtolower(trim($name));
-                if ($k === '' || !isset($this->headers[$k]) || !is_array($this->headers[$k]) || count($this->headers[$k]) === 0) {
+                if ($k === '' || ! isset($this->headers[$k]) || ! is_array($this->headers[$k]) || count($this->headers[$k]) === 0) {
                     return null;
                 }
+
                 return (string) $this->headers[$k][0];
             }
-            public function headers(): array { return $this->headers; }
-            public function error(): ?string { return $this->error !== '' ? $this->error : null; }
-            public function errno(): int { return $this->errno; }
-            public function durationMs(): int { return $this->durationMs; }
+
+            public function headers(): array
+            {
+                return $this->headers;
+            }
+
+            public function error(): ?string
+            {
+                return $this->error !== '' ? $this->error : null;
+            }
+
+            public function errno(): int
+            {
+                return $this->errno;
+            }
+
+            public function durationMs(): int
+            {
+                return $this->durationMs;
+            }
         };
     }
 
@@ -301,7 +356,7 @@ class Client
             }
 
             // HTTP transient failures (rate limit / maintenance / gateway timeout)
-            if (!$shouldRetry && in_array($status, [408, 429, 500, 502, 503, 504], true)) {
+            if (! $shouldRetry && in_array($status, [408, 429, 500, 502, 503, 504], true)) {
                 // Be conservative with POST retries: only retry likely-transient statuses
                 if (strtoupper($method) === 'POST') {
                     $shouldRetry = in_array($status, [408, 429, 502, 503, 504], true);
@@ -310,7 +365,7 @@ class Client
                 }
             }
 
-            if (!$shouldRetry) {
+            if (! $shouldRetry) {
                 return $last;
             }
 

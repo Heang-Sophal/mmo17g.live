@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\OauthAccessToken;
 use App\Models\OauthRefreshToken;
 use App\Models\Permission;
+use App\Models\Setting;
 use App\Models\UserLoginSession;
-use Carbon\Carbon;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Illuminate\Contracts\Encryption\Encrypter;
@@ -14,12 +14,9 @@ use Illuminate\Cookie\CookieValuePrefix;
 use Illuminate\Database\Eloquent\Model as EloquentModel;
 use Illuminate\Http\Request;
 use Laravel\Passport\Passport;
-use App\Models\Setting;
 
 class SecuritySettingsController extends Controller
 {
-    
-
     public function sessions(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'login_device_management', Setting::class);
@@ -65,6 +62,7 @@ class SecuritySettingsController extends Controller
             ->get(['access_token_id', 'ip_address', 'user_agent', 'logged_in_at', 'last_activity_at'])
             ->map(function ($s) use ($currentSessionKey) {
                 $ua = (string) ($s->user_agent ?? '');
+
                 return [
                     'token_id' => (string) $s->access_token_id,
                     'device' => $this->formatDeviceFromUserAgent($ua),
@@ -197,6 +195,7 @@ class SecuritySettingsController extends Controller
     {
         if ($passportToken instanceof EloquentModel) {
             $k = (string) $passportToken->getKey();
+
             return $k !== '' ? $k : null;
         }
 
@@ -269,7 +268,7 @@ class SecuritySettingsController extends Controller
         $sessions = $allSessions->map(function ($s) use ($currentSessionKey) {
             $ua = (string) ($s->user_agent ?? '');
             $isActive = false;
-            
+
             // Check if session is active (not revoked)
             if ($s->revoked_at === null) {
                 // For cookie sessions
@@ -344,7 +343,3 @@ class SecuritySettingsController extends Controller
         return $browser.' on '.$platform;
     }
 }
-
-
-
-
