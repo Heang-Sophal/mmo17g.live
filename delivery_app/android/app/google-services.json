@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "1073297135104",
+    "project_id": "g-mobile-app-92644",
+    "storage_bucket": "g-mobile-app-92644.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1073297135104:android:9022e1929758bb16d72ae5",
+        "android_client_info": {
+          "package_name": "com.sophalheang.myapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKndUxr7Lp5jPkLVw1ydb5PvpnxxZXUFc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1073297135104:android:99ebaad971ace71cd72ae5",
+        "android_client_info": {
+          "package_name": "com.sophalheang.sellerapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKndUxr7Lp5jPkLVw1ydb5PvpnxxZXUFc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

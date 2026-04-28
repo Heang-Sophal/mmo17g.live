@@ -19,6 +19,7 @@
 /public/mix-manifest.json
 /public/css/*.css.map
 /public/js/*.js.map
+/release_apks/
 
 # Laravel cache / runtime
 /bootstrap/cache/*.php
