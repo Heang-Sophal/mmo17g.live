@@ -7,7 +7,9 @@ use App\Models\Role;
 use App\Models\Sale;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 class DeliveryAlertService
 {
@@ -170,7 +172,7 @@ class DeliveryAlertService
         string $message,
         array $payload = []
     ): void {
-        DeliveryAlert::create([
+        $alert = DeliveryAlert::create([
             'user_id' => $user->id,
             'sale_id' => $sale->id,
             'warehouse_id' => $sale->warehouse_id,
@@ -179,5 +181,56 @@ class DeliveryAlertService
             'message' => $message,
             'payload' => $payload,
         ]);
+
+        $this->pushAlert($alert, $user, $type, $title, $message, $payload);
+    }
+
+    protected function pushAlert(
+        DeliveryAlert $alert,
+        User $user,
+        string $type,
+        string $title,
+        string $message,
+        array $payload = []
+    ): void {
+        try {
+            $appType = $this->appTypeForAlert($type);
+            $data = [
+                'alert_id' => (string) $alert->id,
+                'type' => $type,
+                'app_type' => $appType,
+                'sale_id' => (string) ($payload['sale_id'] ?? $alert->sale_id ?? ''),
+                'sale_ref' => (string) ($payload['sale_ref'] ?? ''),
+                'warehouse_id' => (string) ($payload['warehouse_id'] ?? $alert->warehouse_id ?? ''),
+                'shipping_status' => (string) ($payload['shipping_status'] ?? ''),
+                'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
+            ];
+
+            app(FirebasePushService::class)->sendToUser(
+                $user,
+                $title,
+                $message,
+                $data,
+                $appType
+            );
+        } catch (Throwable $e) {
+            Log::warning('Failed to send mobile push notification for delivery alert.', [
+                'alert_id' => $alert->id,
+                'user_id' => $user->id,
+                'type' => $type,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    protected function appTypeForAlert(string $type): ?string
+    {
+        $map = [
+            'sale_created' => 'delivery',
+            'delivery_accepted' => 'seller',
+            'delivery_completed' => 'seller',
+        ];
+
+        return $map[$type] ?? null;
     }
 }

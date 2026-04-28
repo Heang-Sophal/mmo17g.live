@@ -127,6 +127,8 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout'])-
     Route::get('/admin/products', [CollectionController::class, 'searchProducts']);
 
     Route::get('dashboard_data', 'DashboardController@dashboard_data');
+    Route::post('device-token', 'Api\MobileDeviceTokenController@store');
+    Route::delete('device-token', 'Api\MobileDeviceTokenController@destroy');
     Route::get('delivery/dashboard', 'Api\DeliveryApiController@dashboard');
     Route::get('delivery/orders', 'Api\DeliveryApiController@orders');
     Route::post('delivery/orders/{id}/accept', 'Api\DeliveryApiController@acceptOrder');

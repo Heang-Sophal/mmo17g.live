@@ -111,6 +111,11 @@ class User extends Authenticatable
         return $this->hasMany(DeliveryAlert::class);
     }
 
+    public function mobileDeviceTokens()
+    {
+        return $this->hasMany(MobileDeviceToken::class);
+    }
+
     public function hasAnyRoleNamed(array $roleNames): bool
     {
         $normalizedNames = collect($roleNames)
