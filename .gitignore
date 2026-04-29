@@ -48,3 +48,7 @@
 /*.sql
 /*.zip
 /bash.exe.stackdump
+
+# Firebase service account
+g-delivery-app-firebase-adminsdk-fbsvc-1c4f61f6cb.json
+g-mobile-app-92644-firebase-adminsdk-fbsvc-50658ffbba.json
