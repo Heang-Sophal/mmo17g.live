@@ -33,7 +33,7 @@ class RecentOrdersList extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: _getStatusColor(order.status).withOpacity(0.1),
+          color: _getStatusColor(order.status).withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(Icons.receipt_long, color: _getStatusColor(order.status)),
@@ -58,7 +58,7 @@ class RecentOrdersList extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: _getStatusColor(order.status).withOpacity(0.1),
+              color: _getStatusColor(order.status).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(

@@ -147,7 +147,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final cardColor = isDark ? const Color(0xFF16213E) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black87;
     final inputFillColor = isDark ? const Color(0xFF16213E) : Colors.grey[100]!;
-    final borderColor = isDark ? Colors.white10 : Colors.grey[300]!;
     final authProv = Provider.of<AuthProvider>(context);
 
     return Consumer<ProductProvider>(
@@ -259,8 +258,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                 color: inputFillColor,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: theme.colorScheme.primary.withOpacity(
-                                    0.3,
+                                  color: theme.colorScheme.primary.withValues(
+                                    alpha: 0.3,
                                   ),
                                 ),
                               ),
@@ -314,7 +313,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
                           color: inputFillColor,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: theme.colorScheme.primary.withOpacity(0.3),
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: 0.3,
+                            ),
                           ),
                         ),
                         child: DropdownButtonHideUnderline(

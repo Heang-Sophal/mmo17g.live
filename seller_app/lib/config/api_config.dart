@@ -23,7 +23,8 @@ class ApiConfig {
 
   /// សម្រាប់ **Production** (Server ជាក់ស្តែង)
   /// ប្រើ HTTPS និង Domain ឈ្មោះ
-  static const String productionUrl = 'http://194.233.78.110/api'; // TODO: ប្តូរទៅជា Domain ពិតរបស់អ្នកនៅទីនេះ
+  static const String productionUrl =
+      'http://194.233.78.110/api'; // TODO: ប្តូរទៅជា Domain ពិតរបស់អ្នកនៅទីនេះ
 
   // =====================================================
   // 🎯 ជ្រើសរើស URL ដែលត្រូវប្រើ

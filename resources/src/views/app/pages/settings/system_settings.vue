@@ -2643,6 +2643,88 @@
                 </div>
               </div>
 
+                  <!-- Push Notifications Tab -->
+                  <div v-show="activeTab === 'push_notifications'" class="tab-content">
+                    <b-row>
+                      <b-col md="8">
+                        <h5 class="mb-3">{{ $t('Firebase_Configuration') || 'Firebase Configuration' }}</h5>
+                        <p class="text-muted">
+                          {{ $t('Firebase_Configuration_Description') || 'To enable push notifications for the Seller and Delivery mobile apps, you need to provide your Firebase project\'s service account credentials.' }}
+                        </p>
+                        
+                        <b-table-simple hover small caption-top responsive class="mt-4 mb-4 border">
+                          <b-thead>
+                            <b-tr>
+                              <b-th>{{ $t('App_Type') || 'App Type' }}</b-th>
+                              <b-th>{{ $t('Project_ID') || 'Project ID' }}</b-th>
+                              <b-th>{{ $t('Status') || 'Status' }}</b-th>
+                            </b-tr>
+                          </b-thead>
+                          <b-tbody>
+                            <b-tr v-for="(status, app) in firebaseStatuses" :key="app">
+                              <b-td>{{ app === 'seller' ? ($t('Seller_App') || 'Seller App') : ($t('Delivery_App') || 'Delivery App') }}</b-td>
+                              <b-td>{{ status.project_id || '-' }}</b-td>
+                              <b-td>
+                                <b-badge :variant="status.configured ? 'success' : 'danger'">
+                                  {{ status.configured ? ($t('Configured') || 'Configured') : ($t('Not_Configured') || 'Not Configured') }}
+                                </b-badge>
+                              </b-td>
+                            </b-tr>
+                          </b-tbody>
+                        </b-table-simple>
+
+                        <div v-if="firebaseStatus">
+                          <b-alert :show="firebaseStatus.configured === false" variant="warning">
+                            <strong>{{ $t('Not_Configured') || 'Not Configured' }}:</strong> 
+                            {{ $t('Firebase_Not_Configured_Message') || 'The Firebase service account file has not been uploaded for the selected app. Push notifications are disabled.' }}
+                          </b-alert>
+
+                          <b-alert :show="firebaseStatus.configured === true" variant="success">
+                            <strong>{{ $t('Configured') || 'Configured' }}:</strong> 
+                            {{ $t('Firebase_Configured_Message') || 'Firebase is configured. Project ID:' }} <strong>{{ firebaseStatus.project_id }}</strong>
+                          </b-alert>
+                        </div>
+
+                        <b-form-group :label="$t('App_Type') || 'App Type'">
+                          <b-form-radio-group
+                            v-model="firebaseAppType"
+                            @change="Get_Firebase_Status"
+                            :options="[
+                              { text: $t('Seller_App') || 'Seller App', value: 'seller' },
+                              { text: $t('Delivery_App') || 'Delivery App', value: 'delivery' }
+                            ]"
+                            buttons
+                            button-variant="outline-primary"
+                            size="sm"
+                            class="mb-3"
+                          ></b-form-radio-group>
+                        </b-form-group>
+
+                        <validation-provider name="Firebase Credentials" ref="firebase_credentials" rules="mimes:application/json">
+                          <b-form-group
+                            slot-scope="{validate, valid, errors }"
+                            :label="$t('Service_Account_JSON') || 'Service Account JSON File'"
+                            :description="$t('Service_Account_JSON_Description') || 'Download this from your Firebase project settings under Service accounts > Generate new private key.'"
+                          >
+                            <b-form-file
+                              v-model="firebase_credentials_file"
+                              :state="errors[0] ? false : (valid ? true : null)"
+                              :placeholder="$t('Choose_file_or_drop_it_here') || 'Choose a file or drop it here...'"
+                              :drop-placeholder="$t('Drop_file_here') || 'Drop file here...'"
+                              accept=".json"
+                            ></b-form-file>
+                            <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
+                          </b-form-group>
+                        </validation-provider>
+
+                        <b-button variant="primary" @click="Submit_Firebase_Settings" :disabled="firebaseSubmitting">
+                          <span v-if="firebaseSubmitting" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                          {{ $t('Upload_and_Save') || 'Upload & Save' }}
+                        </b-button>
+                      </b-col>
+                    </b-row>
+                  </div>
+
                   <!-- Google Calendar Tab -->
                   <div v-show="activeTab === 'calendar'" class="tab-content">
                     <b-row>
@@ -2986,6 +3068,19 @@ export default {
       },
       selectOptionsText: "",
 
+      // Firebase Push Notifications Data
+      firebaseAppType: 'seller',
+      firebaseStatuses: {
+        seller: { configured: null, project_id: "" },
+        delivery: { configured: null, project_id: "" }
+      },
+      firebaseStatus: {
+        configured: null,
+        project_id: ""
+      },
+      firebase_credentials_file: null,
+      firebaseSubmitting: false,
+
     };
   },
 
@@ -3125,6 +3220,7 @@ export default {
         { id: 'security', label: this.$t('Security_Settings'), icon: 'i-Security-Settings', description: 'Session timeout and active login sessions' },
         { id: 'system', label: this.$t('System'), icon: 'i-Gear', description: 'System maintenance and cache management' },
         { id: 'custom_fields', label: this.$t('CustomFields') || 'Custom Fields', icon: 'i-Data-Settings', description: 'Manage custom fields for customers and suppliers' },
+        { id: 'push_notifications', label: this.$t('Push_Notifications') || 'Push Notifications', icon: 'i-Bell', description: 'Configure Firebase for mobile push notifications' },
       ];
 
       // Hide the legacy "Tax & Pricing" tab now that its fields live under "Defaults"
@@ -3202,6 +3298,9 @@ export default {
       if (val === 'custom_fields') {
         this.Get_CustomFields();
       }
+      if (val === 'push_notifications') {
+        this.Get_Firebase_Status();
+      }
       // Persist last active tab for navigation within the same session
       // Note: This is separate from submitted_tab which is used after form submissions
       try {
@@ -3219,6 +3318,59 @@ export default {
   },
 
   methods: {
+
+    // ---------------- Push Notification Settings ----------------
+    Get_Firebase_Status() {
+      axios.get('settings/firebase_status', { params: { app_type: 'all' } })
+        .then(response => {
+          this.firebaseStatuses = response.data || { seller: { configured: false, project_id: '' }, delivery: { configured: false, project_id: '' } };
+          this.firebaseStatus = this.firebaseStatuses[this.firebaseAppType] || { configured: false, project_id: '' };
+        })
+        .catch(() => {
+          this.firebaseStatuses = { seller: { configured: false, project_id: '' }, delivery: { configured: false, project_id: '' } };
+          this.firebaseStatus = { configured: false, project_id: '' };
+        });
+    },
+
+    Submit_Firebase_Settings() {
+      this.$refs.firebase_credentials.validate().then(success => {
+        if (!success || !this.firebase_credentials_file) {
+          this.makeToast(
+            "danger",
+            this.$t("Please_select_a_valid_JSON_file") || "Please select a valid JSON file.",
+            this.$t("Failed")
+          );
+          return;
+        }
+
+        this.firebaseSubmitting = true;
+        const formData = new FormData();
+        formData.append('firebase_credentials', this.firebase_credentials_file);
+        formData.append('app_type', this.firebaseAppType);
+
+        axios.post('settings/firebase_credentials', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+        .then(response => {
+          this.makeToast(
+            "success",
+            this.$t("Successfully_Updated"),
+            this.$t("Success")
+          );
+          this.Get_Firebase_Status();
+          this.firebase_credentials_file = null;
+        })
+        .catch(error => {
+          const msg = (error.response && error.response.data && error.response.data.message) || this.$t("InvalidData");
+          this.makeToast("danger", msg, this.$t("Failed"));
+        })
+        .finally(() => {
+          this.firebaseSubmitting = false;
+        });
+      });
+    },
 
     // ---------------- Security Settings ----------------
     formatDateTime(v) {
@@ -4807,6 +4959,7 @@ export default {
     this.Get_Appearance_Settings();
     this.Get_Mail_Settings();
     this.Get_Backups();
+    this.Get_Firebase_Status();
 
     Fire.$on("Event_Setting", () => {
       this.Get_Settings();
@@ -4884,6 +5037,8 @@ export default {
   padding: 1rem 0;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  max-height: calc(100vh - 220px); /* Adjust based on header/padding */
 }
 
 .settings-nav-item {
@@ -5059,6 +5214,11 @@ export default {
 
 .submit-btn:active {
   transform: translateY(0);
+}
+
+.disabled-card {
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 /* Custom Checkbox Switch Styling */
@@ -5293,6 +5453,7 @@ export default {
 
 /* Custom Scrollbar for Sidebar */
 .settings-nav::-webkit-scrollbar {
+  width: 4px;
   height: 4px;
 }
 
@@ -5418,28 +5579,4 @@ export default {
   background: #ffffff;
   border-radius: 0.5rem;
   overflow: hidden;
-  border: 1px solid #e9ecef;
-}
-
-.btn-generate-backup {
-  padding: 0.625rem 1.5rem;
-  font-weight: 500;
-  border-radius: 0.375rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-}
-
-.btn-generate-backup:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-.btn-delete-backup {
-  padding: 0.375rem 0.75rem;
-  border-radius: 0.375rem;
-}
-
-.btn-delete-backup:hover {
-  transform: scale(1.05);
-}
-</style>
+ 

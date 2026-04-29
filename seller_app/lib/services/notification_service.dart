@@ -1,12 +1,16 @@
+import 'package:flutter/material.dart';
+
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:seller_app/config/api_config.dart';
+
+import 'package:seller_app/main.dart';
+import 'package:seller_app/screens/delivery_alerts_screen.dart';
 
 @pragma('vm:entry-point')
 Future<void> sellerFirebaseMessagingBackgroundHandler(
@@ -14,6 +18,33 @@ Future<void> sellerFirebaseMessagingBackgroundHandler(
 ) async {
   if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp();
+  }
+}
+
+void _handleNotificationClick(Map<String, dynamic> data) {
+  if (data['type'] == 'information_alert' && navigatorKey.currentState != null) {
+    final title = data['title']?.toString() ?? 'Information';
+    final body = data['body']?.toString() ?? '';
+
+    navigatorKey.currentState!.push(
+      MaterialPageRoute(builder: (_) => const DeliveryAlertsScreen()),
+    ).then((_) {
+      if (navigatorKey.currentContext != null) {
+        showDialog(
+          context: navigatorKey.currentContext!,
+          builder: (ctx) => AlertDialog(
+            title: Text(title),
+            content: Text(body),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    });
   }
 }
 
@@ -55,7 +86,19 @@ class NotificationService {
         ),
       );
 
-      await _localNotifications.initialize(settings: initSettings);
+      await _localNotifications.initialize(
+        settings: initSettings,
+        onDidReceiveNotificationResponse: (NotificationResponse response) {
+          if (response.payload != null) {
+            try {
+              final Map<String, dynamic> data = jsonDecode(response.payload!);
+              _handleNotificationClick(data);
+            } catch (e) {
+              debugPrint('Error parsing notification payload: $e');
+            }
+          }
+        },
+      );
 
       final androidNotifications = _localNotifications
           .resolvePlatformSpecificImplementation<
@@ -72,6 +115,17 @@ class NotificationService {
       );
 
       FirebaseMessaging.onMessage.listen(_showForegroundNotification);
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        _handleNotificationClick(message.data);
+      });
+
+      final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+      if (initialMessage != null) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          _handleNotificationClick(initialMessage.data);
+        });
+      }
+
       FirebaseMessaging.instance.onTokenRefresh.listen((token) {
         _sendToken(token);
       });

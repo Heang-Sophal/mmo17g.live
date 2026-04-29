@@ -21,6 +21,7 @@ class CartProvider extends ChangeNotifier {
   int get itemCount => _items.length;
 
   double get taxRate => _taxRate;
+  bool get isLoadingTax => _isLoadingTax;
 
   // Discount getters and setters
   double get discount => _discount;
@@ -83,7 +84,7 @@ class CartProvider extends ChangeNotifier {
         }
       }
     } catch (e) {
-      print('❌ Error loading tax rate: $e');
+      debugPrint('Error loading tax rate: $e');
       _taxRate = 0.0; // Default to 0% if error
     }
 

@@ -46,8 +46,14 @@ return [
     ],
 
     'firebase' => [
-        'project_id' => env('FIREBASE_PROJECT_ID'),
-        'credentials' => env('FIREBASE_CREDENTIALS', storage_path('app/firebase-service-account.json')),
+        'seller' => [
+            'project_id' => env('FIREBASE_SELLER_PROJECT_ID'),
+            'credentials' => env('FIREBASE_SELLER_CREDENTIALS'),
+        ],
+        'delivery' => [
+            'project_id' => env('FIREBASE_DELIVERY_PROJECT_ID'),
+            'credentials' => env('FIREBASE_DELIVERY_CREDENTIALS'),
+        ],
     ],
 
 ];

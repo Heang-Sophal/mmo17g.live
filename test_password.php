@@ -25,7 +25,7 @@ echo "===========================================\n\n";
 echo "Password hash in database:\n{$user->password}\n\n";
 
 // Ask for password to test
-fwrite(STDOUT, "Enter password to test: ");
+fwrite(STDOUT, 'Enter password to test: ');
 $password = trim(fgets(STDIN));
 
 if (empty($password)) {
@@ -43,7 +43,7 @@ if (Hash::check($password, $user->password)) {
     echo "❌ FAILED! The password does NOT match!\n\n";
     echo "The password you entered is incorrect.\n";
     echo "Please try again with the correct current password.\n\n";
-    
+
     // Try some common passwords
     $common_passwords = ['password', 'password123', '12345678', 'admin', 'admin123', 'seller', 'seller123'];
     echo "Testing common passwords:\n";

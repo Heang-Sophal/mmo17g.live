@@ -79,7 +79,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                             width: 120,
                             height: 120,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF6C63FF).withOpacity(0.1),
+                              color: const Color(
+                                0xFF6C63FF,
+                              ).withValues(alpha: 0.1),
                               shape: BoxShape.circle,
                               border: Border.all(
                                 color: const Color(0xFF6C63FF),
@@ -210,7 +212,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
+                    color: Colors.orange.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.orange),
                   ),
@@ -376,7 +378,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
+                color: Colors.red.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.edit_off, size: 80, color: Colors.red),

@@ -10,6 +10,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService.initialize();
@@ -37,6 +39,7 @@ class DeliveryApp extends StatelessWidget {
           ).copyWith(secondary: const Color(0xFFFFD86A));
 
           return MaterialApp(
+            navigatorKey: navigatorKey,
             title: brandingProvider.appTitle,
             debugShowCheckedModeBanner: false,
             locale: languageProvider.locale,

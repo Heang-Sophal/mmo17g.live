@@ -117,7 +117,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                     decoration: BoxDecoration(
                                       color: const Color(
                                         0xFF6C63FF,
-                                      ).withOpacity(0.1),
+                                      ).withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Center(
@@ -354,8 +354,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: change >= 0
-                            ? Colors.green.withOpacity(0.1)
-                            : Colors.red.withOpacity(0.1),
+                            ? Colors.green.withValues(alpha: 0.1)
+                            : Colors.red.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: change >= 0 ? Colors.green : Colors.red,
@@ -398,7 +398,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 10,
                   offset: const Offset(0, -2),
                 ),
@@ -485,7 +485,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final isSelected = _selectedPaymentMethod == value;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      color: isSelected ? const Color(0xFF6C63FF).withOpacity(0.1) : null,
+      color: isSelected ? const Color(0xFF6C63FF).withValues(alpha: 0.1) : null,
       child: ListTile(
         selected: isSelected,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -630,7 +630,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
+                    color: Colors.red.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.error, size: 64, color: Colors.red),
@@ -676,7 +676,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
+                  color: Colors.orange.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -726,7 +726,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
+                color: Colors.green.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(

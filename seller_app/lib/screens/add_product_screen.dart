@@ -65,10 +65,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
     try {
       final apiService = ApiService();
-      print('🔍 Loading categories from API...');
       final categoriesList = await apiService.getCategoriesList();
-      print('✅ Categories loaded: ${categoriesList.length} items');
-      print('📦 Data: $categoriesList');
 
       if (mounted) {
         final categoryNames = categoriesList
@@ -89,7 +86,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         });
       }
     } catch (e) {
-      print('❌ Error loading categories: $e');
+      debugPrint('Error loading categories: $e');
       // Fallback បើ API មានបញ្ហា
       if (mounted) {
         setState(() {
@@ -340,11 +337,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
       }
 
       // បិទ Loading
-      if (context.mounted) Navigator.pop(context);
+      if (mounted) Navigator.pop(context);
 
       final result = json.decode(response.body);
 
-      if (!context.mounted) return;
+      if (!mounted) return;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         // ជោគជ័យ
@@ -372,9 +369,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
       }
     } catch (e) {
       // បិទ Loading
-      if (context.mounted) Navigator.pop(context);
+      if (mounted) Navigator.pop(context);
 
-      if (!context.mounted) return;
+      if (!mounted) return;
 
       // បង្ហាញ Error
       ScaffoldMessenger.of(context).showSnackBar(

@@ -15,6 +15,53 @@ class FirebasePushService
 {
     private const FCM_SCOPE = 'https://www.googleapis.com/auth/firebase.messaging';
 
+    /**
+     * Get Firebase config for specific app type (seller or delivery)
+     */
+    private function getFirebaseConfig(string $appType): array
+    {
+        $config = config('services.firebase.' . $appType);
+
+        if (! $config) {
+            return [
+                'project_id' => null,
+                'credentials' => null,
+            ];
+        }
+
+        return [
+            'project_id' => $config['project_id'] ?? null,
+            'credentials' => $config['credentials'] ?? null,
+        ];
+    }
+
+    /**
+     * Check configuration for specific app type
+     */
+    public function configurationIssue(?string $appType = null): ?string
+    {
+        $appType = $appType ?? 'seller';
+        $config = $this->getFirebaseConfig($appType);
+        $credentials = $config['credentials'];
+
+        if (! $credentials) {
+            return "Firebase service account credentials are not configured for {$appType} app.";
+        }
+
+        if (is_string($credentials) && ! is_file($credentials)) {
+            return "Firebase service account file was not found for {$appType} app.";
+        }
+
+        if (! $this->projectId($appType)) {
+            return "Firebase project ID is not configured for {$appType} app.";
+        }
+
+        return null;
+    }
+
+    /**
+     * Send notification to a specific user
+     */
     public function sendToUser(
         User $user,
         string $title,
@@ -36,6 +83,9 @@ class FirebasePushService
         return $this->sendToTokenModels($tokens, $title, $body, $data, $appType);
     }
 
+    /**
+     * Send notification to multiple token models
+     */
     public function sendToTokenModels(
         Collection $tokens,
         string $title,
@@ -47,36 +97,43 @@ class FirebasePushService
             return 0;
         }
 
-        $accessToken = $this->accessToken();
-        $projectId = $this->projectId();
+        // Group tokens by app_type to use different credentials
+        $tokensByAppType = $tokens->groupBy('app_type');
+        $totalSent = 0;
 
-        if (! $accessToken || ! $projectId) {
-            return 0;
-        }
+        foreach ($tokensByAppType as $type => $typeTokens) {
+            $effectiveAppType = $appType ?? $type;
+            $accessToken = $this->accessToken($effectiveAppType);
+            $projectId = $this->projectId($effectiveAppType);
 
-        $sent = 0;
-        foreach ($tokens as $token) {
-            $result = $this->sendToToken(
-                $accessToken,
-                $projectId,
-                $token->fcm_token,
-                $title,
-                $body,
-                $data,
-                $appType ?: $token->app_type
-            );
-
-            if ($result === 'sent') {
-                $sent++;
-                $token->forceFill(['last_used_at' => now()])->save();
+            if (! $accessToken || ! $projectId) {
+                Log::warning("Firebase config missing for app type: {$effectiveAppType}");
+                continue;
             }
 
-            if ($result === 'invalid') {
-                $token->delete();
+            foreach ($typeTokens as $token) {
+                $result = $this->sendToToken(
+                    $accessToken,
+                    $projectId,
+                    $token->fcm_token,
+                    $title,
+                    $body,
+                    $data,
+                    $effectiveAppType
+                );
+
+                if ($result === 'sent') {
+                    $totalSent++;
+                    $token->forceFill(['last_used_at' => now()])->save();
+                }
+
+                if ($result === 'invalid') {
+                    $token->delete();
+                }
             }
         }
 
-        return $sent;
+        return $totalSent;
     }
 
     private function sendToToken(
@@ -143,12 +200,14 @@ class FirebasePushService
         return 'failed';
     }
 
-    private function accessToken(): ?string
+    private function accessToken(?string $appType = null): ?string
     {
-        $credentials = config('services.firebase.credentials');
+        $appType = $appType ?? 'seller';
+        $config = $this->getFirebaseConfig($appType);
+        $credentials = $config['credentials'];
 
         if (! $credentials) {
-            Log::warning('Firebase service account credentials are not configured.');
+            Log::warning("Firebase service account credentials are not configured for {$appType}.");
 
             return null;
         }
@@ -162,7 +221,7 @@ class FirebasePushService
         }
 
         try {
-            $client = new GoogleClient();
+            $client = new GoogleClient;
             $client->setAuthConfig($credentials);
             $client->addScope(self::FCM_SCOPE);
 
@@ -187,11 +246,26 @@ class FirebasePushService
         return $token['access_token'] ?? null;
     }
 
-    private function projectId(): ?string
+    private function projectId(?string $appType = null): ?string
     {
-        $projectId = trim((string) config('services.firebase.project_id'));
+        $appType = $appType ?? 'seller';
+        $config = $this->getFirebaseConfig($appType);
+        $projectId = $config['project_id'];
 
-        return $projectId !== '' ? $projectId : null;
+        if ($projectId) {
+            return trim($projectId);
+        }
+
+        $credentials = $config['credentials'];
+
+        if (is_string($credentials) && is_file($credentials)) {
+            $json = json_decode((string) file_get_contents($credentials), true);
+            $projectId = trim((string) ($json['project_id'] ?? ''));
+
+            return $projectId !== '' ? $projectId : null;
+        }
+
+        return null;
     }
 
     private function stringifyData(array $data): array

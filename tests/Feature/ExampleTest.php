@@ -11,10 +11,10 @@ class ExampleTest extends TestCase
      *
      * @return void
      */
-    public function test_basic_test()
+    public function test_guests_are_redirected_from_the_app_shell()
     {
         $response = $this->get('/');
 
-        $response->assertStatus(200);
+        $response->assertRedirect('/login');
     }
 }

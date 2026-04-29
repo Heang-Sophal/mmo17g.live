@@ -750,8 +750,11 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout'])-
     // ------------------------------------------------------------------\\
     Route::get('settings/dark-mode', 'SettingsController@getDarkMode');
     Route::put('settings/dark-mode', 'SettingsController@updateDarkMode');
+    Route::get('settings/firebase_status', 'MobileNotificationController@getFirebaseStatus');
+    Route::post('settings/firebase_credentials', 'MobileNotificationController@updateFirebaseCredentials');
     Route::resource('settings', 'SettingsController');
     Route::get('get_Settings_data_api', 'SettingsController@get_Settings_data_api');
+    Route::post('send_mobile_notification', 'MobileNotificationController@sendNotification');
     Route::get('get_Settings_data', 'SettingsController@getSettings');
     // Dedicated Dark Mode endpoints (independent from other settings APIs)
     Route::put('pos_settings/{id}', 'SettingsController@update_pos_settings');
