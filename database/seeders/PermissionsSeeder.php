@@ -847,6 +847,51 @@ class PermissionsSeeder extends Seeder
                     'name' => 'report_warranty',
                 ],
 
+                [
+                    'id' => 195,
+                    'name' => 'mobile_seller_pos',
+                ],
+                [
+                    'id' => 196,
+                    'name' => 'mobile_seller_orders',
+                ],
+                [
+                    'id' => 197,
+                    'name' => 'mobile_seller_products',
+                ],
+                [
+                    'id' => 198,
+                    'name' => 'mobile_seller_sale_returns',
+                ],
+                [
+                    'id' => 199,
+                    'name' => 'mobile_seller_profile',
+                ],
+                [
+                    'id' => 200,
+                    'name' => 'mobile_seller_reports',
+                ],
+                [
+                    'id' => 201,
+                    'name' => 'mobile_delivery_record_items',
+                ],
+                [
+                    'id' => 202,
+                    'name' => 'mobile_delivery_record_reports',
+                ],
+                [
+                    'id' => 203,
+                    'name' => 'mobile_delivery_deliveries',
+                ],
+                [
+                    'id' => 204,
+                    'name' => 'mobile_delivery_reports',
+                ],
+                [
+                    'id' => 205,
+                    'name' => 'mobile_delivery_profile',
+                ],
+
             ]
         );
     }

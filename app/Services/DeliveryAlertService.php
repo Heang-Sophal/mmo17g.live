@@ -77,6 +77,60 @@ class DeliveryAlertService
         );
     }
 
+    public function createSellerShippingUpdatedAlert(
+        Sale $sale,
+        User $deliveryUser,
+        float $oldShipping,
+        float $newShipping
+    ): void {
+        if (! Schema::hasTable('delivery_alerts') || ! $sale->user_id) {
+            return;
+        }
+
+        $sale->loadMissing('warehouse', 'client', 'user');
+
+        $seller = $sale->user;
+        if (! $seller) {
+            return;
+        }
+
+        $warehouseName = $sale->warehouse?->name ?: ('Warehouse #'.$sale->warehouse_id);
+        $customerName = $sale->client?->name ?: 'អតិថិជនដើរចូល';
+        $saleRef = $sale->Ref ?: ('SALE-'.$sale->id);
+        $deliveryName = $deliveryUser->name ?: ($deliveryUser->username ?: 'អ្នកដឹក');
+
+        $payload = [
+            'sale_id' => (int) $sale->id,
+            'sale_ref' => $saleRef,
+            'warehouse_id' => (int) $sale->warehouse_id,
+            'warehouse_name' => $warehouseName,
+            'customer_name' => $customerName,
+            'grand_total' => (float) $sale->GrandTotal,
+            'old_shipping' => $oldShipping,
+            'new_shipping' => $newShipping,
+            'shipping_status' => $sale->shipping_status ?: 'pending',
+            'payment_status' => $sale->payment_statut ?: 'unpaid',
+            'delivery_name' => $deliveryName,
+            'delivery_phone' => $deliveryUser->phone ?? '',
+            'event' => 'delivery_shipping_updated',
+            'updated_at' => now()->toIso8601String(),
+        ];
+
+        $oldFormatted = number_format($oldShipping, 2, '.', ',');
+        $newFormatted = number_format($newShipping, 2, '.', ',');
+        $message = "{$deliveryName} បានកែថ្លៃដឹកការបញ្ជាទិញ {$saleRef} របស់ {$customerName} ពី {$oldFormatted} ទៅ {$newFormatted} ({$warehouseName})។";
+
+        $this->createAlertForUser(
+            $seller,
+            $sale,
+            'delivery_shipping_updated',
+            'ថ្លៃដឹកត្រូវបានកែប្រែ',
+            $message,
+            $payload,
+            false
+        );
+    }
+
     protected function canCreateAlertsForSale(Sale $sale): bool
     {
         if (! $sale->warehouse_id) {
@@ -94,14 +148,15 @@ class DeliveryAlertService
 
     protected function queryDeliveryUsersForWarehouse(int $warehouseId): Builder
     {
+        $deliveryAppRoleNames = ['Delivery', 'Laivrison', 'Recorder', 'Admin', 'Owner'];
         $deliveryRoleIds = Role::query()
-            ->whereIn('name', ['Delivery', 'Laivrison'])
+            ->whereIn('name', $deliveryAppRoleNames)
             ->pluck('id');
 
         return User::query()
             ->whereNull('users.deleted_at')
             ->where('users.statut', 1)
-            ->where(function (Builder $query) use ($deliveryRoleIds) {
+            ->where(function (Builder $query) use ($deliveryRoleIds, $deliveryAppRoleNames) {
                 if ($deliveryRoleIds->isNotEmpty()) {
                     $query->whereIn('users.role_id', $deliveryRoleIds)
                         ->orWhereHas('roles', function (Builder $roleQuery) use ($deliveryRoleIds) {
@@ -111,12 +166,15 @@ class DeliveryAlertService
                     return;
                 }
 
-                $query->whereHas('roles', function (Builder $roleQuery) {
-                    $roleQuery->whereIn('roles.name', ['Delivery', 'Laivrison']);
+                $query->whereHas('roles', function (Builder $roleQuery) use ($deliveryAppRoleNames) {
+                    $roleQuery->whereIn('roles.name', $deliveryAppRoleNames);
                 });
             })
-            ->whereHas('assignedWarehouses', function (Builder $warehouseQuery) use ($warehouseId) {
-                $warehouseQuery->where('warehouses.id', $warehouseId);
+            ->where(function (Builder $warehouseScope) use ($warehouseId) {
+                $warehouseScope->where('users.is_all_warehouses', 1)
+                    ->orWhereHas('assignedWarehouses', function (Builder $warehouseQuery) use ($warehouseId) {
+                        $warehouseQuery->where('warehouses.id', $warehouseId);
+                    });
             });
     }
 
@@ -170,17 +228,29 @@ class DeliveryAlertService
         string $type,
         string $title,
         string $message,
-        array $payload = []
+        array $payload = [],
+        bool $dedupe = true
     ): void {
-        $alert = DeliveryAlert::create([
+        $attributes = [
             'user_id' => $user->id,
             'sale_id' => $sale->id,
-            'warehouse_id' => $sale->warehouse_id,
             'type' => $type,
+        ];
+
+        $values = [
+            'warehouse_id' => $sale->warehouse_id,
             'title' => $title,
             'message' => $message,
             'payload' => $payload,
-        ]);
+        ];
+
+        $alert = $dedupe
+            ? DeliveryAlert::firstOrCreate($attributes, $values)
+            : DeliveryAlert::create($attributes + $values);
+
+        if ($dedupe && ! $alert->wasRecentlyCreated) {
+            return;
+        }
 
         $this->pushAlert($alert, $user, $type, $title, $message, $payload);
     }
@@ -206,13 +276,22 @@ class DeliveryAlertService
                 'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
             ];
 
-            app(FirebasePushService::class)->sendToUser(
+            $sent = app(FirebasePushService::class)->sendToUser(
                 $user,
                 $title,
                 $message,
                 $data,
                 $appType
             );
+
+            if ($sent === 0) {
+                Log::warning('Mobile push notification was not delivered to any registered device.', [
+                    'alert_id' => $alert->id,
+                    'user_id' => $user->id,
+                    'type' => $type,
+                    'app_type' => $appType,
+                ]);
+            }
         } catch (Throwable $e) {
             Log::warning('Failed to send mobile push notification for delivery alert.', [
                 'alert_id' => $alert->id,
@@ -229,6 +308,7 @@ class DeliveryAlertService
             'sale_created' => 'delivery',
             'delivery_accepted' => 'seller',
             'delivery_completed' => 'seller',
+            'delivery_shipping_updated' => 'seller',
         ];
 
         return $map[$type] ?? null;

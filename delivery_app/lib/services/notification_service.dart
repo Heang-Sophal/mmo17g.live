@@ -11,6 +11,11 @@ import 'package:http/http.dart' as http;
 import 'package:delivery_app/main.dart';
 import 'package:delivery_app/screens/delivery_alerts_screen.dart';
 
+const Set<String> _alertNotificationTypes = {
+  'information_alert',
+  'sale_created',
+};
+
 @pragma('vm:entry-point')
 Future<void> deliveryFirebaseMessagingBackgroundHandler(
   RemoteMessage message,
@@ -21,29 +26,30 @@ Future<void> deliveryFirebaseMessagingBackgroundHandler(
 }
 
 void _handleNotificationClick(Map<String, dynamic> data) {
-  if (data['type'] == 'information_alert' && navigatorKey.currentState != null) {
+  if (_alertNotificationTypes.contains(data['type']?.toString()) &&
+      navigatorKey.currentState != null) {
     final title = data['title']?.toString() ?? 'Information';
     final body = data['body']?.toString() ?? '';
 
-    navigatorKey.currentState!.push(
-      MaterialPageRoute(builder: (_) => const DeliveryAlertsScreen()),
-    ).then((_) {
-      if (navigatorKey.currentContext != null) {
-        showDialog(
-          context: navigatorKey.currentContext!,
-          builder: (ctx) => AlertDialog(
-            title: Text(title),
-            content: Text(body),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('OK'),
+    navigatorKey.currentState!
+        .push(MaterialPageRoute(builder: (_) => const DeliveryAlertsScreen()))
+        .then((_) {
+          if (navigatorKey.currentContext != null) {
+            showDialog(
+              context: navigatorKey.currentContext!,
+              builder: (ctx) => AlertDialog(
+                title: Text(title),
+                content: Text(body),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('OK'),
+                  ),
+                ],
               ),
-            ],
-          ),
-        );
-      }
-    });
+            );
+          }
+        });
   }
 }
 
@@ -118,7 +124,8 @@ class NotificationService {
         _handleNotificationClick(message.data);
       });
 
-      final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+      final initialMessage = await FirebaseMessaging.instance
+          .getInitialMessage();
       if (initialMessage != null) {
         Future.delayed(const Duration(milliseconds: 500), () {
           _handleNotificationClick(initialMessage.data);
@@ -211,5 +218,33 @@ class NotificationService {
       ),
       payload: jsonEncode(message.data),
     );
+  }
+
+  /// Show a local notification immediately (title/body). Payload may be any map.
+  static Future<void> sendLocalNotification({
+    required String title,
+    required String body,
+    Map<String, dynamic>? payload,
+  }) async {
+    try {
+      await _localNotifications.show(
+        id: DateTime.now().microsecondsSinceEpoch.remainder(100000),
+        title: title,
+        body: body,
+        notificationDetails: NotificationDetails(
+          android: AndroidNotificationDetails(
+            _androidChannel.id,
+            _androidChannel.name,
+            channelDescription: _androidChannel.description,
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+          iOS: const DarwinNotificationDetails(),
+        ),
+        payload: payload == null ? null : jsonEncode(payload),
+      );
+    } catch (e) {
+      debugPrint('Local notification failed: $e');
+    }
   }
 }

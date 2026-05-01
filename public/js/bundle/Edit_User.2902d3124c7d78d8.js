@@ -1,10 +1,10 @@
 "use strict";
-(self["webpackChunk"] = self["webpackChunk"] || []).push([["Create_User"],{
+(self["webpackChunk"] = self["webpackChunk"] || []).push([["Edit_User"],{
 
-/***/ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/people/CreateUser.vue?vue&type=script&lang=js":
-/*!*****************************************************************************************************************************************************************************************************************!*\
-  !*** ./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/people/CreateUser.vue?vue&type=script&lang=js ***!
-  \*****************************************************************************************************************************************************************************************************************/
+/***/ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/people/EditUser.vue?vue&type=script&lang=js":
+/*!***************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/people/EditUser.vue?vue&type=script&lang=js ***!
+  \***************************************************************************************************************************************************************************************************************/
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.r(__webpack_exports__);
@@ -20,7 +20,7 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
 
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
   metaInfo: {
-    title: "Create User"
+    title: "Edit User"
   },
   data: function data() {
     return {
@@ -31,15 +31,18 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
       warehouses: [],
       data: new FormData(),
       user: {
+        id: "",
         firstname: "",
         lastname: "",
         username: "",
-        password: "",
+        NewPassword: null,
         email: "",
         phone: "",
+        statut: "",
         role_id: "",
         avatar: "",
-        is_all_warehouses: 1
+        is_all_warehouses: 1,
+        record_view: false
       },
       assigned_warehouses: []
     };
@@ -92,7 +95,7 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
   methods: {
     isDeliveryRoleName: function isDeliveryRoleName(role) {
       var roleName = String(role && (role.name || role.label) ? role.name || role.label : "").trim().toLowerCase();
-      return ["delivery", "laivrison"].includes(roleName);
+      return ["delivery", "laivrison", "recorder"].includes(roleName);
     },
     getFirstErrorMessage: function getFirstErrorMessage(error) {
       if (error && error.response && error.response.data) {
@@ -109,7 +112,7 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
       }
       return this.$t("InvalidData");
     },
-    //------------- Submit Validation Create User
+    //------------- Submit Validation Edit User
     Submit_User: function Submit_User() {
       var _this2 = this;
       this.$refs.Create_User.validate().then(function (success) {
@@ -120,12 +123,12 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
             _this2.makeToast("danger", "Delivery user must be assigned to one warehouse.", _this2.$t("Failed"));
             return;
           }
-          _this2.Create_User();
+          _this2.Update_User();
         }
       });
     },
-    //------------------------ Create User ---------------------------\\
-    Create_User: function Create_User() {
+    //----------------------- Update User ---------------------------\\
+    Update_User: function Update_User() {
       var _this3 = this;
       var self = this;
       self.SubmitProcessing = true;
@@ -134,9 +137,10 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
       self.data.append("lastname", self.user.lastname);
       self.data.append("username", self.user.username);
       self.data.append("email", self.user.email);
-      self.data.append("password", self.user.password);
+      self.data.append("NewPassword", self.user.NewPassword);
       self.data.append("phone", self.user.phone);
       self.data.append("role", self.user.role_id);
+      self.data.append("statut", self.user.statut);
       self.data.append("is_all_warehouses", self.user.is_all_warehouses);
       self.data.append("record_view", self.user.record_view ? 1 : 0);
       self.data.append("avatar", self.user.avatar);
@@ -149,19 +153,49 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
       } else {
         self.data.append("assigned_to", []);
       }
-      axios.post("users", self.data).then(function (response) {
+      self.data.append("_method", "put");
+      axios.post("users/" + this.user.id, self.data).then(function (response) {
+        _this3.makeToast("success", _this3.$t("Successfully_Updated"), _this3.$t("Success"));
         self.SubmitProcessing = false;
-        _this3.makeToast("success", _this3.$t("Successfully_Created"), _this3.$t("Success"));
-        // Redirect to users list after successful creation
+        // Redirect to users list after successful update
         _this3.$router.push({
           name: 'Users'
         });
       })["catch"](function (error) {
-        self.SubmitProcessing = false;
         if (error.response && error.response.data && error.response.data.errors && error.response.data.errors.email) {
           self.email_exist = error.response.data.errors.email[0];
         }
         _this3.makeToast("danger", _this3.getFirstErrorMessage(error), _this3.$t("Failed"));
+        self.SubmitProcessing = false;
+      });
+    },
+    //----------------------------------- Get User Data ---------------------------\\
+    Get_User: function Get_User() {
+      var _this4 = this;
+      nprogress__WEBPACK_IMPORTED_MODULE_0___default().start();
+      nprogress__WEBPACK_IMPORTED_MODULE_0___default().set(0.1);
+      var id = this.$route.params.id;
+      axios.get("users/" + id + "/edit").then(function (response) {
+        _this4.user = response.data.user;
+        _this4.roles = response.data.roles;
+        _this4.warehouses = response.data.warehouses;
+        _this4.assigned_warehouses = response.data.assigned_warehouses || [];
+        if (_this4.isDeliveryRole && _this4.assigned_warehouses.length > 1) {
+          _this4.assigned_warehouses = [_this4.assigned_warehouses[0]];
+          _this4.user.is_all_warehouses = 0;
+        }
+        _this4.user.NewPassword = null;
+        nprogress__WEBPACK_IMPORTED_MODULE_0___default().done();
+        _this4.isLoading = false;
+      })["catch"](function (error) {
+        nprogress__WEBPACK_IMPORTED_MODULE_0___default().done();
+        _this4.makeToast("danger", _this4.$t("Failed_to_load_user"), _this4.$t("Failed"));
+        setTimeout(function () {
+          _this4.isLoading = false;
+          _this4.$router.push({
+            name: 'Users'
+          });
+        }, 500);
       });
     },
     Selected_Warehouse: function Selected_Warehouse(value) {
@@ -179,46 +213,27 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
     },
     //------------------------------ Event Upload Avatar -------------------------------\\
     onFileSelected: function onFileSelected(e) {
-      var _this4 = this;
+      var _this5 = this;
       return _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee() {
-        var _yield$_this4$$refs$A, valid;
+        var _yield$_this5$$refs$A, valid;
         return _regenerator().w(function (_context) {
           while (1) switch (_context.n) {
             case 0:
               _context.n = 1;
-              return _this4.$refs.Avatar.validate(e);
+              return _this5.$refs.Avatar.validate(e);
             case 1:
-              _yield$_this4$$refs$A = _context.v;
-              valid = _yield$_this4$$refs$A.valid;
+              _yield$_this5$$refs$A = _context.v;
+              valid = _yield$_this5$$refs$A.valid;
               if (valid) {
-                _this4.user.avatar = e.target.files[0];
+                _this5.user.avatar = e.target.files[0];
               } else {
-                _this4.user.avatar = "";
+                _this5.user.avatar = "";
               }
             case 2:
               return _context.a(2);
           }
         }, _callee);
       }))();
-    },
-    //----------------------------------- Get Roles and Warehouses ---------------------------\\
-    Get_Data: function Get_Data() {
-      var _this5 = this;
-      nprogress__WEBPACK_IMPORTED_MODULE_0___default().start();
-      nprogress__WEBPACK_IMPORTED_MODULE_0___default().set(0.1);
-      axios
-      // Reuse the same query shape as the Users listing so the backend
-      // receives valid SortField/SortType values and can return roles
-      // metadata without throwing "Order direction must be \"asc\" or \"desc\"."
-      .get("users?page=1" + "&name=" + "" + "&statut=" + "" + "&phone=" + "" + "&email=" + "" + "&SortField=" + "id" + "&SortType=" + "desc" + "&search=" + "" + "&limit=" + 1).then(function (response) {
-        _this5.roles = response.data.roles;
-        _this5.warehouses = response.data.warehouses;
-        nprogress__WEBPACK_IMPORTED_MODULE_0___default().done();
-        _this5.isLoading = false;
-      })["catch"](function (error) {
-        nprogress__WEBPACK_IMPORTED_MODULE_0___default().done();
-        _this5.isLoading = false;
-      });
     },
     //------ Event Validation State
     getValidationState: function getValidationState(_ref) {
@@ -239,16 +254,16 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
   },
   //----------------------------- Created function-------------------
   created: function created() {
-    this.Get_Data();
+    this.Get_User();
   }
 });
 
 /***/ }),
 
-/***/ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/people/CreateUser.vue?vue&type=template&id=03cee3fa":
-/*!****************************************************************************************************************************************************************************************************************************************************************************************************!*\
-  !*** ./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/people/CreateUser.vue?vue&type=template&id=03cee3fa ***!
-  \****************************************************************************************************************************************************************************************************************************************************************************************************/
+/***/ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/people/EditUser.vue?vue&type=template&id=b3e3f470":
+/*!**************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/people/EditUser.vue?vue&type=template&id=b3e3f470 ***!
+  \**************************************************************************************************************************************************************************************************************************************************************************************************/
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.r(__webpack_exports__);
@@ -263,10 +278,12 @@ var render = function render() {
     staticClass: "main-content"
   }, [_c("breadcumb", {
     attrs: {
-      page: _vm.$t("Add"),
+      page: _vm.$t("Edit"),
       folder: _vm.$t("Users")
     }
-  }), _vm._v(" "), _c("validation-observer", {
+  }), _vm._v(" "), _vm.isLoading ? _c("div", {
+    staticClass: "loading_page spinner spinner-primary mr-3"
+  }) : _vm._e(), _vm._v(" "), !_vm.isLoading ? _c("validation-observer", {
     ref: "Create_User"
   }, [_c("b-card", [_c("b-form", {
     attrs: {
@@ -319,7 +336,7 @@ var render = function render() {
           }
         }, [_vm._v(_vm._s(validationContext.errors[0]))])], 1)];
       }
-    }])
+    }], null, false, 2502027793)
   })], 1), _vm._v(" "), _c("b-col", {
     attrs: {
       md: "6",
@@ -361,7 +378,7 @@ var render = function render() {
           }
         }, [_vm._v(_vm._s(validationContext.errors[0]))])], 1)];
       }
-    }])
+    }], null, false, 2753886097)
   })], 1), _vm._v(" "), _c("b-col", {
     attrs: {
       md: "6",
@@ -403,7 +420,7 @@ var render = function render() {
           }
         }, [_vm._v(_vm._s(validationContext.errors[0]))])], 1)];
       }
-    }])
+    }], null, false, 1395837873)
   })], 1), _vm._v(" "), _c("b-col", {
     attrs: {
       md: "6",
@@ -443,7 +460,7 @@ var render = function render() {
           }
         }, [_vm._v(_vm._s(validationContext.errors[0]))])], 1)];
       }
-    }])
+    }], null, false, 110264049)
   })], 1), _vm._v(" "), _c("b-col", {
     attrs: {
       md: "6",
@@ -489,49 +506,7 @@ var render = function render() {
           }
         }, [_vm._v(_vm._s(_vm.email_exist))]) : _vm._e()], 1)];
       }
-    }])
-  })], 1), _vm._v(" "), _c("b-col", {
-    attrs: {
-      md: "6",
-      sm: "12"
-    }
-  }, [_c("validation-provider", {
-    attrs: {
-      name: "password",
-      rules: {
-        required: true,
-        min: 6
-      }
-    },
-    scopedSlots: _vm._u([{
-      key: "default",
-      fn: function fn(validationContext) {
-        return [_c("b-form-group", {
-          attrs: {
-            label: _vm.$t("password") + " " + "*"
-          }
-        }, [_c("b-form-input", {
-          attrs: {
-            state: _vm.getValidationState(validationContext),
-            "aria-describedby": "password-feedback",
-            label: "password",
-            type: "password",
-            placeholder: _vm.$t("password")
-          },
-          model: {
-            value: _vm.user.password,
-            callback: function callback($$v) {
-              _vm.$set(_vm.user, "password", $$v);
-            },
-            expression: "user.password"
-          }
-        }), _vm._v(" "), _c("b-form-invalid-feedback", {
-          attrs: {
-            id: "password-feedback"
-          }
-        }, [_vm._v(_vm._s(validationContext.errors[0]))])], 1)];
-      }
-    }])
+    }], null, false, 921727233)
   })], 1), _vm._v(" "), _c("b-col", {
     staticClass: "mb-3",
     attrs: {
@@ -580,7 +555,7 @@ var render = function render() {
           }
         }), _vm._v(" "), _c("b-form-invalid-feedback", [_vm._v(_vm._s(errors[0]))])], 1);
       }
-    }])
+    }], null, false, 3236387259)
   })], 1), _vm._v(" "), _c("b-col", {
     staticClass: "mb-3",
     attrs: {
@@ -621,7 +596,48 @@ var render = function render() {
           }
         }, [_vm._v(_vm._s(errors[0]))])], 1);
       }
-    }])
+    }], null, false, 2117094513)
+  })], 1), _vm._v(" "), _c("b-col", {
+    staticClass: "mb-3",
+    attrs: {
+      md: "6"
+    }
+  }, [_c("validation-provider", {
+    attrs: {
+      name: "New password",
+      rules: {
+        min: 6
+      }
+    },
+    scopedSlots: _vm._u([{
+      key: "default",
+      fn: function fn(validationContext) {
+        return [_c("b-form-group", {
+          attrs: {
+            label: _vm.$t("Newpassword")
+          }
+        }, [_c("b-form-input", {
+          attrs: {
+            state: _vm.getValidationState(validationContext),
+            "aria-describedby": "Nawpassword-feedback",
+            placeholder: _vm.$t("LeaveBlank"),
+            label: "New password",
+            type: "password"
+          },
+          model: {
+            value: _vm.user.NewPassword,
+            callback: function callback($$v) {
+              _vm.$set(_vm.user, "NewPassword", $$v);
+            },
+            expression: "user.NewPassword"
+          }
+        }), _vm._v(" "), _c("b-form-invalid-feedback", {
+          attrs: {
+            id: "Nawpassword-feedback"
+          }
+        }, [_vm._v(_vm._s(validationContext.errors[0]))])], 1)];
+      }
+    }], null, false, 762998968)
   })], 1), _vm._v(" "), _c("b-col", {
     staticClass: "mb-3",
     attrs: {
@@ -841,7 +857,7 @@ var render = function render() {
         });
       }
     }
-  }, [_vm._v(_vm._s(_vm.$t("Cancel")))]), _vm._v(" "), _vm.SubmitProcessing ? _vm._m(0) : _vm._e()], 1)], 1)], 1)], 1)], 1)], 1);
+  }, [_vm._v(_vm._s(_vm.$t("Cancel")))]), _vm._v(" "), _vm.SubmitProcessing ? _vm._m(0) : _vm._e()], 1)], 1)], 1)], 1)], 1) : _vm._e()], 1);
 };
 var staticRenderFns = [function () {
   var _vm = this,
@@ -857,18 +873,18 @@ render._withStripped = true;
 
 /***/ }),
 
-/***/ "./resources/src/views/app/pages/people/CreateUser.vue":
-/*!*************************************************************!*\
-  !*** ./resources/src/views/app/pages/people/CreateUser.vue ***!
-  \*************************************************************/
+/***/ "./resources/src/views/app/pages/people/EditUser.vue":
+/*!***********************************************************!*\
+  !*** ./resources/src/views/app/pages/people/EditUser.vue ***!
+  \***********************************************************/
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
-/* harmony import */ var _CreateUser_vue_vue_type_template_id_03cee3fa__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./CreateUser.vue?vue&type=template&id=03cee3fa */ "./resources/src/views/app/pages/people/CreateUser.vue?vue&type=template&id=03cee3fa");
-/* harmony import */ var _CreateUser_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./CreateUser.vue?vue&type=script&lang=js */ "./resources/src/views/app/pages/people/CreateUser.vue?vue&type=script&lang=js");
+/* harmony import */ var _EditUser_vue_vue_type_template_id_b3e3f470__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./EditUser.vue?vue&type=template&id=b3e3f470 */ "./resources/src/views/app/pages/people/EditUser.vue?vue&type=template&id=b3e3f470");
+/* harmony import */ var _EditUser_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./EditUser.vue?vue&type=script&lang=js */ "./resources/src/views/app/pages/people/EditUser.vue?vue&type=script&lang=js");
 /* harmony import */ var _node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! !../../../../../../node_modules/vue-loader/lib/runtime/componentNormalizer.js */ "./node_modules/vue-loader/lib/runtime/componentNormalizer.js");
 
 
@@ -878,9 +894,9 @@ __webpack_require__.r(__webpack_exports__);
 /* normalize component */
 ;
 var component = (0,_node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__["default"])(
-  _CreateUser_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__["default"],
-  _CreateUser_vue_vue_type_template_id_03cee3fa__WEBPACK_IMPORTED_MODULE_0__.render,
-  _CreateUser_vue_vue_type_template_id_03cee3fa__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns,
+  _EditUser_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__["default"],
+  _EditUser_vue_vue_type_template_id_b3e3f470__WEBPACK_IMPORTED_MODULE_0__.render,
+  _EditUser_vue_vue_type_template_id_b3e3f470__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns,
   false,
   null,
   null,
@@ -891,38 +907,38 @@ var component = (0,_node_modules_vue_loader_lib_runtime_componentNormalizer_js__
 /* hot reload */
 if (false) // removed by dead control flow
 { var api; }
-component.options.__file = "resources/src/views/app/pages/people/CreateUser.vue"
+component.options.__file = "resources/src/views/app/pages/people/EditUser.vue"
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (component.exports);
 
 /***/ }),
 
-/***/ "./resources/src/views/app/pages/people/CreateUser.vue?vue&type=script&lang=js":
-/*!*************************************************************************************!*\
-  !*** ./resources/src/views/app/pages/people/CreateUser.vue?vue&type=script&lang=js ***!
-  \*************************************************************************************/
+/***/ "./resources/src/views/app/pages/people/EditUser.vue?vue&type=script&lang=js":
+/*!***********************************************************************************!*\
+  !*** ./resources/src/views/app/pages/people/EditUser.vue?vue&type=script&lang=js ***!
+  \***********************************************************************************/
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
-/* harmony import */ var _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_lib_index_js_vue_loader_options_CreateUser_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../../../../node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!../../../../../../node_modules/vue-loader/lib/index.js??vue-loader-options!./CreateUser.vue?vue&type=script&lang=js */ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/people/CreateUser.vue?vue&type=script&lang=js");
- /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_lib_index_js_vue_loader_options_CreateUser_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__["default"]); 
+/* harmony import */ var _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_lib_index_js_vue_loader_options_EditUser_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../../../../node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!../../../../../../node_modules/vue-loader/lib/index.js??vue-loader-options!./EditUser.vue?vue&type=script&lang=js */ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/people/EditUser.vue?vue&type=script&lang=js");
+ /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_lib_index_js_vue_loader_options_EditUser_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__["default"]); 
 
 /***/ }),
 
-/***/ "./resources/src/views/app/pages/people/CreateUser.vue?vue&type=template&id=03cee3fa":
-/*!*******************************************************************************************!*\
-  !*** ./resources/src/views/app/pages/people/CreateUser.vue?vue&type=template&id=03cee3fa ***!
-  \*******************************************************************************************/
+/***/ "./resources/src/views/app/pages/people/EditUser.vue?vue&type=template&id=b3e3f470":
+/*!*****************************************************************************************!*\
+  !*** ./resources/src/views/app/pages/people/EditUser.vue?vue&type=template&id=b3e3f470 ***!
+  \*****************************************************************************************/
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   render: () => (/* reexport safe */ _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_2_node_modules_vue_loader_lib_index_js_vue_loader_options_CreateUser_vue_vue_type_template_id_03cee3fa__WEBPACK_IMPORTED_MODULE_0__.render),
-/* harmony export */   staticRenderFns: () => (/* reexport safe */ _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_2_node_modules_vue_loader_lib_index_js_vue_loader_options_CreateUser_vue_vue_type_template_id_03cee3fa__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns)
+/* harmony export */   render: () => (/* reexport safe */ _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_2_node_modules_vue_loader_lib_index_js_vue_loader_options_EditUser_vue_vue_type_template_id_b3e3f470__WEBPACK_IMPORTED_MODULE_0__.render),
+/* harmony export */   staticRenderFns: () => (/* reexport safe */ _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_2_node_modules_vue_loader_lib_index_js_vue_loader_options_EditUser_vue_vue_type_template_id_b3e3f470__WEBPACK_IMPORTED_MODULE_0__.staticRenderFns)
 /* harmony export */ });
-/* harmony import */ var _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_2_node_modules_vue_loader_lib_index_js_vue_loader_options_CreateUser_vue_vue_type_template_id_03cee3fa__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../../../../node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!../../../../../../node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[2]!../../../../../../node_modules/vue-loader/lib/index.js??vue-loader-options!./CreateUser.vue?vue&type=template&id=03cee3fa */ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/people/CreateUser.vue?vue&type=template&id=03cee3fa");
+/* harmony import */ var _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_lib_loaders_templateLoader_js_ruleSet_1_rules_2_node_modules_vue_loader_lib_index_js_vue_loader_options_EditUser_vue_vue_type_template_id_b3e3f470__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../../../../node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!../../../../../../node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[2]!../../../../../../node_modules/vue-loader/lib/index.js??vue-loader-options!./EditUser.vue?vue&type=template&id=b3e3f470 */ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/lib/loaders/templateLoader.js??ruleSet[1].rules[2]!./node_modules/vue-loader/lib/index.js??vue-loader-options!./resources/src/views/app/pages/people/EditUser.vue?vue&type=template&id=b3e3f470");
 
 
 /***/ })

@@ -330,7 +330,7 @@ export default {
         .trim()
         .toLowerCase();
 
-      return ["delivery", "laivrison"].includes(roleName);
+      return ["delivery", "laivrison", "recorder"].includes(roleName);
     },
 
     getFirstErrorMessage(error) {

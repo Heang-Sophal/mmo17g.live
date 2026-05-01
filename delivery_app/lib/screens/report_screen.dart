@@ -12,7 +12,9 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:open_file/open_file.dart';
 
 class ReportScreen extends StatefulWidget {
-  const ReportScreen({super.key});
+  const ReportScreen({super.key, this.recordMode = false});
+
+  final bool recordMode;
 
   @override
   State<ReportScreen> createState() => ReportScreenState();
@@ -21,8 +23,8 @@ class ReportScreen extends StatefulWidget {
 class ReportScreenState extends State<ReportScreen> {
   final DeliveryApiService _apiService = DeliveryApiService();
 
-  List<Map<String, dynamic>> _allDeliveredOrders = [];
-  List<Map<String, dynamic>> _filteredOrders = [];
+  List<Map<String, dynamic>> _allReportOrders = [];
+  List<Map<String, dynamic>> _filteredReportOrders = [];
   bool _isLoading = true;
   String? _error;
 
@@ -59,7 +61,7 @@ class ReportScreenState extends State<ReportScreen> {
 
       if (!mounted) return;
       setState(() {
-        _allDeliveredOrders = orders;
+        _allReportOrders = orders;
         _filterOrdersByDate();
         _isLoading = false;
       });
@@ -73,12 +75,11 @@ class ReportScreenState extends State<ReportScreen> {
   }
 
   void _filterOrdersByDate() {
-    final filtered = _allDeliveredOrders.where((order) {
+    final filtered = _allReportOrders.where((order) {
       final dateStr = order['created_at'] ?? order['datetime'];
       if (dateStr == null) return false;
       try {
         final date = DateTime.parse(dateStr.toString());
-        // Check if date is within range (inclusive of both start and end days)
         final start = DateTime(
           _startDate.year,
           _startDate.month,
@@ -92,7 +93,7 @@ class ReportScreenState extends State<ReportScreen> {
           59,
           59,
         );
-        return date.isAfter(start) && date.isBefore(end);
+        return !date.isBefore(start) && !date.isAfter(end);
       } catch (e) {
         return false;
       }
@@ -111,7 +112,7 @@ class ReportScreenState extends State<ReportScreen> {
     }
 
     setState(() {
-      _filteredOrders = filtered;
+      _filteredReportOrders = filtered;
       _totalShipping = tShipping;
       _totalAmount = tAmount;
       _totalOrders = filtered.length;
@@ -181,8 +182,40 @@ class ReportScreenState extends State<ReportScreen> {
     );
   }
 
+  String _reportTitle(LanguageProvider languageProvider) {
+    return widget.recordMode
+        ? languageProvider.t('record_report')
+        : languageProvider.t('delivered_report');
+  }
+
+  String _reportCountLabel(LanguageProvider languageProvider) {
+    return widget.recordMode
+        ? languageProvider.t('recorded_count')
+        : languageProvider.t('delivered_count');
+  }
+
+  String _reportEmptyLabel(LanguageProvider languageProvider) {
+    return widget.recordMode
+        ? languageProvider.t('no_records')
+        : languageProvider.t('no_orders');
+  }
+
+  String _reportItemLabel(LanguageProvider languageProvider) {
+    return widget.recordMode
+        ? languageProvider.t('records')
+        : languageProvider.t('orders');
+  }
+
+  String _pdfReportTitle() {
+    return widget.recordMode ? 'Recorded Report' : 'Delivered Report';
+  }
+
+  String _pdfFilePrefix() {
+    return widget.recordMode ? 'record_report' : 'delivery_report';
+  }
+
   Future<void> _exportPDF(LanguageProvider languageProvider) async {
-    if (_filteredOrders.isEmpty) {
+    if (_filteredReportOrders.isEmpty) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('No data to export')));
@@ -198,7 +231,7 @@ class ReportScreenState extends State<ReportScreen> {
           header: (context) => pw.Container(
             alignment: pw.Alignment.centerRight,
             child: pw.Text(
-              'Delivered Report: ${_formatDateForApi(_startDate)} - ${_formatDateForApi(_endDate)}',
+              '${_pdfReportTitle()}: ${_formatDateForApi(_startDate)} - ${_formatDateForApi(_endDate)}',
               style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
             ),
           ),
@@ -244,7 +277,7 @@ class ReportScreenState extends State<ReportScreen> {
                 'Shipping',
                 'Total',
               ],
-              data: _filteredOrders.map((row) {
+              data: _filteredReportOrders.map((row) {
                 return [
                   _formatDate(row['created_at'] ?? row['datetime']),
                   row['Ref'] ?? '-',
@@ -270,7 +303,7 @@ class ReportScreenState extends State<ReportScreen> {
                 mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
                 children: [
                   pw.Text(
-                    'Total Orders: $_totalOrders',
+                    'Total ${widget.recordMode ? 'Records' : 'Orders'}: $_totalOrders',
                     style: pw.TextStyle(
                       fontSize: 12,
                       fontWeight: pw.FontWeight.bold,
@@ -302,7 +335,7 @@ class ReportScreenState extends State<ReportScreen> {
 
       final dir = await getApplicationDocumentsDirectory();
       final fileName =
-          'delivery_report_${_formatDateForApi(_startDate)}_to_${_formatDateForApi(_endDate)}.pdf';
+          '${_pdfFilePrefix()}_${_formatDateForApi(_startDate)}_to_${_formatDateForApi(_endDate)}.pdf';
       final filePath = '${dir.path}/$fileName';
       final file = File(filePath);
       await file.writeAsBytes(await pdf.save());
@@ -327,11 +360,11 @@ class ReportScreenState extends State<ReportScreen> {
     final languageProvider = context.watch<LanguageProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    if (_isLoading && _allDeliveredOrders.isEmpty) {
+    if (_isLoading && _allReportOrders.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_error != null && _allDeliveredOrders.isEmpty) {
+    if (_error != null && _allReportOrders.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -361,7 +394,7 @@ class ReportScreenState extends State<ReportScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                languageProvider.t('delivered_report'),
+                _reportTitle(languageProvider),
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -418,7 +451,7 @@ class ReportScreenState extends State<ReportScreen> {
               ),
               const Spacer(),
               Text(
-                '$_totalOrders ${languageProvider.t('orders')}',
+                '$_totalOrders ${_reportItemLabel(languageProvider)}',
                 style: const TextStyle(
                   color: Color(0xFFD6A735),
                   fontWeight: FontWeight.bold,
@@ -430,7 +463,7 @@ class ReportScreenState extends State<ReportScreen> {
 
         // Report Table
         Expanded(
-          child: _filteredOrders.isEmpty
+          child: _filteredReportOrders.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -442,7 +475,7 @@ class ReportScreenState extends State<ReportScreen> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        languageProvider.t('no_orders'),
+                        _reportEmptyLabel(languageProvider),
                         style: TextStyle(fontSize: 18, color: Colors.grey[600]),
                       ),
                     ],
@@ -549,7 +582,7 @@ class ReportScreenState extends State<ReportScreen> {
                             ),
                           ),
                         ],
-                        rows: _filteredOrders.map((row) {
+                        rows: _filteredReportOrders.map((row) {
                           return DataRow(
                             cells: [
                               DataCell(
@@ -652,7 +685,7 @@ class ReportScreenState extends State<ReportScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildSummaryItem(
-                  languageProvider.t('delivered_count'),
+                  _reportCountLabel(languageProvider),
                   _totalOrders.toDouble(),
                   Colors.blue,
                   isCount: true,

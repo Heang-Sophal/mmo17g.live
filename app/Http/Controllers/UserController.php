@@ -625,7 +625,7 @@ class UserController extends BaseController
             return false;
         }
 
-        return in_array(strtolower((string) $role->name), ['delivery', 'laivrison'], true);
+        return in_array(strtolower((string) $role->name), ['delivery', 'laivrison', 'recorder'], true);
     }
 
     private function normalizeAssignedWarehouses(Request $request, $roleId): array

@@ -151,6 +151,54 @@ class User extends Authenticatable
         return $this->hasAnyRoleNamed(['Sale']);
     }
 
+    public function isRecorderUser(): bool
+    {
+        return $this->hasAnyRoleNamed(['Recorder']);
+    }
+
+    public function mobilePermissionNames(): array
+    {
+        $roles = $this->relationLoaded('roles')
+            ? $this->roles
+            : $this->roles()->with('permissions')->get();
+
+        return $roles
+            ->flatMap(function ($role) {
+                $permissions = $role->relationLoaded('permissions')
+                    ? $role->permissions
+                    : $role->permissions()->get();
+
+                return $permissions->pluck('name');
+            })
+            ->map(function ($permissionName) {
+                return trim((string) $permissionName);
+            })
+            ->filter(function ($permissionName) {
+                return $permissionName !== '' && str_starts_with($permissionName, 'mobile_');
+            })
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    public function hasMobilePermission(string $permissionName): bool
+    {
+        return in_array($permissionName, $this->mobilePermissionNames(), true);
+    }
+
+    public function hasAnyMobilePermission(array $permissionNames): bool
+    {
+        $mobilePermissions = $this->mobilePermissionNames();
+
+        foreach ($permissionNames as $permissionName) {
+            if (in_array($permissionName, $mobilePermissions, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function primaryAssignedWarehouse()
     {
         return $this->assignedWarehouses()->orderBy('warehouses.id')->first();

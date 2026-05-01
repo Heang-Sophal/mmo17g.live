@@ -27,7 +27,7 @@ class DeliveryApiController extends Controller
         if (! $this->canAccessDeliveryApp($user)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Only Delivery, Admin, or Owner users can access this resource.',
+                'message' => 'Only Delivery, Recorder, Admin, or Owner users can access this resource.',
             ], 403);
         }
 
@@ -102,8 +102,16 @@ class DeliveryApiController extends Controller
         if (! $this->canAccessDeliveryApp($user)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Only Delivery, Admin, or Owner users can access this resource.',
+                'message' => 'Only Delivery, Recorder, Admin, or Owner users can access this resource.',
             ], 403);
+        }
+        if (! $this->canUseAnyMobilePermission($user, [
+            'mobile_delivery_deliveries',
+            'mobile_delivery_record_items',
+            'mobile_delivery_record_reports',
+            'mobile_delivery_reports',
+        ])) {
+            return $this->mobilePermissionDenied();
         }
 
         $hasAllWarehouses = $this->userHasAllWarehouses($user);
@@ -197,8 +205,14 @@ class DeliveryApiController extends Controller
         if (! $this->canAccessDeliveryApp($user)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Only Delivery, Admin, or Owner users can access this resource.',
+                'message' => 'Only Delivery, Recorder, Admin, or Owner users can access this resource.',
             ], 403);
+        }
+        if (! $this->canUseAnyMobilePermission($user, [
+            'mobile_delivery_deliveries',
+            'mobile_delivery_record_items',
+        ])) {
+            return $this->mobilePermissionDenied();
         }
 
         $hasAllWarehouses = $this->userHasAllWarehouses($user);
@@ -251,8 +265,14 @@ class DeliveryApiController extends Controller
         if (! $this->canAccessDeliveryApp($user)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Only Delivery, Admin, or Owner users can access this resource.',
+                'message' => 'Only Delivery, Recorder, Admin, or Owner users can access this resource.',
             ], 403);
+        }
+        if (! $this->canUseAnyMobilePermission($user, [
+            'mobile_delivery_deliveries',
+            'mobile_delivery_record_items',
+        ])) {
+            return $this->mobilePermissionDenied();
         }
 
         $hasAllWarehouses = $this->userHasAllWarehouses($user);
@@ -318,8 +338,14 @@ class DeliveryApiController extends Controller
         if (! $this->canAccessDeliveryApp($user)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Only Delivery, Admin, or Owner users can access this resource.',
+                'message' => 'Only Delivery, Recorder, Admin, or Owner users can access this resource.',
             ], 403);
+        }
+        if (! $this->canUseAnyMobilePermission($user, [
+            'mobile_delivery_deliveries',
+            'mobile_delivery_record_items',
+        ])) {
+            return $this->mobilePermissionDenied();
         }
 
         $hasAllWarehouses = $this->userHasAllWarehouses($user);
@@ -362,6 +388,15 @@ class DeliveryApiController extends Controller
 
         $sale->save();
         $sale->refresh();
+
+        if ($oldShipping !== $newShipping) {
+            app(DeliveryAlertService::class)->createSellerShippingUpdatedAlert(
+                $sale,
+                $user,
+                $oldShipping,
+                $newShipping
+            );
+        }
 
         return response()->json([
             'success' => true,
@@ -547,7 +582,22 @@ class DeliveryApiController extends Controller
 
     private function canAccessDeliveryApp($user): bool
     {
-        return $user->hasAnyRoleNamed(['Delivery', 'Laivrison', 'Admin', 'Owner']);
+        return $user->hasAnyRoleNamed(['Delivery', 'Laivrison', 'Recorder', 'Admin', 'Owner']);
+    }
+
+    private function canUseAnyMobilePermission($user, array $permissionNames): bool
+    {
+        $user->loadMissing('roles.permissions');
+
+        return $user->hasAnyMobilePermission($permissionNames);
+    }
+
+    private function mobilePermissionDenied(): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => 'You do not have permission to use this mobile feature.',
+        ], 403);
     }
 
     private function userHasAllWarehouses($user): bool

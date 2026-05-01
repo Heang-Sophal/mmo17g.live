@@ -37,13 +37,13 @@ class ProfileScreenState extends State<ProfileScreen> {
     final authProvider = context.watch<AuthProvider>();
     final languageProvider = context.watch<LanguageProvider>();
     final profileProvider = context.watch<ProfileProvider>();
-    final profile = profileProvider.profile ?? const <String, dynamic>{};
+    final profile = profileProvider.profile;
 
-    if (profileProvider.isLoading && profile.isEmpty) {
+    if (profileProvider.isLoading && profile == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (profileProvider.error != null && profile.isEmpty) {
+    if (profileProvider.error != null && profile == null) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -60,8 +60,9 @@ class ProfileScreenState extends State<ProfileScreen> {
     }
 
     final fullName = _displayName(profile, authProvider.user?.name);
-    final avatarUrl = (profile['avatar_url'] ?? authProvider.user?.avatarUrl)
-        ?.toString();
+    final avatarUrl =
+        (_profileValue(profile, 'avatar_url') ?? authProvider.user?.avatarUrl)
+            ?.toString();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -107,13 +108,15 @@ class ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      (profile['email'] ?? authProvider.user?.email ?? '-')
+                      (_profileValue(profile, 'email') ??
+                              authProvider.user?.email ??
+                              '-')
                           .toString(),
                       style: const TextStyle(color: Colors.white70),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '${languageProvider.t('assigned_warehouse')}: ${profile['assigned_warehouse_name'] ?? authProvider.user?.assignedWarehouseName ?? '-'}',
+                      '${languageProvider.t('assigned_warehouse')}: ${_assignedWarehouseName(profile) ?? authProvider.user?.assignedWarehouseName ?? '-'}',
                       style: const TextStyle(color: Colors.white70),
                     ),
                   ],
@@ -133,22 +136,22 @@ class ProfileScreenState extends State<ProfileScreen> {
                 _ProfileRow(
                   icon: Icons.phone_outlined,
                   label: languageProvider.t('phone'),
-                  value: (profile['phone'] ?? '-').toString(),
+                  value: (_profileValue(profile, 'phone') ?? '-').toString(),
                 ),
                 _ProfileRow(
                   icon: Icons.alternate_email_rounded,
                   label: languageProvider.t('username'),
-                  value: (profile['username'] ?? '-').toString(),
+                  value: (_profileValue(profile, 'username') ?? '-').toString(),
                 ),
                 _ProfileRow(
                   icon: Icons.event_outlined,
                   label: languageProvider.t('member_since'),
-                  value: _formatDate(profile['created_at']),
+                  value: _formatDate(_profileValue(profile, 'created_at')),
                 ),
                 _ProfileRow(
                   icon: Icons.verified_user_outlined,
                   label: languageProvider.t('status'),
-                  value: (profile['is_active'] == false)
+                  value: (_profileValue(profile, 'is_active') == false)
                       ? languageProvider.t('inactive')
                       : languageProvider.t('active'),
                 ),
@@ -302,25 +305,53 @@ class ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  String _displayName(Map<String, dynamic> profile, String? fallback) {
-    final firstname = profile['firstname']?.toString() ?? '';
-    final lastname = profile['lastname']?.toString() ?? '';
+  String _displayName(Map<String, dynamic>? profile, String? fallback) {
+    if (profile == null) return fallback ?? 'Delivery User';
+    final firstname = _profileValue(profile, 'firstname')?.toString() ?? '';
+    final lastname = _profileValue(profile, 'lastname')?.toString() ?? '';
     final fullName = '$firstname $lastname'.trim();
     if (fullName.isNotEmpty) return fullName;
 
-    final name = profile['name']?.toString() ?? '';
+    final name = _profileValue(profile, 'name')?.toString() ?? '';
     if (name.isNotEmpty) return name;
 
     return fallback ?? 'Delivery User';
   }
 
+  dynamic _profileValue(Map<String, dynamic>? profile, String key) {
+    return profile == null ? null : profile[key];
+  }
+
+  String? _assignedWarehouseName(Map<String, dynamic>? profile) {
+    final directName = _profileValue(
+      profile,
+      'assigned_warehouse_name',
+    )?.toString().trim();
+    if (directName != null && directName.isNotEmpty) {
+      return directName;
+    }
+
+    final assignedWarehouse = _profileValue(profile, 'assigned_warehouse');
+    if (assignedWarehouse is Map) {
+      final name = assignedWarehouse['name']?.toString().trim();
+      if (name != null && name.isNotEmpty) {
+        return name;
+      }
+    }
+
+    return null;
+  }
+
   String _formatDate(dynamic value) {
+    if (value == null) return '-';
+    if (value is DateTime) {
+      final parsed = value;
+      return '${parsed.day.toString().padLeft(2, '0')}/${parsed.month.toString().padLeft(2, '0')}/${parsed.year}';
+    }
     final raw = value?.toString();
     if (raw == null || raw.isEmpty) return '-';
-
     final parsed = DateTime.tryParse(raw);
     if (parsed == null) return raw;
-
     return '${parsed.day.toString().padLeft(2, '0')}/${parsed.month.toString().padLeft(2, '0')}/${parsed.year}';
   }
 

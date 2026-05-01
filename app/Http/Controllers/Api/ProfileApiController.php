@@ -458,6 +458,7 @@ class ProfileApiController extends Controller
 
     private function buildProfilePayload(User $user, int $editCount): array
     {
+        $user->loadMissing('roles.permissions');
         $assignedWarehouse = $user->primaryAssignedWarehouse();
 
         return [
@@ -472,6 +473,7 @@ class ProfileApiController extends Controller
             'avatar_url' => avatar_image_url($user->avatar),
             'role' => $user->role ?? 'user',
             'is_active' => (bool) ($user->is_active ?? true),
+            'mobile_permissions' => $user->mobilePermissionNames(),
             'created_at' => $user->created_at?->toIso8601String(),
             'assigned_warehouse' => $assignedWarehouse ? [
                 'id' => (string) $assignedWarehouse->id,

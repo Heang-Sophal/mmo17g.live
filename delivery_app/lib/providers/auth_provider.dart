@@ -11,6 +11,7 @@ class DeliveryUser {
     'laivrison',
     'admin',
     'owner',
+    'recorder',
   ];
 
   DeliveryUser({
@@ -44,7 +45,8 @@ class DeliveryUser {
     final isDeliveryRole =
         map['is_delivery'] == true ||
         normalizedRole == 'delivery' ||
-        normalizedRole == 'laivrison';
+        normalizedRole == 'laivrison' ||
+        normalizedRole == 'recorder';
 
     return DeliveryUser(
       id: map['id']?.toString() ?? '',
@@ -194,7 +196,7 @@ class AuthProvider extends ChangeNotifier {
 
       if (!user.canAccessDeliveryApp) {
         _isLoading = false;
-        _error = 'Only Delivery, Admin, or Owner users can access this app.';
+        _error = 'Only Delivery, Recorder, Admin, or Owner users can access this app.';
         notifyListeners();
         return {
           'success': false,
@@ -264,7 +266,8 @@ class AuthProvider extends ChangeNotifier {
     final isDeliveryRole =
         profile['is_delivery'] == true ||
         normalizedRole == 'delivery' ||
-        normalizedRole == 'laivrison';
+        normalizedRole == 'laivrison' ||
+        normalizedRole == 'recorder';
     final canAccessDeliveryApp =
         isDeliveryRole ||
         DeliveryUser._deliveryAppAllowedRoles.contains(normalizedRole);

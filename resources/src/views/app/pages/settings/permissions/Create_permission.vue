@@ -3294,7 +3294,7 @@
                   </b-card>
                 </b-col>
 
-                <!-- Mobile App -->
+                <!-- Mobile App - Seller -->
                 <b-col md="4">
                   <b-card no-body class="ul-card__border-radius">
                     <b-card-header header-tag="header" class="p-1" role="tab">
@@ -3302,49 +3302,121 @@
                         class="card-title mb-0"
                         block
                         href="#"
-                        v-b-toggle.panel-MobileApp
+                        v-b-toggle.panel-MobileAppSeller
                         variant="transparent"
-                      >{{$t('Mobile_App')}}</b-button>
+                      >Mobile App - Seller</b-button>
                     </b-card-header>
                     <b-collapse
-                      id="panel-MobileApp"
+                      id="panel-MobileAppSeller"
                       :visible="true"
-                      accordion="my-accordion-mobile"
+                      accordion="my-accordion-mobile-seller"
                       role="tabpanel"
                     >
                       <b-card-body>
                         <b-card-text>
-                          <p class="text-muted mb-2"><strong>{{$t('Products')}}</strong></p>
                           <b-row>
-                            <!-- Mobile Products View -->
                             <b-col md="6" class="mb-2">
                               <label class="checkbox checkbox-outline-primary d-block">
-                                <input type="checkbox" checked v-model="permissions" value="mobile_products_view">
-                                <span>{{$t('View')}}</span>
+                                <input type="checkbox" checked v-model="permissions" value="mobile_seller_pos">
+                                <span>POS</span>
                                 <span class="checkmark"></span>
                               </label>
                             </b-col>
-                            <!-- Mobile Products Create -->
                             <b-col md="6" class="mb-2">
                               <label class="checkbox checkbox-outline-primary d-block">
-                                <input type="checkbox" checked v-model="permissions" value="mobile_products_create">
-                                <span>{{$t('Create')}}</span>
+                                <input type="checkbox" checked v-model="permissions" value="mobile_seller_orders">
+                                <span>ការបញ្ជាទិញ</span>
                                 <span class="checkmark"></span>
                               </label>
                             </b-col>
-                            <!-- Mobile Products Edit -->
                             <b-col md="6" class="mb-2">
                               <label class="checkbox checkbox-outline-primary d-block">
-                                <input type="checkbox" checked v-model="permissions" value="mobile_products_edit">
-                                <span>{{$t('Edit')}}</span>
+                                <input type="checkbox" checked v-model="permissions" value="mobile_seller_products">
+                                <span>ផលិតផល</span>
                                 <span class="checkmark"></span>
                               </label>
                             </b-col>
-                            <!-- Mobile Products Delete -->
                             <b-col md="6" class="mb-2">
                               <label class="checkbox checkbox-outline-primary d-block">
-                                <input type="checkbox" checked v-model="permissions" value="mobile_products_delete">
-                                <span>{{$t('Delete')}}</span>
+                                <input type="checkbox" checked v-model="permissions" value="mobile_seller_sale_returns">
+                                <span>ការត្រឡប់ការលក់</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+                            <b-col md="6" class="mb-2">
+                              <label class="checkbox checkbox-outline-primary d-block">
+                                <input type="checkbox" checked v-model="permissions" value="mobile_seller_profile">
+                                <span>ប្រវត្តិរូប</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+                            <b-col md="6" class="mb-2">
+                              <label class="checkbox checkbox-outline-primary d-block">
+                                <input type="checkbox" checked v-model="permissions" value="mobile_seller_reports">
+                                <span>របាយការណ៍</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+                          </b-row>
+                        </b-card-text>
+                      </b-card-body>
+                    </b-collapse>
+                  </b-card>
+                </b-col>
+
+                <!-- Mobile App - Delivery -->
+                <b-col md="4">
+                  <b-card no-body class="ul-card__border-radius">
+                    <b-card-header header-tag="header" class="p-1" role="tab">
+                      <b-button
+                        class="card-title mb-0"
+                        block
+                        href="#"
+                        v-b-toggle.panel-MobileAppDelivery
+                        variant="transparent"
+                      >Mobile App - Delivery</b-button>
+                    </b-card-header>
+                    <b-collapse
+                      id="panel-MobileAppDelivery"
+                      :visible="true"
+                      accordion="my-accordion-mobile-delivery"
+                      role="tabpanel"
+                    >
+                      <b-card-body>
+                        <b-card-text>
+                          <b-row>
+                            <b-col md="6" class="mb-2">
+                              <label class="checkbox checkbox-outline-primary d-block">
+                                <input type="checkbox" checked v-model="permissions" value="mobile_delivery_record_items">
+                                <span>កត់ត្រាទំនិញ</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+                            <b-col md="6" class="mb-2">
+                              <label class="checkbox checkbox-outline-primary d-block">
+                                <input type="checkbox" checked v-model="permissions" value="mobile_delivery_record_reports">
+                                <span>របាយការណ៍កត់ត្រា</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+                            <b-col md="6" class="mb-2">
+                              <label class="checkbox checkbox-outline-primary d-block">
+                                <input type="checkbox" checked v-model="permissions" value="mobile_delivery_deliveries">
+                                <span>ការដឹកជញ្ជូន</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+                            <b-col md="6" class="mb-2">
+                              <label class="checkbox checkbox-outline-primary d-block">
+                                <input type="checkbox" checked v-model="permissions" value="mobile_delivery_reports">
+                                <span>របាយការណ៍ដឹកជញ្ជូន</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+                            <b-col md="6" class="mb-2">
+                              <label class="checkbox checkbox-outline-primary d-block">
+                                <input type="checkbox" checked v-model="permissions" value="mobile_delivery_profile">
+                                <span>ប្រវត្តិរូប</span>
                                 <span class="checkmark"></span>
                               </label>
                             </b-col>

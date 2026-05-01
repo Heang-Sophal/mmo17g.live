@@ -85,6 +85,15 @@ class DeliveryApiService {
     return (data['data'] as Map?)?.cast<String, dynamic>() ?? {};
   }
 
+  /// Ask backend to send notifications related to an order action (optional)
+  Future<void> notifyOrderAction(String orderId, String action,
+      {Map<String, dynamic>? extra}) async {
+    final body = <String, dynamic>{'action': action};
+    if (extra != null) body.addAll(extra);
+
+    await _post('${ApiConfig.orders}/$orderId/notify', body: body);
+  }
+
   Future<Map<String, dynamic>> updateShipping(
     String orderId,
     double shipping,

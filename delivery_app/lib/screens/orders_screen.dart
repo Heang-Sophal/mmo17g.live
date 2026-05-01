@@ -1,6 +1,7 @@
 import 'package:delivery_app/providers/auth_provider.dart';
 import 'package:delivery_app/providers/language_provider.dart';
 import 'package:delivery_app/services/delivery_api_service.dart';
+import 'package:delivery_app/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -11,11 +12,13 @@ class OrdersScreen extends StatefulWidget {
     this.initialSaleRef,
     this.autoOpenInitialOrder = false,
     this.showStandaloneScaffold = false,
+    this.recordMode = false,
   });
 
   final String? initialSaleRef;
   final bool autoOpenInitialOrder;
   final bool showStandaloneScaffold;
+  final bool recordMode;
 
   @override
   State<OrdersScreen> createState() => OrdersScreenState();
@@ -319,7 +322,9 @@ class OrdersScreenState extends State<OrdersScreen> {
                                           color: Colors.white,
                                         ),
                                       )
-                                    : Text(languageProvider.t('accept')),
+                                    : Text(
+                                        _acceptActionLabel(languageProvider),
+                                      ),
                               )
                             else if (_canCompleteOrder(order))
                               FilledButton(
@@ -351,12 +356,15 @@ class OrdersScreenState extends State<OrdersScreen> {
                                         ),
                                       )
                                     : Text(
-                                        languageProvider.t('complete_order'),
+                                        _completeActionLabel(languageProvider),
                                       ),
                               )
                             else if (_isDeliveredOrder(order))
                               Text(
-                                languageProvider.t('delivered'),
+                                _statusLabel(
+                                  order['status']?.toString() ?? 'delivered',
+                                  languageProvider,
+                                ),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w700,
                                   color: Color(0xFF16A34A),
@@ -400,12 +408,12 @@ class OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
-  Future<void> _acceptOrder(Map<String, dynamic> order) async {
+  Future<Map<String, dynamic>?> _acceptOrder(Map<String, dynamic> order) async {
     final token = context.read<AuthProvider>().token;
-    if (token == null || token.isEmpty) return;
+    if (token == null || token.isEmpty) return null;
 
     final orderId = order['id']?.toString();
-    if (orderId == null || orderId.isEmpty) return;
+    if (orderId == null || orderId.isEmpty) return null;
 
     _apiService.setToken(token);
 
@@ -415,10 +423,25 @@ class OrdersScreenState extends State<OrdersScreen> {
 
     try {
       final updatedOrder = await _apiService.acceptOrder(orderId);
-      if (!mounted) return;
+      if (!mounted) return null;
 
       setState(() {
         _replaceOrder(orderId, updatedOrder);
+      });
+
+      // send local notification and request backend to notify others
+      try {
+        NotificationService.sendLocalNotification(
+          title: context.read<LanguageProvider>().t('order_accepted'),
+          body: '${context.read<LanguageProvider>().t('order_ref')}: $orderId',
+          payload: {'orderId': orderId, 'action': 'accepted'},
+        );
+      } catch (e) {
+        debugPrint('Local notification failed: $e');
+      }
+
+      _apiService.notifyOrderAction(orderId, 'accepted').catchError((e) {
+        debugPrint('notifyOrderAction failed: $e');
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -427,14 +450,17 @@ class OrdersScreenState extends State<OrdersScreen> {
           backgroundColor: const Color(0xFFD6A735),
         ),
       );
+
+      return updatedOrder;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return null;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString()),
           backgroundColor: const Color(0xFFDC2626),
         ),
       );
+      return null;
     } finally {
       if (mounted) {
         setState(() {
@@ -444,12 +470,14 @@ class OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
-  Future<void> _completeOrder(Map<String, dynamic> order) async {
+  Future<Map<String, dynamic>?> _completeOrder(
+    Map<String, dynamic> order,
+  ) async {
     final token = context.read<AuthProvider>().token;
-    if (token == null || token.isEmpty) return;
+    if (token == null || token.isEmpty) return null;
 
     final orderId = order['id']?.toString();
-    if (orderId == null || orderId.isEmpty) return;
+    if (orderId == null || orderId.isEmpty) return null;
 
     _apiService.setToken(token);
 
@@ -459,10 +487,25 @@ class OrdersScreenState extends State<OrdersScreen> {
 
     try {
       final updatedOrder = await _apiService.completeOrder(orderId);
-      if (!mounted) return;
+      if (!mounted) return null;
 
       setState(() {
         _replaceOrder(orderId, updatedOrder);
+      });
+
+      // send local notification and request backend to notify others
+      try {
+        NotificationService.sendLocalNotification(
+          title: context.read<LanguageProvider>().t('order_completed'),
+          body: '${context.read<LanguageProvider>().t('order_ref')}: $orderId',
+          payload: {'orderId': orderId, 'action': 'completed'},
+        );
+      } catch (e) {
+        debugPrint('Local notification failed: $e');
+      }
+
+      _apiService.notifyOrderAction(orderId, 'completed').catchError((e) {
+        debugPrint('notifyOrderAction failed: $e');
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -471,14 +514,17 @@ class OrdersScreenState extends State<OrdersScreen> {
           backgroundColor: const Color(0xFF16A34A),
         ),
       );
+
+      return updatedOrder;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return null;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString()),
           backgroundColor: const Color(0xFFDC2626),
         ),
       );
+      return null;
     } finally {
       if (mounted) {
         setState(() {
@@ -516,6 +562,7 @@ class OrdersScreenState extends State<OrdersScreen> {
       text: _formatAmountInput(currentOrder['shipping']),
     );
     bool isSavingShipping = false;
+    bool isSavingStatus = false;
 
     showModalBottomSheet<void>(
       context: context,
@@ -825,6 +872,79 @@ class OrdersScreenState extends State<OrdersScreen> {
                             ],
                           ),
                           const SizedBox(height: 24),
+                          if (orderId != null &&
+                              orderId.isNotEmpty &&
+                              (_canAcceptOrder(currentOrder) ||
+                                  _canCompleteOrder(currentOrder))) ...[
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton(
+                                onPressed: isSavingStatus
+                                    ? null
+                                    : () async {
+                                        setModalState(() {
+                                          isSavingStatus = true;
+                                        });
+
+                                        final updatedOrder =
+                                            _canAcceptOrder(currentOrder)
+                                            ? await _acceptOrder(currentOrder)
+                                            : await _completeOrder(
+                                                currentOrder,
+                                              );
+
+                                        if (!mounted || updatedOrder == null) {
+                                          setModalState(() {
+                                            isSavingStatus = false;
+                                          });
+                                          return;
+                                        }
+
+                                        setModalState(() {
+                                          currentOrder = updatedOrder;
+                                          isSavingStatus = false;
+                                          shippingController.text =
+                                              _formatAmountInput(
+                                                updatedOrder['shipping'],
+                                              );
+                                          shippingController.selection =
+                                              TextSelection.collapsed(
+                                                offset: shippingController
+                                                    .text
+                                                    .length,
+                                              );
+                                        });
+                                      },
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  backgroundColor: _canAcceptOrder(currentOrder)
+                                      ? const Color(0xFFD6A735)
+                                      : const Color(0xFF16A34A),
+                                ),
+                                child: isSavingStatus
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : Text(
+                                        _canAcceptOrder(currentOrder)
+                                            ? _acceptActionLabel(
+                                                languageProvider,
+                                              )
+                                            : _completeActionLabel(
+                                                languageProvider,
+                                              ),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
                           SizedBox(
                             width: double.infinity,
                             child: OutlinedButton(
@@ -857,7 +977,24 @@ class OrdersScreenState extends State<OrdersScreen> {
   }
 
   String _statusLabel(String status, LanguageProvider languageProvider) {
-    switch (_normalizeStatus(status)) {
+    final norm = _normalizeStatus(status);
+
+    if (widget.recordMode) {
+      switch (norm) {
+        case 'pending':
+          return languageProvider.t('pending');
+        case 'shipped':
+          return languageProvider.t('shipped_record');
+        case 'delivered':
+          return languageProvider.t('delivered_record');
+        case 'all':
+          return languageProvider.t('all');
+        default:
+          return status;
+      }
+    }
+
+    switch (norm) {
       case 'pending':
         return languageProvider.t('pending');
       case 'shipped':
@@ -869,6 +1006,18 @@ class OrdersScreenState extends State<OrdersScreen> {
       default:
         return status;
     }
+  }
+
+  String _acceptActionLabel(LanguageProvider languageProvider) {
+    return widget.recordMode
+        ? languageProvider.t('start_record')
+        : languageProvider.t('accept');
+  }
+
+  String _completeActionLabel(LanguageProvider languageProvider) {
+    return widget.recordMode
+        ? languageProvider.t('complete_record')
+        : languageProvider.t('complete_order');
   }
 
   Color _statusColor(dynamic status) {

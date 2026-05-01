@@ -19,9 +19,9 @@ class AuthApiController extends Controller
 
     const BLOCK_DURATION_MINUTES = 30; // បិទ ៣០នាទី បើ login ខុស ៣ដង
 
-    const SELLER_APP_ALLOWED_ROLES = ['Sale', 'Delivery', 'Admin', 'Owner'];
+    const SELLER_APP_ALLOWED_ROLES = ['Sale', 'Delivery', 'Admin', 'Owner', 'Recorder'];
 
-    const DELIVERY_APP_ALLOWED_ROLES = ['Delivery', 'Admin', 'Owner'];
+    const DELIVERY_APP_ALLOWED_ROLES = ['Delivery', 'Admin', 'Owner', 'Recorder'];
 
     /**
      * Sign In
@@ -83,7 +83,7 @@ class AuthApiController extends Controller
             }
 
             // រក User
-            $user = User::where('email', $email)->with('roles')->first();
+            $user = User::where('email', $email)->with('roles.permissions')->first();
 
             // ពិនិត្យមើលថាតើមាន User ឬអត់
             if (! $user) {
@@ -148,15 +148,7 @@ class AuthApiController extends Controller
             // Generate Passport token for API routes
             $passportToken = $user->createToken('MobileApp')->accessToken;
 
-            // Get user's mobile permissions
-            $mobilePermissions = [];
-            foreach ($user->roles as $role) {
-                foreach ($role->permissions as $permission) {
-                    if (str_starts_with($permission->name, 'mobile_products_')) {
-                        $mobilePermissions[] = str_replace('mobile_products_', '', $permission->name);
-                    }
-                }
-            }
+            $mobilePermissions = $user->mobilePermissionNames();
 
             return response()->json([
                 'success' => true,
@@ -237,7 +229,7 @@ class AuthApiController extends Controller
                 ], 401);
             }
 
-            $user->loadMissing('roles');
+            $user->loadMissing('roles.permissions');
             $mobileRoleName = $this->resolveMobileRoleName($user, $appContext);
 
             if (! $mobileRoleName) {
@@ -251,7 +243,7 @@ class AuthApiController extends Controller
                 'success' => true,
                 'authenticated' => true,
                 'data' => [
-                    'user' => $this->buildMobileUserPayload($user, $mobileRoleName),
+                    'user' => $this->buildMobileUserPayload($user, $mobileRoleName, $user->mobilePermissionNames()),
                 ],
             ], 200);
         } catch (\Exception $e) {
@@ -265,10 +257,10 @@ class AuthApiController extends Controller
     private function roleAccessMessage(string $appContext): string
     {
         if ($appContext === 'delivery') {
-            return 'Invalid credentials or insufficient permissions. Only "Delivery", "Admin", or "Owner" role can access.';
+            return 'Invalid credentials or insufficient permissions. Only "Delivery", "Admin", "Recorder", or "Owner" role can access.';
         }
 
-        return 'Invalid credentials or insufficient permissions. Only "Sale", "Delivery", "Admin", or "Owner" role can access.';
+        return 'Invalid credentials or insufficient permissions. Only "Sale", "Delivery", "Admin", "Recorder", or "Owner" role can access.';
     }
 
     private function resolveMobileRoleName(User $user, string $appContext): ?string
@@ -295,8 +287,8 @@ class AuthApiController extends Controller
             $query->where('ip_address', $ipAddress);
         }
 
-        // រាប់តែក្នុងរយៈពេល ២៤ម៉ោងចុងក្រោយ
-        $query->where('created_at', '>=', now()->subHours(24));
+        // រាប់តែក្នុងរយៈពេលបិទបណ្តោះអាសន្ន ដើម្បីកុំឲ្យ failed attempts ចាស់ៗ block login បន្ត។
+        $query->where('created_at', '>=', now()->subMinutes(self::BLOCK_DURATION_MINUTES));
 
         return $query->count();
     }
@@ -336,18 +328,27 @@ class AuthApiController extends Controller
     {
         $attemptsCount = $this->getFailedAttemptsCount($email, $ipAddress);
 
-        if ($attemptsCount >= self::MAX_LOGIN_ATTEMPTS) {
-            // រកមើលការព្យាយាមចុងក្រោយ
-            $lastAttempt = LoginFailedAttempt::where('email', $email)
-                ->orderBy('created_at', 'desc')
-                ->first();
-
-            if ($lastAttempt) {
-                return $lastAttempt->created_at->addMinutes(self::BLOCK_DURATION_MINUTES);
-            }
+        if ($attemptsCount < self::MAX_LOGIN_ATTEMPTS) {
+            return null;
         }
 
-        return null;
+        // រកមើលការព្យាយាមចុងក្រោយក្នុងរយៈពេលបិទបណ្តោះអាសន្ន។
+        $lastAttemptQuery = LoginFailedAttempt::where('email', $email)
+            ->where('created_at', '>=', now()->subMinutes(self::BLOCK_DURATION_MINUTES));
+
+        if ($ipAddress) {
+            $lastAttemptQuery->where('ip_address', $ipAddress);
+        }
+
+        $lastAttempt = $lastAttemptQuery->orderBy('created_at', 'desc')->first();
+
+        if (! $lastAttempt) {
+            return null;
+        }
+
+        $blockedUntil = $lastAttempt->created_at->addMinutes(self::BLOCK_DURATION_MINUTES);
+
+        return $blockedUntil->isFuture() ? $blockedUntil : null;
     }
 
     /**
@@ -413,6 +414,10 @@ class AuthApiController extends Controller
             return 'Sale';
         }
 
+        if ($user->isRecorderUser()) {
+            return 'Recorder';
+        }
+
         return null;
     }
 
@@ -435,14 +440,17 @@ class AuthApiController extends Controller
                 return 'Delivery';
             case 'sale':
                 return 'Sale';
+            case 'recorder':
+                return 'Recorder';
             default:
                 return null;
         }
     }
 
-    private function buildMobileUserPayload(User $user, string $mobileRoleName, array $mobilePermissions = []): array
+    private function buildMobileUserPayload(User $user, string $mobileRoleName, ?array $mobilePermissions = null): array
     {
         $assignedWarehouse = $user->primaryAssignedWarehouse();
+        $mobilePermissions = $mobilePermissions ?? $user->mobilePermissionNames();
 
         return [
             'id' => (string) $user->id,
@@ -453,6 +461,7 @@ class AuthApiController extends Controller
             'avatar_url' => avatar_image_url($user->avatar),
             'mobile_permissions' => $mobilePermissions,
             'is_delivery' => $mobileRoleName === 'Delivery',
+            'can_access_delivery_app' => in_array($mobileRoleName, self::DELIVERY_APP_ALLOWED_ROLES, true),
             'assigned_warehouse' => $assignedWarehouse ? [
                 'id' => (string) $assignedWarehouse->id,
                 'name' => $assignedWarehouse->name ?? '',
