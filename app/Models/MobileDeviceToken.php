@@ -10,6 +10,7 @@ class MobileDeviceToken extends Model
         'user_id',
         'fcm_token',
         'app_type',
+        'firebase_project_id',
         'platform',
         'device_name',
         'last_used_at',

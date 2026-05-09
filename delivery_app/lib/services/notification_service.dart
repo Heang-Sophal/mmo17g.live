@@ -55,6 +55,8 @@ void _handleNotificationClick(Map<String, dynamic> data) {
 
 class NotificationService {
   static const String _appType = 'delivery';
+  static String get _firebaseProjectId =>
+      Platform.isIOS ? 'g-delivery-app' : 'g-mobile-app-92644';
   static const AndroidNotificationChannel _androidChannel =
       AndroidNotificationChannel(
         'delivery_high_importance',
@@ -118,6 +120,12 @@ class NotificationService {
         badge: true,
         sound: true,
       );
+      await FirebaseMessaging.instance
+          .setForegroundNotificationPresentationOptions(
+            alert: true,
+            badge: true,
+            sound: true,
+          );
 
       FirebaseMessaging.onMessage.listen(_showForegroundNotification);
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
@@ -152,7 +160,7 @@ class NotificationService {
     if (!_initialized || authToken == null || authToken.isEmpty) return;
 
     try {
-      final token = await FirebaseMessaging.instance.getToken();
+      final token = await _getFcmTokenWithRetry();
       await _sendToken(token);
     } catch (error) {
       debugPrint('FCM token sync failed: $error');
@@ -169,7 +177,7 @@ class NotificationService {
     if (fcmToken == null || authToken == null || authToken.isEmpty) return;
 
     try {
-      await http
+      final response = await http
           .post(
             Uri.parse('${ApiConfig.baseUrl}/device-token'),
             headers: ApiConfig.jsonHeaders(token: authToken),
@@ -177,6 +185,7 @@ class NotificationService {
               'fcm_token': fcmToken,
               'device_token': fcmToken,
               'app_type': _appType,
+              'firebase_project_id': _firebaseProjectId,
               'platform': Platform.isAndroid
                   ? 'android'
                   : Platform.operatingSystem,
@@ -184,9 +193,36 @@ class NotificationService {
             }),
           )
           .timeout(const Duration(seconds: 10));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        debugPrint(
+          'Device token endpoint rejected token: ${response.statusCode} ${response.body}',
+        );
+      }
     } catch (error) {
       debugPrint('Device token endpoint failed: $error');
     }
+  }
+
+  static Future<String?> _getFcmTokenWithRetry() async {
+    if (Platform.isIOS) {
+      for (var attempt = 0; attempt < 5; attempt++) {
+        final apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+        if (apnsToken != null && apnsToken.isNotEmpty) {
+          break;
+        }
+        await Future.delayed(Duration(milliseconds: 400 * (attempt + 1)));
+      }
+    }
+
+    for (var attempt = 0; attempt < 4; attempt++) {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null && token.isNotEmpty) {
+        return token;
+      }
+      await Future.delayed(Duration(milliseconds: 500 * (attempt + 1)));
+    }
+
+    return null;
   }
 
   static Future<void> _showForegroundNotification(RemoteMessage message) async {

@@ -23,18 +23,21 @@ class MobileDeviceTokenController extends Controller
             'fcm_token' => 'nullable|string|max:512|required_without:device_token',
             'device_token' => 'nullable|string|max:512|required_without:fcm_token',
             'app_type' => 'nullable|string|in:seller,delivery',
+            'firebase_project_id' => 'nullable|string|max:191',
             'platform' => 'nullable|string|max:50',
             'device_name' => 'nullable|string|max:191',
         ]);
 
         $token = trim((string) ($validated['fcm_token'] ?? $validated['device_token'] ?? ''));
         $appType = $validated['app_type'] ?? 'seller';
+        $firebaseProjectId = trim((string) ($validated['firebase_project_id'] ?? ''));
 
         $deviceToken = MobileDeviceToken::updateOrCreate(
             ['fcm_token' => $token],
             [
                 'user_id' => $user->id,
                 'app_type' => $appType,
+                'firebase_project_id' => $firebaseProjectId !== '' ? $firebaseProjectId : null,
                 'platform' => $validated['platform'] ?? null,
                 'device_name' => $validated['device_name'] ?? null,
                 'last_used_at' => now(),

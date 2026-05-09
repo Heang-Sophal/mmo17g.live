@@ -145,43 +145,74 @@ class FirebasePushService
             return 0;
         }
 
-        // Group tokens by app_type to use different credentials
-        $tokensByAppType = $tokens->groupBy('app_type');
+        $accessTokens = [];
+        $projectIds = [];
         $totalSent = 0;
 
-        foreach ($tokensByAppType as $type => $typeTokens) {
-            $effectiveAppType = $appType ?? $type;
-            $accessToken = $this->accessToken($effectiveAppType);
-            $projectId = $this->projectId($effectiveAppType);
+        foreach ($tokens as $token) {
+            $credentialAppType = $this->credentialAppTypeForToken($token, $appType);
+            $notificationAppType = $token->app_type ?: $credentialAppType;
+
+            if (! array_key_exists($credentialAppType, $accessTokens)) {
+                $accessTokens[$credentialAppType] = $this->accessToken($credentialAppType);
+                $projectIds[$credentialAppType] = $this->projectId($credentialAppType);
+            }
+
+            $accessToken = $accessTokens[$credentialAppType];
+            $projectId = $projectIds[$credentialAppType];
 
             if (! $accessToken || ! $projectId) {
-                Log::warning("Firebase config missing for app type: {$effectiveAppType}");
+                Log::warning("Firebase config missing for app type: {$credentialAppType}", [
+                    'token_app_type' => $token->app_type,
+                    'firebase_project_id' => $token->firebase_project_id,
+                ]);
                 continue;
             }
 
-            foreach ($typeTokens as $token) {
-                $result = $this->sendToToken(
-                    $accessToken,
-                    $projectId,
-                    $token->fcm_token,
-                    $title,
-                    $body,
-                    $data,
-                    $effectiveAppType
-                );
+            $result = $this->sendToToken(
+                $accessToken,
+                $projectId,
+                $token->fcm_token,
+                $title,
+                $body,
+                $data,
+                $notificationAppType
+            );
 
-                if ($result === 'sent') {
-                    $totalSent++;
-                    $token->forceFill(['last_used_at' => now()])->save();
-                }
+            if ($result === 'sent') {
+                $totalSent++;
+                $token->forceFill(['last_used_at' => now()])->save();
+            }
 
-                if ($result === 'invalid') {
-                    $token->delete();
-                }
+            if ($result === 'invalid') {
+                $token->delete();
             }
         }
 
         return $totalSent;
+    }
+
+    private function credentialAppTypeForToken(MobileDeviceToken $token, ?string $fallbackAppType = null): string
+    {
+        $firebaseProjectId = trim((string) ($token->firebase_project_id ?? ''));
+
+        if ($firebaseProjectId !== '') {
+            foreach (['seller', 'delivery'] as $appType) {
+                if ($firebaseProjectId === $this->projectId($appType)) {
+                    return $appType;
+                }
+            }
+        }
+
+        $tokenAppType = trim((string) ($token->app_type ?? ''));
+        $platform = strtolower(trim((string) ($token->platform ?? '')));
+
+        // The current Delivery Android app is registered in the seller Firebase project.
+        if ($tokenAppType === 'delivery' && $platform === 'android' && $this->projectId('seller')) {
+            return 'seller';
+        }
+
+        return $fallbackAppType ?: ($tokenAppType !== '' ? $tokenAppType : 'seller');
     }
 
     private function sendToToken(
@@ -215,6 +246,9 @@ class FirebasePushService
                             ],
                         ],
                         'apns' => [
+                            'headers' => [
+                                'apns-priority' => '10',
+                            ],
                             'payload' => [
                                 'aps' => [
                                     'sound' => 'default',
