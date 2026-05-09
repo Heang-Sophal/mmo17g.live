@@ -11,6 +11,7 @@ class ProfileModel {
     'mobile_seller_profile',
     'mobile_seller_reports',
     'mobile_delivery_record_items',
+    'mobile_delivery_record_reports',
     'mobile_delivery_deliveries',
     'mobile_delivery_reports',
     'mobile_delivery_profile',
