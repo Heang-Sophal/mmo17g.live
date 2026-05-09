@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:seller_app/providers/app_branding_provider.dart';
 import 'package:seller_app/providers/auth_provider.dart';
 import 'package:seller_app/providers/language_provider.dart';
+import 'package:seller_app/providers/theme_provider.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -30,12 +31,28 @@ class _SignInScreenState extends State<SignInScreen> {
   Widget build(BuildContext context) {
     final languageProvider = context.watch<LanguageProvider>();
     final brandingProvider = context.watch<AppBrandingProvider>();
+    final themeProvider = context.watch<ThemeProvider>();
 
-    const backgroundColor = Color(0xFFFFFCF5);
-    const surfaceColor = Colors.white;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark
+        ? const Color(0xFF151107)
+        : const Color(0xFFFFFCF5);
+    final surfaceColor = isDark ? const Color(0xFF21190B) : Colors.white;
     const primaryGold = Color(0xFFD2A63F);
-    const deepGold = Color(0xFF8A6418);
-    const warmText = Color(0xFF2E2414);
+    final deepGold = isDark ? const Color(0xFFFFE8A7) : const Color(0xFF8A6418);
+    final warmText = isDark ? const Color(0xFFFFF3C4) : const Color(0xFF2E2414);
+    final mutedText = isDark
+        ? Colors.white.withValues(alpha: 0.68)
+        : const Color(0xFF857457);
+    final formBorder = isDark
+        ? Colors.white.withValues(alpha: 0.09)
+        : const Color(0xFFF0DFC0);
+    final logoGradient = isDark
+        ? const [Color(0xFF3B2C10), Color(0xFF171107)]
+        : const [Colors.white, Color(0xFFF4D98D)];
+    final softGoldSurface = isDark
+        ? const Color(0xFF2B210E)
+        : const Color(0xFFFFF4D6);
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -53,7 +70,9 @@ class _SignInScreenState extends State<SignInScreen> {
                   right: -26,
                   child: _buildBackgroundAccent(
                     size: 180,
-                    colors: const [Color(0x33E6C975), Color(0x10E6C975)],
+                    colors: isDark
+                        ? const [Color(0x2FFFD86A), Color(0x08FFD86A)]
+                        : const [Color(0x33E6C975), Color(0x10E6C975)],
                   ),
                 ),
                 Positioned(
@@ -61,7 +80,9 @@ class _SignInScreenState extends State<SignInScreen> {
                   left: -70,
                   child: _buildBackgroundAccent(
                     size: 220,
-                    colors: const [Color(0x1FF1D48C), Color(0x08F1D48C)],
+                    colors: isDark
+                        ? const [Color(0x1FD6A735), Color(0x06151107)]
+                        : const [Color(0x1FF1D48C), Color(0x08F1D48C)],
                   ),
                 ),
                 Positioned(
@@ -69,7 +90,9 @@ class _SignInScreenState extends State<SignInScreen> {
                   right: -48,
                   child: _buildBackgroundAccent(
                     size: 200,
-                    colors: const [Color(0x1AD2A63F), Color(0x08D2A63F)],
+                    colors: isDark
+                        ? const [Color(0x22D2A63F), Color(0x08151107)]
+                        : const [Color(0x1AD2A63F), Color(0x08D2A63F)],
                   ),
                 ),
                 SingleChildScrollView(
@@ -87,55 +110,28 @@ class _SignInScreenState extends State<SignInScreen> {
                           children: [
                             Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.fromLTRB(
-                                28,
-                                30,
-                                28,
-                                30,
-                              ),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFFFFFEFB),
-                                    Color(0xFFFBEFC8),
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(36),
-                                border: Border.all(
-                                  color: const Color(0xFFE8D39B),
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: primaryGold.withValues(alpha: 0.12),
-                                    blurRadius: 30,
-                                    offset: const Offset(0, 16),
-                                  ),
-                                ],
-                              ),
+                              padding: const EdgeInsets.fromLTRB(28, 0, 28, 14),
                               child: Stack(
                                 clipBehavior: Clip.none,
                                 children: [
-                                  Positioned(
-                                    top: 0,
-                                    right: 0,
-                                    child: _buildLanguageToggle(
-                                      languageProvider,
-                                    ),
-                                  ),
                                   Column(
                                     children: [
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: _buildHeaderControls(
+                                          languageProvider,
+                                          themeProvider: themeProvider,
+                                          isDark: isDark,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 18),
                                       Container(
                                         width: 128,
                                         height: 128,
                                         padding: const EdgeInsets.all(18),
                                         decoration: BoxDecoration(
-                                          gradient: const RadialGradient(
-                                            colors: [
-                                              Colors.white,
-                                              Color(0xFFF4D98D),
-                                            ],
+                                          gradient: RadialGradient(
+                                            colors: logoGradient,
                                             center: Alignment(-0.1, -0.15),
                                             radius: 0.9,
                                           ),
@@ -143,7 +139,11 @@ class _SignInScreenState extends State<SignInScreen> {
                                             32,
                                           ),
                                           border: Border.all(
-                                            color: const Color(0xFFE7C76E),
+                                            color: isDark
+                                                ? primaryGold.withValues(
+                                                    alpha: 0.46,
+                                                  )
+                                                : const Color(0xFFE7C76E),
                                             width: 1.4,
                                           ),
                                           boxShadow: [
@@ -158,11 +158,13 @@ class _SignInScreenState extends State<SignInScreen> {
                                         ),
                                         child: _buildBrandLogo(
                                           brandingProvider,
+                                          iconColor: deepGold,
                                         ),
                                       ),
                                       const SizedBox(height: 24),
                                       _buildGradientAppTitle(
                                         brandingProvider.appTitle,
+                                        isDark: isDark,
                                       ),
                                       const SizedBox(height: 14),
                                       Container(
@@ -171,19 +173,27 @@ class _SignInScreenState extends State<SignInScreen> {
                                           vertical: 7,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.72,
-                                          ),
+                                          color: isDark
+                                              ? Colors.white.withValues(
+                                                  alpha: 0.06,
+                                                )
+                                              : Colors.white.withValues(
+                                                  alpha: 0.72,
+                                                ),
                                           borderRadius: BorderRadius.circular(
                                             999,
                                           ),
                                           border: Border.all(
-                                            color: const Color(0xFFEBD9A6),
+                                            color: isDark
+                                                ? primaryGold.withValues(
+                                                    alpha: 0.26,
+                                                  )
+                                                : const Color(0xFFEBD9A6),
                                           ),
                                         ),
                                         child: Text(
                                           languageProvider.t('welcome_back'),
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w700,
                                             color: deepGold,
@@ -195,7 +205,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 10),
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.fromLTRB(
@@ -205,15 +215,17 @@ class _SignInScreenState extends State<SignInScreen> {
                                 24,
                               ),
                               decoration: BoxDecoration(
-                                color: surfaceColor.withValues(alpha: 0.96),
-                                borderRadius: BorderRadius.circular(32),
-                                border: Border.all(
-                                  color: const Color(0xFFF0DFC0),
+                                color: surfaceColor.withValues(
+                                  alpha: isDark ? 0.92 : 0.96,
                                 ),
+                                borderRadius: BorderRadius.circular(32),
+                                border: Border.all(color: formBorder),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.08),
-                                    blurRadius: 30,
+                                    color: Colors.black.withValues(
+                                      alpha: isDark ? 0.24 : 0.08,
+                                    ),
+                                    blurRadius: isDark ? 34 : 30,
                                     offset: const Offset(0, 16),
                                   ),
                                 ],
@@ -229,10 +241,12 @@ class _SignInScreenState extends State<SignInScreen> {
                                           width: 48,
                                           height: 48,
                                           decoration: BoxDecoration(
-                                            gradient: const LinearGradient(
+                                            gradient: LinearGradient(
                                               colors: [
-                                                Color(0xFFFFF4D6),
-                                                Color(0xFFF3D987),
+                                                softGoldSurface,
+                                                isDark
+                                                    ? const Color(0xFF4A3712)
+                                                    : const Color(0xFFF3D987),
                                               ],
                                               begin: Alignment.topLeft,
                                               end: Alignment.bottomRight,
@@ -241,7 +255,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                               16,
                                             ),
                                           ),
-                                          child: const Icon(
+                                          child: Icon(
                                             Icons.lock_person_rounded,
                                             color: deepGold,
                                             size: 24,
@@ -255,7 +269,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                             children: [
                                               Text(
                                                 languageProvider.t('sign_in'),
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontSize: 21,
                                                   fontWeight: FontWeight.w800,
                                                   color: warmText,
@@ -274,6 +288,9 @@ class _SignInScreenState extends State<SignInScreen> {
                                       decoration: _inputDecoration(
                                         label: languageProvider.t('email'),
                                         icon: Icons.email_outlined,
+                                        isDark: isDark,
+                                        iconColor: deepGold,
+                                        mutedText: mutedText,
                                       ),
                                       validator: (value) {
                                         if (value == null || value.isEmpty) {
@@ -297,6 +314,9 @@ class _SignInScreenState extends State<SignInScreen> {
                                       decoration: _inputDecoration(
                                         label: languageProvider.t('password'),
                                         icon: Icons.lock_outline_rounded,
+                                        isDark: isDark,
+                                        iconColor: deepGold,
+                                        mutedText: mutedText,
                                         suffixIcon: IconButton(
                                           icon: Icon(
                                             _obscurePassword
@@ -332,14 +352,20 @@ class _SignInScreenState extends State<SignInScreen> {
                                         width: double.infinity,
                                         padding: const EdgeInsets.all(14),
                                         decoration: BoxDecoration(
-                                          color: const Color(
-                                            0xFFFFF2F2,
-                                          ).withValues(alpha: 0.96),
+                                          color: isDark
+                                              ? const Color(
+                                                  0xFF351810,
+                                                ).withValues(alpha: 0.92)
+                                              : const Color(
+                                                  0xFFFFF2F2,
+                                                ).withValues(alpha: 0.96),
                                           borderRadius: BorderRadius.circular(
                                             18,
                                           ),
                                           border: Border.all(
-                                            color: const Color(0xFFF4CACA),
+                                            color: isDark
+                                                ? const Color(0xFF7C2D12)
+                                                : const Color(0xFFF4CACA),
                                           ),
                                         ),
                                         child: Column(
@@ -348,19 +374,27 @@ class _SignInScreenState extends State<SignInScreen> {
                                           children: [
                                             Row(
                                               children: [
-                                                const Icon(
+                                                Icon(
                                                   Icons.error_outline_rounded,
-                                                  color: Color(0xFFC2410C),
+                                                  color: isDark
+                                                      ? const Color(0xFFFBBF24)
+                                                      : const Color(0xFFC2410C),
                                                   size: 20,
                                                 ),
                                                 const SizedBox(width: 8),
                                                 Expanded(
                                                   child: Text(
                                                     _errorTitle ?? 'Error',
-                                                    style: const TextStyle(
+                                                    style: TextStyle(
                                                       fontWeight:
                                                           FontWeight.w800,
-                                                      color: Color(0xFF9A3412),
+                                                      color: isDark
+                                                          ? const Color(
+                                                              0xFFFFE8A7,
+                                                            )
+                                                          : const Color(
+                                                              0xFF9A3412,
+                                                            ),
                                                       fontSize: 14,
                                                     ),
                                                   ),
@@ -370,8 +404,12 @@ class _SignInScreenState extends State<SignInScreen> {
                                             const SizedBox(height: 6),
                                             Text(
                                               _errorMessage!,
-                                              style: const TextStyle(
-                                                color: Color(0xFFB45309),
+                                              style: TextStyle(
+                                                color: isDark
+                                                    ? Colors.white.withValues(
+                                                        alpha: 0.78,
+                                                      )
+                                                    : const Color(0xFFB45309),
                                                 fontSize: 13,
                                                 height: 1.45,
                                               ),
@@ -438,7 +476,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                                   ),
                                                 ),
                                                 child: authProvider.isLoading
-                                                    ? const SizedBox(
+                                                    ? SizedBox(
                                                         height: 24,
                                                         width: 24,
                                                         child: CircularProgressIndicator(
@@ -481,17 +519,23 @@ class _SignInScreenState extends State<SignInScreen> {
                                     width: double.infinity,
                                     padding: const EdgeInsets.all(14),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFFFF8E6),
+                                      color: isDark
+                                          ? const Color(0xFF2C220F)
+                                          : const Color(0xFFFFF8E6),
                                       borderRadius: BorderRadius.circular(18),
                                       border: Border.all(
-                                        color: const Color(0xFFF0D489),
+                                        color: isDark
+                                            ? primaryGold.withValues(
+                                                alpha: 0.32,
+                                              )
+                                            : const Color(0xFFF0D489),
                                       ),
                                     ),
                                     child: Row(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        const Padding(
+                                        Padding(
                                           padding: EdgeInsets.only(top: 2),
                                           child: Icon(
                                             Icons.info_outline_rounded,
@@ -503,7 +547,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                         Expanded(
                                           child: Text(
                                             authProvider.error!,
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               color: deepGold,
                                               fontSize: 13,
                                               height: 1.45,
@@ -533,7 +577,10 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  Widget _buildBrandLogo(AppBrandingProvider brandingProvider) {
+  Widget _buildBrandLogo(
+    AppBrandingProvider brandingProvider, {
+    required Color iconColor,
+  }) {
     if (brandingProvider.logoUrl != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(22),
@@ -541,24 +588,16 @@ class _SignInScreenState extends State<SignInScreen> {
           brandingProvider.logoUrl!,
           fit: BoxFit.contain,
           errorBuilder: (context, error, stackTrace) {
-            return const Icon(
-              Icons.storefront_rounded,
-              size: 72,
-              color: Color(0xFF8A6418),
-            );
+            return Icon(Icons.storefront_rounded, size: 72, color: iconColor);
           },
         ),
       );
     }
 
-    return const Icon(
-      Icons.storefront_rounded,
-      size: 72,
-      color: Color(0xFF8A6418),
-    );
+    return Icon(Icons.storefront_rounded, size: 72, color: iconColor);
   }
 
-  Widget _buildGradientAppTitle(String title) {
+  Widget _buildGradientAppTitle(String title, {required bool isDark}) {
     const titleStyle = TextStyle(
       fontSize: 36,
       height: 1.08,
@@ -584,23 +623,34 @@ class _SignInScreenState extends State<SignInScreen> {
           Transform.translate(
             offset: const Offset(0, 2),
             child: titleText(
-              color: const Color(0xFF5A3510).withValues(alpha: 0.26),
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.38)
+                  : const Color(0xFF5A3510).withValues(alpha: 0.26),
             ),
           ),
           Transform.translate(
             offset: const Offset(0, 1),
-            child: titleText(color: Colors.white.withValues(alpha: 0.64)),
+            child: titleText(
+              color: Colors.white.withValues(alpha: isDark ? 0.20 : 0.64),
+            ),
           ),
           ShaderMask(
             blendMode: BlendMode.srcIn,
             shaderCallback: (bounds) {
-              return const LinearGradient(
-                colors: [
-                  Color(0xFF6F3D08),
-                  Color(0xFFFFD76A),
-                  Color(0xFFC98918),
-                  Color(0xFF2E2414),
-                ],
+              return LinearGradient(
+                colors: isDark
+                    ? const [
+                        Color(0xFFFFE8A7),
+                        Color(0xFFD6A735),
+                        Color(0xFFFFF7D6),
+                        Color(0xFFFFD86A),
+                      ]
+                    : const [
+                        Color(0xFF6F3D08),
+                        Color(0xFFFFD76A),
+                        Color(0xFFC98918),
+                        Color(0xFF2E2414),
+                      ],
                 stops: [0.0, 0.34, 0.62, 1.0],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -613,47 +663,93 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  Widget _buildLanguageToggle(LanguageProvider languageProvider) {
-    const deepGold = Color(0xFF8A6418);
+  Widget _buildHeaderControls(
+    LanguageProvider languageProvider, {
+    required ThemeProvider themeProvider,
+    required bool isDark,
+  }) {
+    final deepGold = isDark ? const Color(0xFFFFE8A7) : const Color(0xFF8A6418);
+    final borderColor = isDark
+        ? const Color(0xFFD2A63F).withValues(alpha: 0.34)
+        : const Color(0xFFEBD9A6);
+    final surfaceColor = isDark
+        ? Colors.white.withValues(alpha: 0.07)
+        : Colors.white.withValues(alpha: 0.82);
 
-    return Tooltip(
-      message: languageProvider.t('language'),
-      child: Material(
-        color: Colors.white.withValues(alpha: 0.82),
-        borderRadius: BorderRadius.circular(999),
-        child: InkWell(
+    return Material(
+      color: surfaceColor,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        height: 46,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(999),
-          onTap: languageProvider.toggleLanguage,
-          child: Container(
-            height: 44,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: const Color(0xFFEBD9A6)),
-              boxShadow: [
-                BoxShadow(
-                  color: deepGold.withValues(alpha: 0.08),
-                  blurRadius: 14,
-                  offset: const Offset(0, 8),
-                ),
-              ],
+          border: Border.all(color: borderColor),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.06),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.language_rounded, size: 18, color: deepGold),
-                const SizedBox(width: 6),
-                Text(
-                  languageProvider.isKhmer ? 'EN' : 'ខ្មែរ',
-                  style: const TextStyle(
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Tooltip(
+              message: languageProvider.t('dark_mode'),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(999),
+                onTap: themeProvider.toggleTheme,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                    size: 19,
                     color: deepGold,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+            const SizedBox(width: 4),
+            Container(
+              width: 1,
+              height: 24,
+              color: borderColor.withValues(alpha: 0.8),
+            ),
+            const SizedBox(width: 4),
+            Tooltip(
+              message: languageProvider.t('language'),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(999),
+                onTap: languageProvider.toggleLanguage,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.language_rounded, size: 18, color: deepGold),
+                      const SizedBox(width: 6),
+                      Text(
+                        languageProvider.isKhmer ? 'EN' : 'ខ្មែរ',
+                        style: TextStyle(
+                          color: deepGold,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -678,10 +774,18 @@ class _SignInScreenState extends State<SignInScreen> {
   InputDecoration _inputDecoration({
     required String label,
     required IconData icon,
+    required bool isDark,
+    required Color iconColor,
+    required Color mutedText,
     Widget? suffixIcon,
   }) {
-    const borderColor = Color(0xFFE7D7B0);
     const focusColor = Color(0xFFD2A63F);
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.10)
+        : const Color(0xFFE7D7B0);
+    final fillColor = isDark
+        ? Colors.white.withValues(alpha: 0.045)
+        : const Color(0xFFFFFDF8);
 
     OutlineInputBorder border(Color color, [double width = 1.2]) {
       return OutlineInputBorder(
@@ -693,25 +797,24 @@ class _SignInScreenState extends State<SignInScreen> {
     return InputDecoration(
       labelText: label,
       filled: true,
-      fillColor: const Color(0xFFFFFDF8),
+      fillColor: fillColor,
       prefixIcon: Padding(
         padding: const EdgeInsets.only(left: 16, right: 12),
-        child: Icon(icon, color: const Color(0xFFB38A2D), size: 22),
+        child: Icon(icon, color: iconColor, size: 22),
       ),
       prefixIconConstraints: const BoxConstraints(minWidth: 56),
       suffixIcon: suffixIcon,
       contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
-      labelStyle: const TextStyle(
-        color: Color(0xFF857457),
-        fontWeight: FontWeight.w600,
-      ),
+      labelStyle: TextStyle(color: mutedText, fontWeight: FontWeight.w600),
       floatingLabelStyle: const TextStyle(
         color: focusColor,
         fontWeight: FontWeight.w700,
       ),
       enabledBorder: border(borderColor),
       focusedBorder: border(focusColor, 1.6),
-      errorBorder: border(const Color(0xFFE59E9E)),
+      errorBorder: border(
+        isDark ? const Color(0xFF7C2D12) : const Color(0xFFE59E9E),
+      ),
       focusedErrorBorder: border(const Color(0xFFD97706), 1.4),
     );
   }
@@ -805,7 +908,7 @@ class _SignInScreenState extends State<SignInScreen> {
     } else if (errorType == 'insufficient_permissions') {
       _errorTitle = 'Access Denied';
       _errorMessage =
-          'Only users with "Sale", "Delivery", "Admin", or "Owner" role can access this app.';
+          'Only users with "Sale", "Delivery", "Admin", "Owner", or "Recorder" role can access this app.';
     } else if (errorType == 'network_error') {
       _errorTitle = 'Connection Error';
       _errorMessage = message ?? 'Unable to connect to server.';

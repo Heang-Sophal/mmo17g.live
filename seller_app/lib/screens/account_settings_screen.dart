@@ -26,6 +26,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   File? _selectedPhoto;
   final ImagePicker _picker = ImagePicker();
   String? _avatarUrl;
+  Map<String, bool> _mobilePermissions = {};
 
   @override
   void initState() {
@@ -39,6 +40,19 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     _phoneController = TextEditingController(text: profile?.phone ?? '');
     _usernameController = TextEditingController(text: profile?.username ?? '');
     _avatarUrl = profile?.avatarUrl;
+    // Read parsed mobilePermissions from ProfileModel if available
+    try {
+      final profileModel = context.read<ProfileProvider>().profile;
+      if (profileModel != null) {
+        _mobilePermissions = Map<String, bool>.from(
+          profileModel.mobilePermissions,
+        );
+      } else {
+        _mobilePermissions = {};
+      }
+    } catch (_) {
+      _mobilePermissions = {};
+    }
   }
 
   @override
@@ -208,6 +222,77 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 ),
                 const SizedBox(height: 32),
 
+                // Permissions header: explain web-origin and mobile toggle
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.shield_outlined, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              languageProvider.t('mobile_permissions'),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              languageProvider.t(
+                                'permissions_explain',
+                              ) /* e.g. 'Permissions originate from the web. Toggling here enables/disables the feature on mobile.' */,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _buildPermissionSwitch(
+                  'mobile_seller_pos',
+                  'pos',
+                  _mobilePermissions,
+                ),
+                _buildPermissionSwitch(
+                  'mobile_seller_orders',
+                  'orders',
+                  _mobilePermissions,
+                ),
+                _buildPermissionSwitch(
+                  'mobile_seller_products',
+                  'products',
+                  _mobilePermissions,
+                ),
+                _buildPermissionSwitch(
+                  'mobile_seller_sale_returns',
+                  'sales_return',
+                  _mobilePermissions,
+                ),
+                _buildPermissionSwitch(
+                  'mobile_seller_profile',
+                  'profile',
+                  _mobilePermissions,
+                ),
+                _buildPermissionSwitch(
+                  'mobile_seller_reports',
+                  'report',
+                  _mobilePermissions,
+                ),
+                const SizedBox(height: 16),
+
                 // Edit Limit Warning
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -367,6 +452,35 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     );
   }
 
+  Widget _buildPermissionSwitch(
+    String key,
+    String labelKey,
+    Map<String, bool> map,
+  ) {
+    final languageProvider = context.read<LanguageProvider>();
+    final profile = context.read<ProfileProvider>().profile;
+    final current = map[key] == true;
+    final locked = profile?.isPermissionLocked(key) == true;
+    return SwitchListTile(
+      title: Text(languageProvider.t(labelKey)),
+      subtitle: Text(
+        locked
+            ? languageProvider.t('controlled_by_web')
+            : (current
+                  ? languageProvider.t('enabled_on_mobile')
+                  : languageProvider.t('disabled_on_mobile')),
+      ),
+      value: current,
+      onChanged: locked
+          ? null
+          : (v) {
+              setState(() {
+                map[key] = v;
+              });
+            },
+    );
+  }
+
   Widget _buildLimitReachedView() {
     final languageProvider = context.watch<LanguageProvider>();
     return Center(
@@ -429,13 +543,14 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       username: _usernameController.text.isEmpty
           ? null
           : _usernameController.text,
+      mobilePermissions: _mobilePermissions,
     );
+
+    if (!mounted) return;
 
     setState(() {
       _isLoading = false;
     });
-
-    if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

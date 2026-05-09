@@ -12,6 +12,13 @@ import 'package:seller_app/config/api_config.dart';
 import 'package:seller_app/main.dart';
 import 'package:seller_app/screens/delivery_alerts_screen.dart';
 
+const Set<String> _alertNotificationTypes = {
+  'information_alert',
+  'delivery_accepted',
+  'delivery_completed',
+  'delivery_shipping_updated',
+};
+
 @pragma('vm:entry-point')
 Future<void> sellerFirebaseMessagingBackgroundHandler(
   RemoteMessage message,
@@ -22,29 +29,30 @@ Future<void> sellerFirebaseMessagingBackgroundHandler(
 }
 
 void _handleNotificationClick(Map<String, dynamic> data) {
-  if (data['type'] == 'information_alert' && navigatorKey.currentState != null) {
+  if (_alertNotificationTypes.contains(data['type']?.toString()) &&
+      navigatorKey.currentState != null) {
     final title = data['title']?.toString() ?? 'Information';
     final body = data['body']?.toString() ?? '';
 
-    navigatorKey.currentState!.push(
-      MaterialPageRoute(builder: (_) => const DeliveryAlertsScreen()),
-    ).then((_) {
-      if (navigatorKey.currentContext != null) {
-        showDialog(
-          context: navigatorKey.currentContext!,
-          builder: (ctx) => AlertDialog(
-            title: Text(title),
-            content: Text(body),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('OK'),
+    navigatorKey.currentState!
+        .push(MaterialPageRoute(builder: (_) => const DeliveryAlertsScreen()))
+        .then((_) {
+          if (navigatorKey.currentContext != null) {
+            showDialog(
+              context: navigatorKey.currentContext!,
+              builder: (ctx) => AlertDialog(
+                title: Text(title),
+                content: Text(body),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('OK'),
+                  ),
+                ],
               ),
-            ],
-          ),
-        );
-      }
-    });
+            );
+          }
+        });
   }
 }
 
@@ -119,7 +127,8 @@ class NotificationService {
         _handleNotificationClick(message.data);
       });
 
-      final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+      final initialMessage = await FirebaseMessaging.instance
+          .getInitialMessage();
       if (initialMessage != null) {
         Future.delayed(const Duration(milliseconds: 500), () {
           _handleNotificationClick(initialMessage.data);

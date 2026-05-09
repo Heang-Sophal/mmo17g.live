@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:seller_app/providers/auth_provider.dart';
 import 'package:seller_app/providers/language_provider.dart';
+import 'package:seller_app/providers/profile_provider.dart';
 import 'package:seller_app/config/api_config.dart';
 import 'package:seller_app/screens/delivery_alerts_screen.dart';
 import 'package:seller_app/screens/pos_screen.dart';
@@ -27,7 +28,9 @@ const Color _greenAccent = Color(0xFF12B76A);
 const Color _redAccent = Color(0xFFF04438);
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.menuButton});
+
+  final Widget? menuButton;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -151,6 +154,8 @@ class _HomeScreenState extends State<HomeScreen> {
         scrolledUnderElevation: 0,
         backgroundColor: backgroundColor,
         surfaceTintColor: Colors.transparent,
+        leadingWidth: widget.menuButton == null ? null : 96,
+        leading: widget.menuButton,
         title: Text(
           languageProvider.t('dashboard'),
           style: TextStyle(
@@ -809,86 +814,101 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildQuickActions() {
     final authProvider = Provider.of<AuthProvider>(context);
     final languageProvider = Provider.of<LanguageProvider>(context);
+    final profileProvider = Provider.of<ProfileProvider>(context);
+    final profile = profileProvider.profile;
 
-    final primaryActions = authProvider.isDeliveryUser
-        ? [
-            {
-              'icon': Icons.receipt_long_rounded,
-              'label': languageProvider.t('nav_orders'),
-              'color': _goldPrimary,
-              'onTap': () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const OrdersScreen()),
-              ),
-            },
-            {
-              'icon': Icons.notifications_active_outlined,
-              'label': languageProvider.t('nav_alerts'),
-              'color': _redAccent,
-              'onTap': () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const DeliveryAlertsScreen(),
-                ),
-              ),
-            },
-          ]
-        : [
-            {
-              'icon': Icons.point_of_sale_rounded,
-              'label': languageProvider.t('pos'),
-              'color': _goldDeep,
-              'onTap': () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const POSScreen()),
-              ),
-            },
-            {
-              'icon': Icons.receipt_long_rounded,
-              'label': languageProvider.t('nav_orders'),
-              'color': _goldPrimary,
-              'onTap': () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const OrdersScreen()),
-              ),
-            },
-          ];
+    bool hasPermission(String permission) {
+      if (profile == null) return false;
+      return profile.hasPermission(permission);
+    }
 
-    final secondaryActions = authProvider.isDeliveryUser
-        ? <Map<String, dynamic>>[]
-        : [
-            {
-              'icon': Icons.inventory_2_rounded,
-              'label': languageProvider.t('products'),
-              'color': _greenAccent,
-              'onTap': () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ProductsScreen()),
-              ),
-            },
-            {
-              'icon': Icons.notifications_active_outlined,
-              'label': languageProvider.t('nav_alerts'),
-              'color': _redAccent,
-              'onTap': () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const DeliveryAlertsScreen(),
-                ),
-              ),
-            },
-            {
-              'icon': Icons.assessment_rounded,
-              'label': languageProvider.t('my_report'),
-              'color': _tealAccent,
-              'onTap': () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SalesBySellerReportScreen(),
-                ),
-              ),
-            },
-          ];
+    final primaryActions = <Map<String, dynamic>>[];
+
+    if (authProvider.isDeliveryUser) {
+      if (hasPermission('mobile_delivery_deliveries')) {
+        primaryActions.add({
+          'icon': Icons.receipt_long_rounded,
+          'label': languageProvider.t('nav_orders'),
+          'color': _goldPrimary,
+          'onTap': () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const OrdersScreen()),
+          ),
+        });
+      }
+      primaryActions.add({
+        'icon': Icons.notifications_active_outlined,
+        'label': languageProvider.t('nav_alerts'),
+        'color': _redAccent,
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const DeliveryAlertsScreen()),
+        ),
+      });
+    } else {
+      if (hasPermission('mobile_seller_pos')) {
+        primaryActions.add({
+          'icon': Icons.point_of_sale_rounded,
+          'label': languageProvider.t('pos'),
+          'color': _goldDeep,
+          'onTap': () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const POSScreen()),
+          ),
+        });
+      }
+      if (hasPermission('mobile_seller_orders')) {
+        primaryActions.add({
+          'icon': Icons.receipt_long_rounded,
+          'label': languageProvider.t('nav_orders'),
+          'color': _goldPrimary,
+          'onTap': () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const OrdersScreen()),
+          ),
+        });
+      }
+    }
+
+    final secondaryActions = <Map<String, dynamic>>[];
+
+    if (!authProvider.isDeliveryUser) {
+      if (hasPermission('mobile_seller_products')) {
+        secondaryActions.add({
+          'icon': Icons.inventory_2_rounded,
+          'label': languageProvider.t('products'),
+          'color': _greenAccent,
+          'onTap': () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ProductsScreen()),
+          ),
+        });
+      }
+
+      secondaryActions.add({
+        'icon': Icons.notifications_active_outlined,
+        'label': languageProvider.t('nav_alerts'),
+        'color': _redAccent,
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const DeliveryAlertsScreen()),
+        ),
+      });
+
+      if (hasPermission('mobile_seller_reports')) {
+        secondaryActions.add({
+          'icon': Icons.assessment_rounded,
+          'label': languageProvider.t('my_report'),
+          'color': _tealAccent,
+          'onTap': () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const SalesBySellerReportScreen(),
+            ),
+          ),
+        });
+      }
+    }
 
     return Column(
       children: [

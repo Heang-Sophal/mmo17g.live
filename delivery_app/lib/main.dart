@@ -2,6 +2,7 @@ import 'package:delivery_app/providers/auth_provider.dart';
 import 'package:delivery_app/providers/app_branding_provider.dart';
 import 'package:delivery_app/providers/language_provider.dart';
 import 'package:delivery_app/providers/profile_provider.dart';
+import 'package:delivery_app/providers/theme_provider.dart';
 import 'package:delivery_app/screens/main_navigation_screen.dart';
 import 'package:delivery_app/screens/sign_in_screen.dart';
 import 'package:delivery_app/services/notification_service.dart';
@@ -28,79 +29,151 @@ class DeliveryApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(
           create: (_) => AppBrandingProvider()..loadBranding(),
         ),
       ],
-      child: Consumer2<LanguageProvider, AppBrandingProvider>(
-        builder: (context, languageProvider, brandingProvider, child) {
-          final colorScheme = ColorScheme.fromSeed(
-            seedColor: const Color(0xFFD6A735),
-          ).copyWith(secondary: const Color(0xFFFFD86A));
+      child: Consumer3<LanguageProvider, AppBrandingProvider, ThemeProvider>(
+        builder:
+            (
+              context,
+              languageProvider,
+              brandingProvider,
+              themeProvider,
+              child,
+            ) {
+              final colorScheme = ColorScheme.fromSeed(
+                seedColor: const Color(0xFFD6A735),
+              ).copyWith(secondary: const Color(0xFFFFD86A));
+              final darkColorScheme =
+                  ColorScheme.fromSeed(
+                    seedColor: const Color(0xFFD6A735),
+                    brightness: Brightness.dark,
+                  ).copyWith(
+                    primary: const Color(0xFFD6A735),
+                    secondary: const Color(0xFFFFD86A),
+                    surface: const Color(0xFF21190B),
+                  );
 
-          return MaterialApp(
-            navigatorKey: navigatorKey,
-            title: brandingProvider.appTitle,
-            debugShowCheckedModeBanner: false,
-            locale: languageProvider.locale,
-            supportedLocales: const [Locale('km'), Locale('en')],
-            localizationsDelegates: const [
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-            theme: ThemeData(
-              useMaterial3: true,
-              colorScheme: colorScheme,
-              fontFamily: GoogleFonts.kantumruyPro().fontFamily,
-              scaffoldBackgroundColor: const Color(0xFFFFFEFA),
-              appBarTheme: const AppBarTheme(
-                centerTitle: false,
-                backgroundColor: Color(0xFFFFFEFA),
-                foregroundColor: Color(0xFF201607),
-                elevation: 0,
-              ),
-              cardTheme: CardThemeData(
-                color: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-              inputDecorationTheme: InputDecorationTheme(
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(18),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(18),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(18),
-                  borderSide: const BorderSide(
-                    color: Color(0xFFD6A735),
-                    width: 1.5,
+              return MaterialApp(
+                navigatorKey: navigatorKey,
+                title: brandingProvider.appTitle,
+                debugShowCheckedModeBanner: false,
+                locale: languageProvider.locale,
+                supportedLocales: const [Locale('km'), Locale('en')],
+                localizationsDelegates: const [
+                  GlobalMaterialLocalizations.delegate,
+                  GlobalWidgetsLocalizations.delegate,
+                  GlobalCupertinoLocalizations.delegate,
+                ],
+                themeMode: themeProvider.themeMode,
+                theme: ThemeData(
+                  useMaterial3: true,
+                  colorScheme: colorScheme,
+                  fontFamily: GoogleFonts.kantumruyPro().fontFamily,
+                  scaffoldBackgroundColor: const Color(0xFFFFFEFA),
+                  appBarTheme: const AppBarTheme(
+                    centerTitle: false,
+                    backgroundColor: Color(0xFFFFFEFA),
+                    foregroundColor: Color(0xFF201607),
+                    elevation: 0,
+                  ),
+                  cardTheme: CardThemeData(
+                    color: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  inputDecorationTheme: InputDecorationTheme(
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: const BorderSide(
+                        color: Color(0xFFD6A735),
+                        width: 1.5,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
+                  ),
+                  navigationBarTheme: NavigationBarThemeData(
+                    backgroundColor: Colors.white,
+                    indicatorColor: const Color(
+                      0xFFD6A735,
+                    ).withValues(alpha: 0.12),
+                    labelTextStyle: WidgetStateProperty.all(
+                      const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
+                darkTheme: ThemeData(
+                  useMaterial3: true,
+                  brightness: Brightness.dark,
+                  colorScheme: darkColorScheme,
+                  fontFamily: GoogleFonts.kantumruyPro().fontFamily,
+                  scaffoldBackgroundColor: const Color(0xFF151107),
+                  appBarTheme: const AppBarTheme(
+                    centerTitle: false,
+                    backgroundColor: Color(0xFF151107),
+                    foregroundColor: Color(0xFFFFE8A7),
+                    elevation: 0,
+                  ),
+                  cardTheme: CardThemeData(
+                    color: const Color(0xFF21190B),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  inputDecorationTheme: InputDecorationTheme(
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.06),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: const BorderSide(
+                        color: Color(0xFFD6A735),
+                        width: 1.5,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
+                  ),
+                  navigationBarTheme: NavigationBarThemeData(
+                    backgroundColor: const Color(0xFF21190B),
+                    indicatorColor: const Color(
+                      0xFFD6A735,
+                    ).withValues(alpha: 0.18),
+                    labelTextStyle: WidgetStateProperty.all(
+                      const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
                 ),
-              ),
-              navigationBarTheme: NavigationBarThemeData(
-                backgroundColor: Colors.white,
-                indicatorColor: const Color(0xFFD6A735).withValues(alpha: 0.12),
-                labelTextStyle: WidgetStateProperty.all(
-                  const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ),
-            home: const AuthGate(),
-          );
-        },
+                home: const AuthGate(),
+              );
+            },
       ),
     );
   }

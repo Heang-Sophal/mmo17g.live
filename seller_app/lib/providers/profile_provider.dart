@@ -1,7 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:seller_app/services/api_service.dart';
 
 class ProfileModel {
+  static const List<String> knownMobilePermissionKeys = [
+    'mobile_seller_pos',
+    'mobile_seller_orders',
+    'mobile_seller_products',
+    'mobile_seller_sale_returns',
+    'mobile_seller_profile',
+    'mobile_seller_reports',
+    'mobile_delivery_record_items',
+    'mobile_delivery_deliveries',
+    'mobile_delivery_reports',
+    'mobile_delivery_profile',
+  ];
+
   final String id;
   final String firstname;
   final String lastname;
@@ -19,6 +33,8 @@ class ProfileModel {
   final int editLimit;
   final bool canEdit;
   final int editsRemaining;
+  final Map<String, bool> mobilePermissions;
+  final Map<String, bool> mobilePermissionLocks;
 
   ProfileModel({
     required this.id,
@@ -38,6 +54,8 @@ class ProfileModel {
     this.editLimit = 3,
     this.canEdit = true,
     this.editsRemaining = 3,
+    this.mobilePermissions = const {},
+    this.mobilePermissionLocks = const {},
   });
 
   factory ProfileModel.fromMap(Map<String, dynamic> map) {
@@ -59,7 +77,48 @@ class ProfileModel {
       editLimit: map['edit_limit'] ?? 3,
       canEdit: map['can_edit'] ?? true,
       editsRemaining: map['edits_remaining'] ?? 3,
+      mobilePermissions: _parsePermissions(map['mobile_permissions']).enabled,
+      mobilePermissionLocks: _parsePermissions(
+        map['mobile_permissions'],
+      ).locked,
     );
+  }
+
+  static _PermissionParseResult _parsePermissions(dynamic value) {
+    final enabled = <String, bool>{};
+    final locked = <String, bool>{};
+    if (value == null) {
+      return _PermissionParseResult(enabled: enabled, locked: locked);
+    }
+    if (value is List) {
+      for (final key in knownMobilePermissionKeys) {
+        enabled[key] = false;
+        locked[key] = true;
+      }
+      for (final rawPermission in value) {
+        final key = rawPermission.toString();
+        if (key.isEmpty) continue;
+        enabled[key] = true;
+        locked[key] = true;
+      }
+      return _PermissionParseResult(enabled: enabled, locked: locked);
+    }
+    if (value is Map) {
+      value.forEach((rawK, rawV) {
+        final k = rawK.toString();
+        if (rawV is Map) {
+          final e = rawV['enabled'];
+          final l = rawV['locked'] ?? rawV['lock'] ?? false;
+          enabled[k] = (e == true || e == 'true' || e == 1 || e == '1');
+          locked[k] = (l == true || l == 'true' || l == 1 || l == '1');
+        } else {
+          enabled[k] =
+              (rawV == true || rawV == 'true' || rawV == 1 || rawV == '1');
+          locked[k] = false;
+        }
+      });
+    }
+    return _PermissionParseResult(enabled: enabled, locked: locked);
   }
 
   static DateTime _parseDateTime(dynamic value) {
@@ -85,6 +144,8 @@ class ProfileModel {
     int? editCountThisYear,
     int? editsRemaining,
     bool? canEdit,
+    Map<String, bool>? mobilePermissions,
+    Map<String, bool>? mobilePermissionLocks,
   }) {
     return ProfileModel(
       id: id,
@@ -102,8 +163,25 @@ class ProfileModel {
       editLimit: editLimit,
       canEdit: canEdit ?? this.canEdit,
       editsRemaining: editsRemaining ?? this.editsRemaining,
+      mobilePermissions: mobilePermissions ?? this.mobilePermissions,
+      mobilePermissionLocks:
+          mobilePermissionLocks ?? this.mobilePermissionLocks,
     );
   }
+
+  bool hasPermission(String key) {
+    return mobilePermissions[key] == true;
+  }
+
+  bool isPermissionLocked(String key) {
+    return mobilePermissionLocks[key] == true;
+  }
+}
+
+class _PermissionParseResult {
+  final Map<String, bool> enabled;
+  final Map<String, bool> locked;
+  _PermissionParseResult({required this.enabled, required this.locked});
 }
 
 class ProfileProvider extends ChangeNotifier {
@@ -111,6 +189,8 @@ class ProfileProvider extends ChangeNotifier {
   ProfileModel? _profile;
   String? _token;
   bool _isLoading = false;
+  bool _isDisposed = false;
+  bool _hasPendingNotification = false;
   String? _error;
 
   ProfileProvider({String? token}) : _apiService = ApiService(), _token = token;
@@ -135,9 +215,11 @@ class ProfileProvider extends ChangeNotifier {
 
   /// ទាញទិន្ននយ Profile
   Future<void> fetchProfile() async {
+    if (_isLoading) return;
+
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    _notifyListenersSafely();
 
     try {
       final data = await _apiService.getProfile(_token);
@@ -149,7 +231,7 @@ class ProfileProvider extends ChangeNotifier {
       // បើមាន error ប្រើ sample data
       _profile = _getSampleProfile();
     }
-    notifyListeners();
+    _notifyListenersSafely();
   }
 
   /// កែប្រែ Profile
@@ -159,10 +241,11 @@ class ProfileProvider extends ChangeNotifier {
     String? email,
     String? phone,
     String? username,
+    Map<String, bool>? mobilePermissions,
   }) async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    _notifyListenersSafely();
 
     try {
       final Map<String, dynamic> updateData = {};
@@ -172,13 +255,16 @@ class ProfileProvider extends ChangeNotifier {
       if (email != null) updateData['email'] = email;
       if (phone != null) updateData['phone'] = phone;
       if (username != null) updateData['username'] = username;
+      if (mobilePermissions != null) {
+        updateData['mobile_permissions'] = mobilePermissions;
+      }
 
       final result = await _apiService.updateProfile(updateData);
 
       if (result['success'] == true) {
         _profile = ProfileModel.fromMap(result['data']);
         _isLoading = false;
-        notifyListeners();
+        _notifyListenersSafely();
         return {
           'success': true,
           'message': result['message'] ?? 'Profile updated successfully',
@@ -186,7 +272,7 @@ class ProfileProvider extends ChangeNotifier {
         };
       } else {
         _isLoading = false;
-        notifyListeners();
+        _notifyListenersSafely();
         return {
           'success': false,
           'message': result['message'] ?? 'Failed to update profile',
@@ -195,7 +281,7 @@ class ProfileProvider extends ChangeNotifier {
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _notifyListenersSafely();
 
       // ពិនិត្យមើលបើជា edit limit error
       if (e.toString().contains('429') || e.toString().contains('maximum')) {
@@ -222,7 +308,7 @@ class ProfileProvider extends ChangeNotifier {
   }) async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    _notifyListenersSafely();
 
     try {
       final result = await _apiService.changePassword(
@@ -232,7 +318,7 @@ class ProfileProvider extends ChangeNotifier {
       );
 
       _isLoading = false;
-      notifyListeners();
+      _notifyListenersSafely();
       return {
         'success': true,
         'message': result['message'] ?? 'Password updated successfully',
@@ -240,7 +326,7 @@ class ProfileProvider extends ChangeNotifier {
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _notifyListenersSafely();
 
       // Parse detailed error message from API exception
       String detailedMessage = 'Failed to update password';
@@ -289,5 +375,31 @@ class ProfileProvider extends ChangeNotifier {
       canEdit: true,
       editsRemaining: 3,
     );
+  }
+
+  void _notifyListenersSafely() {
+    if (_isDisposed) return;
+
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      if (_hasPendingNotification) return;
+
+      _hasPendingNotification = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _hasPendingNotification = false;
+        if (!_isDisposed) {
+          notifyListeners();
+        }
+      });
+      return;
+    }
+
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
   }
 }

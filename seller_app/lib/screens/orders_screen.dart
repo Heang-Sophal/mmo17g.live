@@ -42,7 +42,7 @@ class _OrdersScreenState extends State<OrdersScreen>
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_onTabChanged);
     _scrollController.addListener(_onScroll);
-    _loadOrders();
+    refreshData();
   }
 
   @override
@@ -70,11 +70,11 @@ class _OrdersScreenState extends State<OrdersScreen>
 
   void _onTabChanged() {
     if (!_tabController.indexIsChanging) {
-      _loadOrders();
+      refreshData();
     }
   }
 
-  Future<void> _loadOrders() async {
+  Future<void> refreshData() async {
     final authProvider = context.read<AuthProvider>();
     final languageProvider = context.read<LanguageProvider>();
     final userId = authProvider.user?.id;
@@ -226,7 +226,7 @@ class _OrdersScreenState extends State<OrdersScreen>
             icon: _isLoading ? null : Icons.refresh_rounded,
             tooltip: languageProvider.t('refresh'),
             busy: _isLoading,
-            onTap: _isLoading ? null : _loadOrders,
+            onTap: _isLoading ? null : refreshData,
           ),
           const SizedBox(width: 14),
         ],
@@ -387,7 +387,7 @@ class _OrdersScreenState extends State<OrdersScreen>
         title: _error!,
         subtitle: languageProvider.t('try_again'),
         actionLabel: languageProvider.t('retry'),
-        onAction: _loadOrders,
+        onAction: refreshData,
       );
     }
 
@@ -412,7 +412,7 @@ class _OrdersScreenState extends State<OrdersScreen>
     }
 
     return RefreshIndicator(
-      onRefresh: _loadOrders,
+      onRefresh: refreshData,
       child: ListView.separated(
         controller: _scrollController,
         physics: const BouncingScrollPhysics(),
@@ -1265,7 +1265,7 @@ class _OrdersScreenState extends State<OrdersScreen>
               ? TopNotificationType.success
               : TopNotificationType.warning,
         );
-        _loadOrders();
+        refreshData();
         return;
       }
 

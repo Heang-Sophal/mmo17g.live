@@ -3,7 +3,7 @@ import 'dart:io';
 class ApiConfig {
   static const String androidEmulatorBaseUrl = 'http://10.0.2.2:8000/api';
   static const String iosSimulatorBaseUrl = 'http://127.0.0.1:8000/api';
-  static const String productionBaseUrl = 'http://194.233.78.110/api';
+  static const String productionBaseUrl = 'https://mmo17g.store/api';
   static const String envBaseUrl = String.fromEnvironment('API_BASE_URL');
   static const bool isProductBuild = bool.fromEnvironment('dart.vm.product');
 

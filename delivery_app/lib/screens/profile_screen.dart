@@ -2,6 +2,7 @@ import 'package:delivery_app/screens/account_settings_screen.dart';
 import 'package:delivery_app/providers/auth_provider.dart';
 import 'package:delivery_app/providers/language_provider.dart';
 import 'package:delivery_app/providers/profile_provider.dart';
+import 'package:delivery_app/providers/theme_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -17,7 +18,9 @@ class ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      refreshData();
+      if (mounted) {
+        refreshData();
+      }
     });
   }
 
@@ -26,6 +29,8 @@ class ProfileScreenState extends State<ProfileScreen> {
     final profileProvider = context.read<ProfileProvider>();
     profileProvider.setToken(authProvider.token);
     await profileProvider.fetchProfile();
+    if (!mounted) return;
+
     final profile = profileProvider.profile;
     if (profile != null) {
       await authProvider.syncUserFromProfile(profile);
@@ -37,6 +42,7 @@ class ProfileScreenState extends State<ProfileScreen> {
     final authProvider = context.watch<AuthProvider>();
     final languageProvider = context.watch<LanguageProvider>();
     final profileProvider = context.watch<ProfileProvider>();
+    final themeProvider = context.watch<ThemeProvider>();
     final profile = profileProvider.profile;
 
     if (profileProvider.isLoading && profile == null) {
@@ -207,6 +213,24 @@ class ProfileScreenState extends State<ProfileScreen> {
                 trailing: Switch(
                   value: languageProvider.isKhmer,
                   onChanged: (_) => languageProvider.toggleLanguage(),
+                ),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: Icon(
+                  themeProvider.isDarkMode
+                      ? Icons.dark_mode_rounded
+                      : Icons.light_mode_rounded,
+                ),
+                title: Text(languageProvider.t('dark_mode')),
+                subtitle: Text(
+                  themeProvider.isDarkMode
+                      ? languageProvider.t('dark_mode_enabled')
+                      : languageProvider.t('dark_mode_disabled'),
+                ),
+                trailing: Switch(
+                  value: themeProvider.isDarkMode,
+                  onChanged: (_) => themeProvider.toggleTheme(),
                 ),
               ),
               const Divider(height: 1),

@@ -29,7 +29,7 @@ class _DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _loadAlerts();
+    refreshData();
   }
 
   @override
@@ -53,7 +53,7 @@ class _DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
     _lastScrollOffset = currentOffset;
   }
 
-  Future<void> _loadAlerts() async {
+  Future<void> refreshData() async {
     final authProvider = context.read<AuthProvider>();
     final languageProvider = context.read<LanguageProvider>();
     final token = authProvider.token;
@@ -191,7 +191,7 @@ class _DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
     );
 
     if (mounted) {
-      _loadAlerts();
+      refreshData();
     }
   }
 
@@ -259,7 +259,7 @@ class _DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
             icon: _isLoading ? null : Icons.refresh_rounded,
             tooltip: languageProvider.t('refresh'),
             busy: _isLoading,
-            onTap: _isLoading ? null : _loadAlerts,
+            onTap: _isLoading ? null : refreshData,
           ),
           const SizedBox(width: 14),
         ],
@@ -342,7 +342,7 @@ class _DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
         title: _error!,
         subtitle: languageProvider.t('try_again'),
         actionLabel: languageProvider.t('retry'),
-        onAction: _loadAlerts,
+        onAction: refreshData,
       );
     }
 
@@ -355,7 +355,7 @@ class _DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: _loadAlerts,
+      onRefresh: refreshData,
       child: ListView.separated(
         controller: _scrollController,
         physics: const BouncingScrollPhysics(),

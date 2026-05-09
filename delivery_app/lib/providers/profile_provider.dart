@@ -1,11 +1,14 @@
 import 'package:delivery_app/services/delivery_api_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 class ProfileProvider extends ChangeNotifier {
   final DeliveryApiService _apiService = DeliveryApiService();
 
   Map<String, dynamic>? _profile;
   bool _isLoading = false;
+  bool _isDisposed = false;
+  bool _hasPendingNotification = false;
   String? _error;
   String? _token;
 
@@ -25,9 +28,11 @@ class ProfileProvider extends ChangeNotifier {
   }
 
   Future<void> fetchProfile() async {
+    if (_isLoading) return;
+
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    _notifyListenersSafely();
 
     try {
       _profile = await _apiService.getProfile();
@@ -35,7 +40,7 @@ class ProfileProvider extends ChangeNotifier {
       _error = e.toString();
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _notifyListenersSafely();
     }
   }
 
@@ -48,7 +53,7 @@ class ProfileProvider extends ChangeNotifier {
   }) async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    _notifyListenersSafely();
 
     try {
       final payload = <String, dynamic>{};
@@ -65,7 +70,7 @@ class ProfileProvider extends ChangeNotifier {
       }
 
       _isLoading = false;
-      notifyListeners();
+      _notifyListenersSafely();
       return {
         'success': result['success'] == true,
         'message':
@@ -74,7 +79,7 @@ class ProfileProvider extends ChangeNotifier {
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _notifyListenersSafely();
       return {
         'success': false,
         'message': _cleanErrorMessage(e),
@@ -90,7 +95,7 @@ class ProfileProvider extends ChangeNotifier {
   }) async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    _notifyListenersSafely();
 
     try {
       final result = await _apiService.changePassword(
@@ -100,7 +105,7 @@ class ProfileProvider extends ChangeNotifier {
       );
 
       _isLoading = false;
-      notifyListeners();
+      _notifyListenersSafely();
       return {
         'success': result['success'] == true,
         'message':
@@ -109,7 +114,7 @@ class ProfileProvider extends ChangeNotifier {
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _notifyListenersSafely();
       return {
         'success': false,
         'message': _cleanErrorMessage(e),
@@ -131,5 +136,31 @@ class ProfileProvider extends ChangeNotifier {
       return match.group(1) ?? message;
     }
     return message;
+  }
+
+  void _notifyListenersSafely() {
+    if (_isDisposed) return;
+
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      if (_hasPendingNotification) return;
+
+      _hasPendingNotification = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _hasPendingNotification = false;
+        if (!_isDisposed) {
+          notifyListeners();
+        }
+      });
+      return;
+    }
+
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
   }
 }

@@ -9,14 +9,6 @@ import 'package:delivery_app/screens/report_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-const Color _goldPrimary = Color(0xFFD6A735);
-const Color _goldSoft = Color(0xFFFFE8A7);
-const Color _goldDeep = Color(0xFF8D6208);
-const Color _warmInk = Color(0xFF201607);
-const Color _warmMuted = Color(0xFF735F33);
-const Color _warmSurface = Color(0xFFFFFEFA);
-const Color _darkSurface = Color(0xFF21190B);
-
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
 
@@ -34,439 +26,104 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       GlobalKey<DeliveryAlertsScreenState>();
   final GlobalKey<ProfileScreenState> _profileKey =
       GlobalKey<ProfileScreenState>();
-  final GlobalKey<ReportScreenState> _deliveryReportKey =
-      GlobalKey<ReportScreenState>();
   final GlobalKey<ReportScreenState> _recordReportKey =
+      GlobalKey<ReportScreenState>();
+  final GlobalKey<ReportScreenState> _deliveryReportKey =
       GlobalKey<ReportScreenState>();
 
   int _currentIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadProfilePermissions();
-    });
-  }
+  int? _recordsIndex;
+  int? _alertsIndex;
 
   void _goToTab(int index) {
     setState(() {
       _currentIndex = index;
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      if (index == _recordsIndex) {
+        _recordsKey.currentState?.refreshData();
+      } else if (index == _alertsIndex) {
+        _alertsKey.currentState?.refreshData();
+      }
+    });
   }
 
-  Future<void> _loadProfilePermissions() async {
-    if (!mounted) return;
-
-    final authProvider = context.read<AuthProvider>();
-    final profileProvider = context.read<ProfileProvider>();
-    profileProvider.setToken(authProvider.token);
-
-    if (authProvider.token != null && authProvider.token!.isNotEmpty) {
-      await profileProvider.fetchProfile();
-    }
-  }
-
-  bool _hasPermission(Map<String, dynamic>? profile, String permission) {
-    if (profile == null) {
-      return false;
-    }
-
-    final permissions = profile['mobile_permissions'] ?? profile['permissions'];
+  bool _hasPermission(
+    Map<String, dynamic>? profile,
+    DeliveryUser? authUser,
+    String permission,
+  ) {
+    final permissions = profile == null
+        ? null
+        : profile['mobile_permissions'] ?? profile['permissions'];
     if (permissions is List) {
       return permissions.map((value) => value.toString()).contains(permission);
     }
-    if (permissions is Map) {
-      final value = permissions[permission];
-      if (value is Map) {
-        final enabled = value['enabled'];
-        return enabled == true ||
-            enabled == 'true' ||
-            enabled == 1 ||
-            enabled == '1';
-      }
-      return value == true || value == 'true' || value == 1 || value == '1';
+
+    final authPermissions = authUser?.mobilePermissions ?? const [];
+    if (authPermissions.isNotEmpty) {
+      return authPermissions.contains(permission);
     }
 
-    return false;
-  }
-
-  void _handleDestinationSelected(
-    int navIndex,
-    LanguageProvider languageProvider,
-    List<Map<String, dynamic>> menuConfig,
-  ) {
-    final selectedItem = menuConfig[navIndex];
-    if (selectedItem['isMore'] == true) {
-      final moreItems = (selectedItem['moreItems'] as List)
-          .cast<Map<String, dynamic>>();
-      _showMoreMenu(languageProvider, moreItems);
-      return;
-    }
-
-    _goToTab(selectedItem['screenIndex'] as int);
-  }
-
-  Future<void> _showMoreMenu(
-    LanguageProvider languageProvider,
-    List<Map<String, dynamic>> moreItems,
-  ) async {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final selectedIndex = await showModalBottomSheet<int>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return SafeArea(
-          top: false,
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-            decoration: BoxDecoration(
-              color: isDark ? _darkSurface : _warmSurface,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(32),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.12),
-                  blurRadius: 28,
-                  offset: const Offset(0, -10),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 56,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.22)
-                          : _goldSoft.withValues(alpha: 0.78),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  languageProvider.t('quick_actions'),
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? _goldSoft : _warmInk,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  languageProvider.t('more_menu_hint'),
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.65)
-                        : _warmMuted,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Container(
-                  height: 1,
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : _goldSoft.withValues(alpha: 0.70),
-                ),
-                const SizedBox(height: 14),
-                ...moreItems.map(
-                  (item) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _buildMoreMenuTile(
-                      icon: item['icon'],
-                      title: item['title'],
-                      isSelected: _currentIndex == item['screenIndex'],
-                      isDark: isDark,
-                      onTap: () => Navigator.pop(context, item['screenIndex']),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-
-    if (selectedIndex == null || !mounted) return;
-    _goToTab(selectedIndex);
-  }
-
-  Widget _buildMoreMenuTile({
-    required IconData icon,
-    required String title,
-    required bool isSelected,
-    required bool isDark,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(22),
-        onTap: onTap,
-        child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? _goldPrimary.withValues(alpha: isDark ? 0.22 : 0.10)
-                : isDark
-                ? Colors.white.withValues(alpha: 0.03)
-                : const Color(0xFFFFFAEF),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-              color: isSelected
-                  ? _goldPrimary.withValues(alpha: 0.45)
-                  : isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : _goldSoft.withValues(alpha: 0.82),
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? _goldPrimary.withValues(alpha: 0.14)
-                      : isDark
-                      ? Colors.white.withValues(alpha: 0.06)
-                      : Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(
-                  icon,
-                  color: isSelected
-                      ? _goldPrimary
-                      : isDark
-                      ? Colors.white
-                      : _warmMuted,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: isDark ? _goldSoft : _warmInk,
-                  ),
-                ),
-              ),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: isSelected ? _goldPrimary : Colors.transparent,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isSelected
-                        ? _goldPrimary
-                        : isDark
-                        ? Colors.white.withValues(alpha: 0.15)
-                        : _goldSoft.withValues(alpha: 0.82),
-                  ),
-                ),
-                child: Icon(
-                  isSelected
-                      ? Icons.check_rounded
-                      : Icons.arrow_forward_ios_rounded,
-                  size: isSelected ? 16 : 14,
-                  color: isSelected
-                      ? _warmInk
-                      : isDark
-                      ? Colors.white.withValues(alpha: 0.75)
-                      : _warmMuted.withValues(alpha: 0.72),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNavigationBar({
-    required BuildContext context,
-    required LanguageProvider languageProvider,
-    required List<Map<String, dynamic>> navigationItems,
-    required int selectedNavIndex,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          decoration: BoxDecoration(
-            color: isDark
-                ? _darkSurface.withValues(alpha: 0.98)
-                : _warmSurface.withValues(alpha: 0.96),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : _goldSoft.withValues(alpha: 0.72),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: isDark
-                    ? Colors.black.withValues(alpha: 0.26)
-                    : _goldDeep.withValues(alpha: 0.16),
-                blurRadius: 28,
-                offset: const Offset(0, 16),
-              ),
-            ],
-          ),
-          child: Row(
-            children: List.generate(navigationItems.length, (index) {
-              final item = navigationItems[index];
-              return Expanded(
-                child: _buildBottomNavItem(
-                  item: item,
-                  index: index,
-                  isSelected: index == selectedNavIndex,
-                  isDark: isDark,
-                  languageProvider: languageProvider,
-                  navigationItems: navigationItems,
-                ),
-              );
-            }),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNavItem({
-    required Map<String, dynamic> item,
-    required int index,
-    required bool isSelected,
-    required bool isDark,
-    required LanguageProvider languageProvider,
-    required List<Map<String, dynamic>> navigationItems,
-  }) {
-    final label = item['label']?.toString() ?? '';
-    const labelFontSize = 14.2;
-    final icon = isSelected
-        ? item['selectedIcon'] as IconData
-        : item['icon'] as IconData;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: () => _handleDestinationSelected(
-          index,
-          languageProvider,
-          navigationItems,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                width: isSelected ? 64 : 52,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? _goldSoft.withValues(alpha: isDark ? 0.20 : 0.42)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Icon(
-                  icon,
-                  size: isSelected ? 28 : 27,
-                  color: isSelected
-                      ? _warmInk
-                      : isDark
-                      ? Colors.white.withValues(alpha: 0.78)
-                      : const Color(0xFF544D40),
-                ),
-              ),
-              const SizedBox(height: 3),
-              SizedBox(
-                height: 32,
-                child: Center(
-                  child: Text(
-                    label,
-                    maxLines: 2,
-                    overflow: TextOverflow.visible,
-                    textAlign: TextAlign.center,
-                    softWrap: true,
-                    style: TextStyle(
-                      fontSize: labelFontSize,
-                      height: 1.1,
-                      fontWeight: isSelected
-                          ? FontWeight.w800
-                          : FontWeight.w700,
-                      color: isSelected
-                          ? _warmInk
-                          : isDark
-                          ? Colors.white.withValues(alpha: 0.72)
-                          : const Color(0xFF544D40),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    return true; // Default true if no permissions list found
   }
 
   @override
   Widget build(BuildContext context) {
     final languageProvider = context.watch<LanguageProvider>();
+    final authProvider = context.watch<AuthProvider>();
     final profileProvider = context.watch<ProfileProvider>();
     final profile = profileProvider.profile;
+    final authUser = authProvider.user;
 
     final bool canViewRecords = _hasPermission(
       profile,
+      authUser,
       'mobile_delivery_record_items',
     );
     final bool canViewOrders = _hasPermission(
       profile,
+      authUser,
       'mobile_delivery_deliveries',
-    );
-    final bool canViewDeliveryReports = _hasPermission(
-      profile,
-      'mobile_delivery_reports',
     );
     final bool canViewRecordReports = _hasPermission(
       profile,
+      authUser,
       'mobile_delivery_record_reports',
+    );
+    final bool canViewDeliveryReports = _hasPermission(
+      profile,
+      authUser,
+      'mobile_delivery_reports',
     );
     final bool canViewProfile = _hasPermission(
       profile,
+      authUser,
       'mobile_delivery_profile',
     );
 
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color activeColor = const Color(0xFFD6A735); // Gold Primary Color
+    final Color inactiveColor = isDark
+        ? Colors.white60
+        : const Color(0xFF64748B);
+
+    final String? avatarUrl =
+        profile?['avatar_url']?.toString() ?? authProvider.user?.avatarUrl;
+
     final List<Widget> pages = [];
+    final List<String> navLabels = [];
+    final List<Widget> bottomNavItems = [];
     final List<List<Widget>> actionsList = [];
     final List<String> titles = [];
-    int recordsIndex = -1;
-    int ordersIndex = -1;
-    int alertsIndex = -1;
-    int deliveryReportIndex = -1;
-    int recordReportIndex = -1;
-    int profileIndex = -1;
+    final List<_MenuNavItem> menuItems = [];
+
+    int buildIndex = 0;
+    _recordsIndex = null;
+    _alertsIndex = null;
 
     // Dashboard (always show)
     pages.add(
@@ -475,19 +132,45 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         onNavigate: (int rawIndex) {
           int targetIndex = 0;
           if (rawIndex == 1) {
+            // Wants to go to Orders or Records
+            final ordersIndex = navLabels.indexWhere(
+              (label) => label == languageProvider.t('orders'),
+            );
+            final recordsIndex = navLabels.indexWhere(
+              (label) => label == languageProvider.t('records'),
+            );
             if (ordersIndex != -1) {
               targetIndex = ordersIndex;
             } else if (recordsIndex != -1) {
               targetIndex = recordsIndex;
             }
-          } else if (rawIndex == 2 && alertsIndex != -1) {
-            targetIndex = alertsIndex;
+          } else if (rawIndex == 2) {
+            // Wants to go to Alerts
+            final alertsIndex = navLabels.indexWhere(
+              (label) => label == languageProvider.t('alerts'),
+            );
+            if (alertsIndex != -1) {
+              targetIndex = alertsIndex;
+            }
           }
 
           if (targetIndex != 0) {
             _goToTab(targetIndex);
           }
         },
+      ),
+    );
+
+    navLabels.add(languageProvider.t('dashboard'));
+    bottomNavItems.add(
+      _buildNavItem(
+        icon: Icons.home_outlined,
+        selectedIcon: Icons.home_rounded,
+        label: languageProvider.t('dashboard'),
+        index: buildIndex,
+        isSelected: _currentIndex == buildIndex,
+        activeColor: activeColor,
+        inactiveColor: inactiveColor,
       ),
     );
     actionsList.add([
@@ -497,11 +180,24 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ),
     ]);
     titles.add(languageProvider.t('dashboard'));
+    buildIndex++;
 
     // Records
     if (canViewRecords) {
       pages.add(OrdersScreen(key: _recordsKey, recordMode: true));
-      recordsIndex = pages.length - 1;
+      _recordsIndex = buildIndex;
+      navLabels.add(languageProvider.t('records'));
+      bottomNavItems.add(
+        _buildNavItem(
+          icon: Icons.inventory_2_outlined,
+          selectedIcon: Icons.inventory_2_rounded,
+          label: languageProvider.t('records'),
+          index: buildIndex,
+          isSelected: _currentIndex == buildIndex,
+          activeColor: activeColor,
+          inactiveColor: inactiveColor,
+        ),
+      );
       actionsList.add([
         IconButton(
           onPressed: () => _recordsKey.currentState?.refreshAndScrollToTop(),
@@ -509,12 +205,24 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         ),
       ]);
       titles.add(languageProvider.t('records'));
+      buildIndex++;
     }
 
     // Orders
     if (canViewOrders) {
       pages.add(OrdersScreen(key: _ordersKey));
-      ordersIndex = pages.length - 1;
+      navLabels.add(languageProvider.t('orders'));
+      bottomNavItems.add(
+        _buildNavItem(
+          icon: Icons.receipt_long_outlined,
+          selectedIcon: Icons.receipt_long_rounded,
+          label: languageProvider.t('orders'),
+          index: buildIndex,
+          isSelected: _currentIndex == buildIndex,
+          activeColor: activeColor,
+          inactiveColor: inactiveColor,
+        ),
+      );
       actionsList.add([
         IconButton(
           onPressed: () => _ordersKey.currentState?.refreshAndScrollToTop(),
@@ -522,11 +230,24 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         ),
       ]);
       titles.add(languageProvider.t('orders'));
+      buildIndex++;
     }
 
     // Alerts (always show)
     pages.add(DeliveryAlertsScreen(key: _alertsKey));
-    alertsIndex = pages.length - 1;
+    _alertsIndex = buildIndex;
+    navLabels.add(languageProvider.t('alerts'));
+    bottomNavItems.add(
+      _buildNavItem(
+        icon: Icons.notifications_outlined,
+        selectedIcon: Icons.notifications_rounded,
+        label: languageProvider.t('alerts'),
+        index: buildIndex,
+        isSelected: _currentIndex == buildIndex,
+        activeColor: activeColor,
+        inactiveColor: inactiveColor,
+      ),
+    );
     actionsList.add([
       TextButton(
         onPressed: () => _alertsKey.currentState?.markAllRead(),
@@ -538,11 +259,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ),
     ]);
     titles.add(languageProvider.t('alerts'));
+    buildIndex++;
 
-    // Recorder Report
+    // Record Reports
     if (canViewRecordReports) {
       pages.add(ReportScreen(key: _recordReportKey, recordMode: true));
-      recordReportIndex = pages.length - 1;
+      navLabels.add(languageProvider.t('record_report'));
+      menuItems.add(
+        _MenuNavItem(
+          icon: Icons.fact_check_outlined,
+          label: languageProvider.t('record_report'),
+          index: buildIndex,
+        ),
+      );
       actionsList.add([
         IconButton(
           onPressed: () => _recordReportKey.currentState?.refreshData(),
@@ -550,32 +279,54 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         ),
       ]);
       titles.add(languageProvider.t('record_report'));
+      buildIndex++;
     }
 
-    // Delivery Report
+    // Delivery Reports
     if (canViewDeliveryReports) {
       pages.add(ReportScreen(key: _deliveryReportKey));
-      deliveryReportIndex = pages.length - 1;
+      navLabels.add(languageProvider.t('delivered_report'));
+      menuItems.add(
+        _MenuNavItem(
+          icon: Icons.bar_chart_outlined,
+          label: languageProvider.t('delivered_report'),
+          index: buildIndex,
+        ),
+      );
       actionsList.add([
         IconButton(
           onPressed: () => _deliveryReportKey.currentState?.refreshData(),
           icon: const Icon(Icons.refresh),
         ),
       ]);
-      titles.add(languageProvider.t('delivered_report'));
+      titles.add(languageProvider.t('report'));
+      buildIndex++;
     }
 
     // Profile
     if (canViewProfile) {
       pages.add(ProfileScreen(key: _profileKey));
-      profileIndex = pages.length - 1;
+      navLabels.add(languageProvider.t('settings'));
+      bottomNavItems.add(
+        _buildNavItem(
+          icon: Icons.person_outline,
+          selectedIcon: Icons.person_rounded,
+          label: languageProvider.t('settings'),
+          index: buildIndex,
+          isSelected: _currentIndex == buildIndex,
+          activeColor: activeColor,
+          inactiveColor: inactiveColor,
+          avatarUrl: avatarUrl,
+        ),
+      );
       actionsList.add([
         IconButton(
           onPressed: () => _profileKey.currentState?.refreshData(),
           icon: const Icon(Icons.refresh),
         ),
       ]);
-      titles.add(languageProvider.t('profile'));
+      titles.add(languageProvider.t('settings'));
+      buildIndex++;
     }
 
     // Ensure _currentIndex is valid
@@ -583,110 +334,213 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       _currentIndex = 0;
     }
 
-    final navigationItems = <Map<String, dynamic>>[];
-    final moreItems = <Map<String, dynamic>>[];
-
-    void addNavItem({
-      required int screenIndex,
-      required IconData icon,
-      required IconData selectedIcon,
-      required String label,
-    }) {
-      navigationItems.add({
-        'isMore': false,
-        'screenIndex': screenIndex,
-        'icon': icon,
-        'selectedIcon': selectedIcon,
-        'label': label,
-      });
-    }
-
-    addNavItem(
-      screenIndex: 0,
-      icon: Icons.home_outlined,
-      selectedIcon: Icons.home_rounded,
-      label: languageProvider.t('nav_dashboard'),
-    );
-
-    if (recordsIndex != -1) {
-      addNavItem(
-        screenIndex: recordsIndex,
-        icon: Icons.inventory_2_outlined,
-        selectedIcon: Icons.inventory_2_rounded,
-        label: languageProvider.t('nav_records'),
-      );
-    }
-
-    if (ordersIndex != -1) {
-      addNavItem(
-        screenIndex: ordersIndex,
-        icon: Icons.receipt_long_outlined,
-        selectedIcon: Icons.receipt_long_rounded,
-        label: languageProvider.t('nav_orders'),
-      );
-    }
-
-    addNavItem(
-      screenIndex: alertsIndex,
-      icon: Icons.notifications_outlined,
-      selectedIcon: Icons.notifications_rounded,
-      label: languageProvider.t('nav_alerts'),
-    );
-
-    if (recordReportIndex != -1) {
-      moreItems.add({
-        'icon': Icons.assignment_turned_in_outlined,
-        'title': languageProvider.t('record_report'),
-        'screenIndex': recordReportIndex,
-      });
-    }
-
-    if (deliveryReportIndex != -1) {
-      moreItems.add({
-        'icon': Icons.bar_chart_outlined,
-        'title': languageProvider.t('delivered_report'),
-        'screenIndex': deliveryReportIndex,
-      });
-    }
-
-    if (profileIndex != -1) {
-      moreItems.add({
-        'icon': Icons.person_outline,
-        'title': languageProvider.t('profile'),
-        'screenIndex': profileIndex,
-      });
-    }
-
-    if (moreItems.isNotEmpty) {
-      navigationItems.add({
-        'isMore': true,
-        'moreItems': moreItems,
-        'icon': Icons.menu_open_outlined,
-        'selectedIcon': Icons.menu_open,
-        'label': languageProvider.t('nav_more'),
-      });
-    }
-
-    int selectedNavIndex = navigationItems.indexWhere(
-      (c) => c['isMore'] == false && c['screenIndex'] == _currentIndex,
-    );
-    if (selectedNavIndex == -1) {
-      selectedNavIndex = navigationItems.indexWhere((c) => c['isMore'] == true);
-      if (selectedNavIndex == -1) selectedNavIndex = 0;
-    }
-
     return Scaffold(
       appBar: AppBar(
+        leadingWidth: menuItems.isEmpty ? null : 92,
+        leading: menuItems.isEmpty
+            ? null
+            : _buildMenuButton(
+                context: context,
+                languageProvider: languageProvider,
+                menuItems: menuItems,
+                activeColor: activeColor,
+                inactiveColor: inactiveColor,
+              ),
         title: Text(titles[_currentIndex]),
         actions: actionsList[_currentIndex],
+        elevation: 0,
       ),
       body: IndexedStack(index: _currentIndex, children: pages),
-      bottomNavigationBar: _buildBottomNavigationBar(
-        context: context,
-        languageProvider: languageProvider,
-        navigationItems: navigationItems,
-        selectedNavIndex: selectedNavIndex,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          boxShadow: [
+            BoxShadow(
+              color: isDark
+                  ? Colors.black26
+                  : Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 60,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: bottomNavItems,
+            ),
+          ),
+        ),
       ),
     );
   }
+
+  Widget _buildMenuButton({
+    required BuildContext context,
+    required LanguageProvider languageProvider,
+    required List<_MenuNavItem> menuItems,
+    required Color activeColor,
+    required Color inactiveColor,
+  }) {
+    final isSelected = menuItems.any((item) => item.index == _currentIndex);
+    final foregroundColor = isSelected ? activeColor : inactiveColor;
+
+    return TextButton.icon(
+      onPressed: () => _showMenuSheet(
+        context: context,
+        languageProvider: languageProvider,
+        menuItems: menuItems,
+        activeColor: activeColor,
+      ),
+      icon: Icon(Icons.menu_rounded, color: foregroundColor, size: 22),
+      label: Text(
+        languageProvider.t('menu'),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: foregroundColor,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.only(left: 12, right: 8),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    );
+  }
+
+  void _showMenuSheet({
+    required BuildContext context,
+    required LanguageProvider languageProvider,
+    required List<_MenuNavItem> menuItems,
+    required Color activeColor,
+  }) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    languageProvider.t('menu'),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              for (final item in menuItems)
+                ListTile(
+                  leading: Icon(
+                    item.icon,
+                    color: item.index == _currentIndex ? activeColor : null,
+                  ),
+                  title: Text(item.label),
+                  selected: item.index == _currentIndex,
+                  selectedColor: activeColor,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _goToTab(item.index);
+                  },
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildNavItem({
+    required IconData icon,
+    required IconData selectedIcon,
+    required String label,
+    required int index,
+    required bool isSelected,
+    required Color activeColor,
+    required Color inactiveColor,
+    String? avatarUrl,
+  }) {
+    Widget iconWidget = avatarUrl != null && avatarUrl.isNotEmpty
+        ? (isSelected
+              ? Container(
+                  key: const ValueKey('avatar_selected'),
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: activeColor, width: 2),
+                  ),
+                  child: CircleAvatar(
+                    radius: 11,
+                    backgroundImage: NetworkImage(avatarUrl),
+                    backgroundColor: Colors.transparent,
+                  ),
+                )
+              : CircleAvatar(
+                  key: const ValueKey('avatar_unselected'),
+                  radius: 13,
+                  backgroundImage: NetworkImage(avatarUrl),
+                  backgroundColor: Colors.transparent,
+                ))
+        : Icon(
+            isSelected ? selectedIcon : icon,
+            key: ValueKey<bool>(isSelected),
+            color: isSelected ? activeColor : inactiveColor,
+            size: 26,
+          );
+
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _goToTab(index),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return ScaleTransition(scale: animation, child: child);
+              },
+              child: iconWidget,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected ? activeColor : inactiveColor,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MenuNavItem {
+  const _MenuNavItem({
+    required this.icon,
+    required this.label,
+    required this.index,
+  });
+
+  final IconData icon;
+  final String label;
+  final int index;
 }

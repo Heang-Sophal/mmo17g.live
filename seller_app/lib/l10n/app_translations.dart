@@ -31,7 +31,7 @@ const Map<String, String> _en = {
   'password_min_6_chars': 'Password must be at least 6 characters',
   'access_restricted': 'Access Restricted',
   'only_sale_role_access':
-      'Only users with "Sale", "Delivery", "Admin", or "Owner" role can access this app.',
+      'Only users with "Sale", "Delivery", "Admin", "Owner", or "Recorder" role can access this app.',
   'account_blocked': 'Account Temporarily Blocked',
   'account_blocked_msg':
       'Too many failed login attempts. Try again after {time}.',
@@ -87,9 +87,11 @@ const Map<String, String> _en = {
   'nav_products': 'Products',
   'nav_orders': 'Orders',
   'nav_alerts': 'Alerts',
-  'nav_more': 'More',
+  'nav_more': 'Menu',
   'nav_reports': 'Reports',
   'nav_profile': 'Profile',
+  'menu': 'Menu',
+  'settings': 'Settings',
   'more_menu_hint': 'Choose a page to open',
 
   // POS
@@ -304,6 +306,11 @@ const Map<String, String> _en = {
       'You have reached the maximum limit of 3 profile edits per year.',
   'go_back': 'Go Back',
   'profile_updated': 'Profile updated successfully',
+  'permissions_explain':
+      'Permissions originate from the web. Toggle here to enable/disable on this device.',
+  'enabled_on_mobile': 'Enabled on mobile',
+  'disabled_on_mobile': 'Disabled on mobile',
+  'controlled_by_web': 'Controlled from web permissions',
   'choose_from_gallery': 'Choose from Gallery',
   'take_photo': 'Take Photo',
   'remove_photo': 'Remove Photo',
@@ -351,7 +358,7 @@ const Map<String, String> _km = {
   'password_min_6_chars': 'ពាក្យសម្ងាត់ត្រូវមានយ៉ាងតិច ៦ តួអក្សរ',
   'access_restricted': 'ការចូលប្រើត្រូវបានហាមឃាត់',
   'only_sale_role_access':
-      'មានតែអ្នកដែលមានតួនាទី "Sale", "Delivery", "Admin", ឬ "Owner" ប៉ុណ្ណោះដែលអាចចូលប្រើកម្មវិធីនេះបាន។',
+      'មានតែអ្នកដែលមានតួនាទី "Sale", "Delivery", "Admin", "Owner" ឬ "Recorder" ប៉ុណ្ណោះដែលអាចចូលប្រើកម្មវិធីនេះបាន។',
   'account_blocked': 'គណនីត្រូវបានផ្អាកបណ្តោះអាសន្ន',
   'account_blocked_msg':
       'ការចូលបរាជ័យច្រើនដងពេក។ សូមព្យាយាមម្តងទៀតនៅម៉ោង {time}។',
@@ -406,9 +413,11 @@ const Map<String, String> _km = {
   'nav_products': 'ផលិតផល',
   'nav_orders': 'ការបញ្ជាទិញ',
   'nav_alerts': 'ការជូនដំណឹង',
-  'nav_more': 'បន្ថែម',
+  'nav_more': 'ម៉ឺនុយ',
   'nav_reports': 'របាយការណ៍',
   'nav_profile': 'ប្រវត្តិរូប',
+  'menu': 'ម៉ឺនុយ',
+  'settings': 'ការកំណត់',
   'more_menu_hint': 'ជ្រើសរើសទំព័រដែលអ្នកចង់បើក',
 
   // POS
@@ -619,6 +628,11 @@ const Map<String, String> _km = {
   'edit_limit_reached_message': 'អ្នកបានឈានដល់កំណត់អតិបរមា ៣ ដងក្នុងមួយឆ្នាំ។',
   'go_back': 'ថយក្រោយ',
   'profile_updated': 'ប្រវត្តិរូបត្រូវបានធ្វើបច្ចុប្បន្នភាពដោយជោគជ័យ',
+  'permissions_explain':
+      'សិទ្ធិទាំងនេះត្រូវបានកំណត់ពីប្រព័ន្ធវែប។ បិទ/បើកនៅទីនេះដើម្បីបើក/បិទលើឧបករណ៍នេះ។',
+  'enabled_on_mobile': 'បានបើកលើទូរស័ព្ទ',
+  'disabled_on_mobile': 'បានបិទលើទូរស័ព្ធ',
+  'controlled_by_web': 'ត្រូវបានគ្រប់គ្រងពីវែប',
   'choose_from_gallery': 'ជ្រើសរើសពីវិចិត្រសាល',
   'take_photo': 'ថតរូប',
   'remove_photo': 'ដករូបភាពចេញ',

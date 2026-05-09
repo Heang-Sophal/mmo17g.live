@@ -24,7 +24,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _loadProfile();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadProfile();
+      }
+    });
   }
 
   @override
@@ -510,29 +514,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const Divider(height: 1),
-          // My Report
-          ListTile(
-            leading: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.teal.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.assessment, color: Colors.teal),
-            ),
-            title: Text(languageProvider.t('my_report')),
-            subtitle: Text(languageProvider.t('view_sales_report')),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SalesBySellerReportScreen(),
+          if (profileProvider.profile?.hasPermission('mobile_seller_reports') ==
+              true) ...[
+            // My Report
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.teal.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              );
-            },
-          ),
-          const Divider(height: 1),
+                child: Icon(Icons.assessment, color: Colors.teal),
+              ),
+              title: Text(languageProvider.t('my_report')),
+              subtitle: Text(languageProvider.t('view_sales_report')),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SalesBySellerReportScreen(),
+                  ),
+                );
+              },
+            ),
+            const Divider(height: 1),
+          ],
           // Account Settings
           ListTile(
             leading: Container(

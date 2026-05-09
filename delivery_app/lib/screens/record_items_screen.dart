@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
-class OrdersScreen extends StatefulWidget {
-  const OrdersScreen({
+class RecordItemsScreen extends StatefulWidget {
+  const RecordItemsScreen({
     super.key,
     this.initialSaleRef,
     this.autoOpenInitialOrder = false,
@@ -20,12 +20,13 @@ class OrdersScreen extends StatefulWidget {
   final bool recordMode;
 
   @override
-  State<OrdersScreen> createState() => OrdersScreenState();
+  State<RecordItemsScreen> createState() => RecordItemsScreenState();
 }
 
-class OrdersScreenState extends State<OrdersScreen> {
+class RecordItemsScreenState extends State<RecordItemsScreen> {
   final DeliveryApiService _apiService = DeliveryApiService();
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
   List<Map<String, dynamic>> _orders = [];
   bool _isLoading = true;
@@ -46,14 +47,14 @@ class OrdersScreenState extends State<OrdersScreen> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
   Future<void> refreshAndScrollToTop() async {
-    final controller = PrimaryScrollController.of(context);
-    if (controller.hasClients) {
-      await controller.animateTo(
+    if (_scrollController.hasClients) {
+      await _scrollController.animateTo(
         0,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
@@ -145,6 +146,7 @@ class OrdersScreenState extends State<OrdersScreen> {
     final content = RefreshIndicator(
       onRefresh: refreshData,
       child: ListView(
+        controller: _scrollController,
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
           TextField(
@@ -365,20 +367,12 @@ class OrdersScreenState extends State<OrdersScreen> {
                                         ),
                                       )
                                     : Text(
-                                        widget.recordMode
-                                            ? languageProvider.t(
-                                                'complete_record',
-                                              )
-                                            : languageProvider.t(
-                                                'complete_order',
-                                              ),
+                                        languageProvider.t('complete_order'),
                                       ),
                               )
                             else if (_isDeliveredOrder(order))
                               Text(
-                                widget.recordMode
-                                    ? languageProvider.t('completed')
-                                    : languageProvider.t('delivered'),
+                                languageProvider.t('delivered'),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w700,
                                   color: Color(0xFF16A34A),
@@ -450,8 +444,6 @@ class OrdersScreenState extends State<OrdersScreen> {
           backgroundColor: const Color(0xFFD6A735),
         ),
       );
-
-      await refreshData();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -496,8 +488,6 @@ class OrdersScreenState extends State<OrdersScreen> {
           backgroundColor: const Color(0xFF16A34A),
         ),
       );
-
-      await refreshData();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -884,19 +874,13 @@ class OrdersScreenState extends State<OrdersScreen> {
                                 width: double.infinity,
                                 child: FilledButton(
                                   onPressed: () async {
-                                    final canAcceptCurrent = _canAcceptOrder(
-                                      currentOrder,
-                                    );
-                                    final canCompleteCurrent =
-                                        _canCompleteOrder(currentOrder);
-
-                                    if (canAcceptCurrent) {
+                                    if (_canAcceptOrder(currentOrder)) {
                                       Navigator.pop(context);
                                       await _acceptOrder(currentOrder);
                                       return;
                                     }
 
-                                    if (canCompleteCurrent) {
+                                    if (_canCompleteOrder(currentOrder)) {
                                       Navigator.pop(context);
                                       await _completeOrder(currentOrder);
                                     }

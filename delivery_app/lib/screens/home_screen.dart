@@ -60,6 +60,7 @@ class HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final languageProvider = context.watch<LanguageProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (_isLoading && _dashboard == null) {
       return const Center(child: CircularProgressIndicator());
@@ -110,12 +111,18 @@ class HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [
-                  Color(0xFFD6A735),
-                  Color(0xFF735F33),
-                  Color(0xFF1D4ED8),
-                ],
+              gradient: LinearGradient(
+                colors: isDark
+                    ? const [
+                        Color(0xFF6F4D08),
+                        Color(0xFF35250A),
+                        Color(0xFF13213D),
+                      ]
+                    : const [
+                        Color(0xFFD6A735),
+                        Color(0xFF735F33),
+                        Color(0xFF1D4ED8),
+                      ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -423,16 +430,27 @@ class _MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? const Color(0xFF21190B) : Colors.white;
+    final textColor = isDark
+        ? const Color(0xFFFFE8A7)
+        : const Color(0xFF201607);
+    final mutedColor = isDark ? Colors.white70 : const Color(0xFF64748B);
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: surfaceColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: color.withValues(alpha: 0.10)),
-        boxShadow: const [
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : color.withValues(alpha: 0.10),
+        ),
+        boxShadow: [
           BoxShadow(
-            color: Color(0x12201607),
+            color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.07),
             blurRadius: 18,
-            offset: Offset(0, 10),
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -455,7 +473,7 @@ class _MetricCard extends StatelessWidget {
               value,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w800,
-                color: const Color(0xFF201607),
+                color: textColor,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -465,10 +483,7 @@ class _MetricCard extends StatelessWidget {
               title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFF64748B),
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(color: mutedColor, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -492,19 +507,29 @@ class _QuickActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? const Color(0xFF21190B) : Colors.white;
+    final textColor = isDark
+        ? const Color(0xFFFFE8A7)
+        : const Color(0xFF201607);
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(24),
       child: Ink(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: surfaceColor,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: color.withValues(alpha: 0.10)),
-          boxShadow: const [
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : color.withValues(alpha: 0.10),
+          ),
+          boxShadow: [
             BoxShadow(
-              color: Color(0x12201607),
+              color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.07),
               blurRadius: 18,
-              offset: Offset(0, 10),
+              offset: const Offset(0, 10),
             ),
           ],
         ),
@@ -534,10 +559,7 @@ class _QuickActionCard extends StatelessWidget {
               const SizedBox(height: 18),
               Text(
                 title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF201607),
-                ),
+                style: TextStyle(fontWeight: FontWeight.w800, color: textColor),
               ),
             ],
           ),

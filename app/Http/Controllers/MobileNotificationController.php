@@ -41,7 +41,7 @@ class MobileNotificationController extends Controller
         ]);
     }
 
-    public function updateFirebaseCredentials(Request $request): JsonResponse
+    public function updateFirebaseCredentials(Request $request, FirebasePushService $firebasePushService): JsonResponse
     {
         $request->validate([
             'firebase_credentials' => 'required|file|mimes:json,application/json,text/json',
@@ -54,6 +54,18 @@ class MobileNotificationController extends Controller
         $fileName = "firebase-{$appType}-service-account.json";
 
         try {
+            $uploadedPath = $file->getRealPath();
+            $credentialIssue = $uploadedPath
+                ? $firebasePushService->serviceAccountFileIssue($uploadedPath)
+                : 'Uploaded Firebase credentials file could not be read';
+
+            if ($credentialIssue) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $credentialIssue,
+                ], 422);
+            }
+
             $filePath = $file->storeAs('', $fileName, 'local');
 
             if ($filePath === false) {
@@ -66,14 +78,18 @@ class MobileNotificationController extends Controller
             }
 
             // Update .env file
-            $envKey = 'FIREBASE_' . strtoupper($appType) . '_CREDENTIALS';
-            $envValue = $fullPath;
+            $credentialsEnvKey = 'FIREBASE_' . strtoupper($appType) . '_CREDENTIALS';
+            $projectEnvKey = 'FIREBASE_' . strtoupper($appType) . '_PROJECT_ID';
+            $projectId = $firebasePushService->serviceAccountProjectId($fullPath);
 
             try {
-                $this->setEnvValue($envKey, $envValue);
+                $this->setEnvValue($credentialsEnvKey, $fullPath);
+                if ($projectId) {
+                    $this->setEnvValue($projectEnvKey, $projectId);
+                }
             } catch (\Throwable $e) {
                 Log::error('Failed to update .env with Firebase credentials.', [
-                    'env_key' => $envKey,
+                    'env_key' => $credentialsEnvKey,
                     'path' => $fullPath,
                     'error' => $e->getMessage(),
                 ]);
@@ -99,6 +115,7 @@ class MobileNotificationController extends Controller
         return response()->json([
             'success' => true,
             'message' => "Firebase credentials for {$appType} updated successfully.",
+            'project_id' => $projectId ?? null,
         ]);
     }
 

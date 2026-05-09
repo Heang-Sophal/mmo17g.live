@@ -40,7 +40,8 @@ class UserModel {
     if (perms is List) {
       mobilePerms = perms.map((e) => e.toString()).toList();
     }
-    final role = map['role'] ?? 'Sale';
+    final role = map['role']?.toString() ?? 'Sale';
+    final normalizedRole = role.toLowerCase();
     return UserModel(
       id: map['id']?.toString() ?? '',
       name: map['name'] ?? '',
@@ -51,8 +52,8 @@ class UserModel {
       mobilePermissions: mobilePerms,
       isDelivery:
           map['is_delivery'] == true ||
-          role.toString().toLowerCase() == 'delivery' ||
-          role.toString().toLowerCase() == 'laivrison',
+          normalizedRole == 'delivery' ||
+          normalizedRole == 'laivrison',
       assignedWarehouseId: assignedWarehouse is Map
           ? assignedWarehouse['id']?.toString()
           : null,
@@ -65,10 +66,20 @@ class UserModel {
     );
   }
 
-  bool canViewProducts() => mobilePermissions.contains('view');
-  bool canCreateProducts() => mobilePermissions.contains('create');
-  bool canEditProducts() => mobilePermissions.contains('edit');
-  bool canDeleteProducts() => mobilePermissions.contains('delete');
+  bool hasMobilePermission(String permission) =>
+      mobilePermissions.contains(permission);
+  bool canViewProducts() =>
+      hasMobilePermission('mobile_seller_products') ||
+      hasMobilePermission('view');
+  bool canCreateProducts() =>
+      hasMobilePermission('mobile_seller_products') ||
+      hasMobilePermission('create');
+  bool canEditProducts() =>
+      hasMobilePermission('mobile_seller_products') ||
+      hasMobilePermission('edit');
+  bool canDeleteProducts() =>
+      hasMobilePermission('mobile_seller_products') ||
+      hasMobilePermission('delete');
 
   Map<String, dynamic> toMap() {
     return {

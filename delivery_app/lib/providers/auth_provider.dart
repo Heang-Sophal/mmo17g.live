@@ -21,6 +21,7 @@ class DeliveryUser {
     required this.role,
     required this.isDelivery,
     required this.canAccessDeliveryApp,
+    this.mobilePermissions = const [],
     this.avatarUrl,
     this.assignedWarehouseId,
     this.assignedWarehouseName,
@@ -33,6 +34,7 @@ class DeliveryUser {
   final String role;
   final bool isDelivery;
   final bool canAccessDeliveryApp;
+  final List<String> mobilePermissions;
   final String? avatarUrl;
   final String? assignedWarehouseId;
   final String? assignedWarehouseName;
@@ -56,6 +58,9 @@ class DeliveryUser {
       isDelivery: isDeliveryRole,
       canAccessDeliveryApp:
           isDeliveryRole || _deliveryAppAllowedRoles.contains(normalizedRole),
+      mobilePermissions: _stringListFromMapValue(
+        map['mobile_permissions'] ?? map['permissions'],
+      ),
       avatarUrl: map['avatar_url']?.toString(),
       assignedWarehouseId: assignedWarehouse is Map
           ? assignedWarehouse['id']?.toString()
@@ -77,6 +82,7 @@ class DeliveryUser {
       'role': role,
       'is_delivery': isDelivery,
       'can_access_delivery_app': canAccessDeliveryApp,
+      'mobile_permissions': mobilePermissions,
       'avatar_url': avatarUrl,
       'assigned_warehouse': assignedWarehouseId == null
           ? null
@@ -94,6 +100,7 @@ class DeliveryUser {
     String? role,
     bool? isDelivery,
     bool? canAccessDeliveryApp,
+    List<String>? mobilePermissions,
     String? avatarUrl,
     String? assignedWarehouseId,
     String? assignedWarehouseName,
@@ -106,6 +113,7 @@ class DeliveryUser {
       role: role ?? this.role,
       isDelivery: isDelivery ?? this.isDelivery,
       canAccessDeliveryApp: canAccessDeliveryApp ?? this.canAccessDeliveryApp,
+      mobilePermissions: mobilePermissions ?? this.mobilePermissions,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       assignedWarehouseId: assignedWarehouseId ?? this.assignedWarehouseId,
       assignedWarehouseName:
@@ -113,6 +121,16 @@ class DeliveryUser {
       assignedWarehouseCity:
           assignedWarehouseCity ?? this.assignedWarehouseCity,
     );
+  }
+
+  static List<String> _stringListFromMapValue(dynamic value) {
+    if (value is! List) return const [];
+
+    return value
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
   }
 }
 
@@ -196,7 +214,8 @@ class AuthProvider extends ChangeNotifier {
 
       if (!user.canAccessDeliveryApp) {
         _isLoading = false;
-        _error = 'Only Delivery, Recorder, Admin, or Owner users can access this app.';
+        _error =
+            'Only Delivery, Recorder, Admin, or Owner users can access this app.';
         notifyListeners();
         return {
           'success': false,
@@ -278,6 +297,9 @@ class AuthProvider extends ChangeNotifier {
       role: role,
       isDelivery: isDeliveryRole,
       canAccessDeliveryApp: canAccessDeliveryApp,
+      mobilePermissions: DeliveryUser._stringListFromMapValue(
+        profile['mobile_permissions'] ?? profile['permissions'],
+      ),
       avatarUrl: profile['avatar_url']?.toString() ?? _user!.avatarUrl,
       assignedWarehouseId: assignedWarehouse is Map
           ? assignedWarehouse['id']?.toString()

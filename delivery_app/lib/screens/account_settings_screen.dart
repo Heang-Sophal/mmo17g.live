@@ -278,11 +278,11 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           : _usernameController.text.trim(),
     );
 
+    if (!mounted) return;
+
     setState(() {
       _isSaving = false;
     });
-
-    if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

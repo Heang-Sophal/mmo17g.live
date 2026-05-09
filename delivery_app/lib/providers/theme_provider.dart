@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeProvider extends ChangeNotifier {
-  static const String _storageKey = 'seller_app_theme_mode';
+  static const String _storageKey = 'delivery_app_theme_mode';
 
   ThemeMode _themeMode = ThemeMode.light;
 

@@ -43,6 +43,7 @@ class FirebasePushService
         $appType = $appType ?? 'seller';
         $config = $this->getFirebaseConfig($appType);
         $credentials = $config['credentials'];
+        $configuredProjectId = $config['project_id'] ?? null;
 
         if (! $credentials) {
             return "Firebase service account credentials are not configured for {$appType} app.";
@@ -52,11 +53,58 @@ class FirebasePushService
             return "Firebase service account file was not found for {$appType} app.";
         }
 
+        $credentialIssue = $this->serviceAccountFileIssue($credentials, $configuredProjectId);
+        if ($credentialIssue) {
+            return "{$credentialIssue} ({$appType} app).";
+        }
+
         if (! $this->projectId($appType)) {
             return "Firebase project ID is not configured for {$appType} app.";
         }
 
         return null;
+    }
+
+    public function serviceAccountFileIssue(string $path, ?string $expectedProjectId = null): ?string
+    {
+        if (! is_file($path) || ! is_readable($path)) {
+            return 'Firebase service account file was not found or is not readable';
+        }
+
+        $json = json_decode((string) file_get_contents($path), true);
+        if (! is_array($json)) {
+            return 'Firebase service account file is not valid JSON';
+        }
+
+        if (($json['type'] ?? null) !== 'service_account') {
+            return 'Firebase credentials must be a service account JSON file, not google-services.json';
+        }
+
+        foreach (['project_id', 'private_key', 'client_email', 'client_id'] as $key) {
+            if (empty($json[$key])) {
+                return "Firebase service account JSON is missing {$key}";
+            }
+        }
+
+        $projectId = trim((string) $json['project_id']);
+        $expectedProjectId = trim((string) $expectedProjectId);
+        if ($expectedProjectId !== '' && $projectId !== $expectedProjectId) {
+            return "Firebase service account project ({$projectId}) does not match configured project ({$expectedProjectId})";
+        }
+
+        return null;
+    }
+
+    public function serviceAccountProjectId(string $path): ?string
+    {
+        if (! is_file($path) || ! is_readable($path)) {
+            return null;
+        }
+
+        $json = json_decode((string) file_get_contents($path), true);
+        $projectId = trim((string) ($json['project_id'] ?? ''));
+
+        return $projectId !== '' ? $projectId : null;
     }
 
     /**
@@ -218,6 +266,18 @@ class FirebasePushService
             ]);
 
             return null;
+        }
+
+        if (is_string($credentials)) {
+            $credentialIssue = $this->serviceAccountFileIssue($credentials, $config['project_id'] ?? null);
+            if ($credentialIssue) {
+                Log::warning('Firebase service account credentials are invalid.', [
+                    'app_type' => $appType,
+                    'message' => $credentialIssue,
+                ]);
+
+                return null;
+            }
         }
 
         try {
