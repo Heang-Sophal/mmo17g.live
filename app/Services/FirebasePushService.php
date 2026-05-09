@@ -207,11 +207,6 @@ class FirebasePushService
         $tokenAppType = trim((string) ($token->app_type ?? ''));
         $platform = strtolower(trim((string) ($token->platform ?? '')));
 
-        // The current Delivery Android app is registered in the seller Firebase project.
-        if ($tokenAppType === 'delivery' && $platform === 'android' && $this->projectId('seller')) {
-            return 'seller';
-        }
-
         return $fallbackAppType ?: ($tokenAppType !== '' ? $tokenAppType : 'seller');
     }
 

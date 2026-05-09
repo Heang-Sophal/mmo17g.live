@@ -30,12 +30,6 @@ class AddFirebaseProjectIdToMobileDeviceTokensTable extends Migration
         DB::table('mobile_device_tokens')
             ->whereNull('firebase_project_id')
             ->where('app_type', 'delivery')
-            ->where('platform', 'android')
-            ->update(['firebase_project_id' => 'g-mobile-app-92644']);
-
-        DB::table('mobile_device_tokens')
-            ->whereNull('firebase_project_id')
-            ->where('app_type', 'delivery')
             ->update(['firebase_project_id' => 'g-delivery-app']);
     }
 

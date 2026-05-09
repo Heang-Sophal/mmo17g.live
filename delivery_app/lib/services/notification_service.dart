@@ -55,8 +55,7 @@ void _handleNotificationClick(Map<String, dynamic> data) {
 
 class NotificationService {
   static const String _appType = 'delivery';
-  static String get _firebaseProjectId =>
-      Platform.isIOS ? 'g-delivery-app' : 'g-mobile-app-92644';
+  static const String _firebaseProjectId = 'g-delivery-app';
   static const AndroidNotificationChannel _androidChannel =
       AndroidNotificationChannel(
         'delivery_high_importance',
