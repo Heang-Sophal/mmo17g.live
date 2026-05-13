@@ -52,6 +52,9 @@ Route::get('images/{filename}', [MediaFileController::class, 'app'])->where('fil
 // Use local filesystem check to avoid R2 connection errors during setup
 $installed = file_exists(storage_path('app/public/installed'));
 
+Route::view('/privacy-policy', 'legal.privacy-policy')->name('legal.privacy-policy');
+Route::view('/support', 'legal.support')->name('legal.support');
+
 // ------------------------------------------------------------------\\
 // ONLINE STORE ROUTES (Only if installed)
 if ($installed === true) {

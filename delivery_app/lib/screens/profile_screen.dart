@@ -3,6 +3,7 @@ import 'package:delivery_app/providers/auth_provider.dart';
 import 'package:delivery_app/providers/language_provider.dart';
 import 'package:delivery_app/providers/profile_provider.dart';
 import 'package:delivery_app/providers/theme_provider.dart';
+import 'package:delivery_app/widgets/legal_support_links.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -233,6 +234,8 @@ class ProfileScreenState extends State<ProfileScreen> {
                   onChanged: (_) => themeProvider.toggleTheme(),
                 ),
               ),
+              const Divider(height: 1),
+              const LegalSupportTileGroup(),
               const Divider(height: 1),
               _SettingsTile(
                 icon: Icons.logout_rounded,

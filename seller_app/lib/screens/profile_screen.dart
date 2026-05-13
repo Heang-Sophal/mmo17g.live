@@ -7,6 +7,7 @@ import 'package:seller_app/providers/language_provider.dart';
 import 'package:seller_app/screens/account_settings_screen.dart';
 import 'package:seller_app/screens/sales_by_seller_report_screen.dart';
 import 'package:seller_app/controllers/navigation_bar_controller.dart';
+import 'package:seller_app/widgets/legal_support_links.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, this.menuButton});
@@ -624,6 +625,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _showChangePasswordDialog(context, profileProvider);
             },
           ),
+          const Divider(height: 1),
+          const LegalSupportTileGroup(),
           const Divider(height: 1),
           // Logout Button
           ListTile(

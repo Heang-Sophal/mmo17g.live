@@ -4,6 +4,7 @@ import 'package:seller_app/providers/app_branding_provider.dart';
 import 'package:seller_app/providers/auth_provider.dart';
 import 'package:seller_app/providers/language_provider.dart';
 import 'package:seller_app/providers/theme_provider.dart';
+import 'package:seller_app/widgets/legal_support_links.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -504,6 +505,11 @@ class _SignInScreenState extends State<SignInScreen> {
                               ),
                             ),
                             const SizedBox(height: 18),
+                            LegalSupportLinks(
+                              compact: true,
+                              foregroundColor: deepGold,
+                            ),
+                            const SizedBox(height: 8),
                             Consumer<AuthProvider>(
                               builder: (context, authProvider, child) {
                                 if (authProvider.error != null &&
@@ -865,7 +871,8 @@ class _SignInScreenState extends State<SignInScreen> {
         setState(() {
           _errorTitle = 'Error';
           _errorMessage =
-              result['message']?.toString() ?? 'Login failed. Please try again.';
+              result['message']?.toString() ??
+              'Login failed. Please try again.';
         });
       }
     }
