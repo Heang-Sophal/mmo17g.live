@@ -127,6 +127,9 @@ class _SignInScreenState extends State<SignInScreen> {
             final minContentHeight = constraints.maxHeight > 40
                 ? constraints.maxHeight - 40
                 : 0.0;
+            final useWideLayout = constraints.maxWidth >= 700;
+            final contentMaxWidth = useWideLayout ? 940.0 : 420.0;
+            final logoSize = useWideLayout ? 104.0 : 116.0;
 
             return Stack(
               children: [
@@ -159,271 +162,69 @@ class _SignInScreenState extends State<SignInScreen> {
                     constraints: BoxConstraints(minHeight: minContentHeight),
                     child: Center(
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 420),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: _buildHeaderControls(
-                                languageProvider,
-                                themeProvider: themeProvider,
-                                isDark: isDark,
-                              ),
-                            ),
-                            const SizedBox(height: 18),
-                            Container(
-                              width: 116,
-                              height: 116,
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                gradient: RadialGradient(
-                                  colors: logoGradient,
-                                  center: const Alignment(-0.1, -0.15),
-                                  radius: 0.9,
-                                ),
-                                borderRadius: BorderRadius.circular(30),
-                                border: Border.all(
-                                  color: isDark
-                                      ? primaryGold.withValues(alpha: 0.46)
-                                      : const Color(0xFFE7C76E),
-                                  width: 1.4,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: isDark
-                                        ? Colors.black.withValues(alpha: 0.22)
-                                        : primaryGold.withValues(alpha: 0.14),
-                                    blurRadius: 24,
-                                    offset: const Offset(0, 10),
+                        constraints: BoxConstraints(maxWidth: contentMaxWidth),
+                        child: useWideLayout
+                            ? Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Expanded(
+                                    child: _buildBrandHeader(
+                                      languageProvider: languageProvider,
+                                      brandingProvider: brandingProvider,
+                                      themeProvider: themeProvider,
+                                      isDark: isDark,
+                                      primaryGold: primaryGold,
+                                      deepGold: deepGold,
+                                      mutedColor: mutedColor,
+                                      logoGradient: logoGradient,
+                                      logoSize: logoSize,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 28),
+                                  SizedBox(
+                                    width: 420,
+                                    child: _buildSignInPanel(
+                                      languageProvider: languageProvider,
+                                      authProvider: authProvider,
+                                      isDark: isDark,
+                                      surfaceColor: surfaceColor,
+                                      primaryGold: primaryGold,
+                                      deepGold: deepGold,
+                                      textColor: textColor,
+                                      mutedColor: mutedColor,
+                                      borderColor: borderColor,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _buildBrandHeader(
+                                    languageProvider: languageProvider,
+                                    brandingProvider: brandingProvider,
+                                    themeProvider: themeProvider,
+                                    isDark: isDark,
+                                    primaryGold: primaryGold,
+                                    deepGold: deepGold,
+                                    mutedColor: mutedColor,
+                                    logoGradient: logoGradient,
+                                    logoSize: logoSize,
+                                  ),
+                                  const SizedBox(height: 18),
+                                  _buildSignInPanel(
+                                    languageProvider: languageProvider,
+                                    authProvider: authProvider,
+                                    isDark: isDark,
+                                    surfaceColor: surfaceColor,
+                                    primaryGold: primaryGold,
+                                    deepGold: deepGold,
+                                    textColor: textColor,
+                                    mutedColor: mutedColor,
+                                    borderColor: borderColor,
                                   ),
                                 ],
                               ),
-                              child: _buildBrandLogo(
-                                brandingProvider,
-                                iconColor: deepGold,
-                              ),
-                            ),
-                            const SizedBox(height: 22),
-                            _buildAppTitle(
-                              brandingProvider.appTitle,
-                              isDark: isDark,
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              languageProvider.t('sign_in_to_continue'),
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: mutedColor,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: surfaceColor.withValues(
-                                  alpha: isDark ? 0.92 : 0.96,
-                                ),
-                                borderRadius: BorderRadius.circular(30),
-                                border: Border.all(color: borderColor),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(
-                                      alpha: isDark ? 0.24 : 0.08,
-                                    ),
-                                    blurRadius: isDark ? 34 : 30,
-                                    offset: const Offset(0, 16),
-                                  ),
-                                ],
-                              ),
-                              child: Form(
-                                key: _formKey,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Container(
-                                          width: 48,
-                                          height: 48,
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              colors: [
-                                                isDark
-                                                    ? const Color(0xFF2B210E)
-                                                    : const Color(0xFFFFF4D6),
-                                                isDark
-                                                    ? const Color(0xFF4A3712)
-                                                    : const Color(0xFFF3D987),
-                                              ],
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                          ),
-                                          child: Icon(
-                                            Icons.local_shipping_rounded,
-                                            color: deepGold,
-                                            size: 24,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 14),
-                                        Expanded(
-                                          child: Text(
-                                            languageProvider.t('welcome_back'),
-                                            style: TextStyle(
-                                              color: textColor,
-                                              fontSize: 22,
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    if (_errorMessage != null) ...[
-                                      const SizedBox(height: 18),
-                                      _buildErrorMessage(
-                                        _errorMessage!,
-                                        isDark: isDark,
-                                      ),
-                                    ],
-                                    const SizedBox(height: 22),
-                                    TextFormField(
-                                      controller: _emailController,
-                                      onChanged: (_) => _clearError(),
-                                      keyboardType: TextInputType.emailAddress,
-                                      decoration: _inputDecoration(
-                                        label: languageProvider.t('email'),
-                                        icon: Icons.email_outlined,
-                                        isDark: isDark,
-                                        iconColor: deepGold,
-                                        mutedColor: mutedColor,
-                                      ),
-                                      validator: (value) {
-                                        if (value == null ||
-                                            value.trim().isEmpty) {
-                                          return languageProvider.t('email');
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                    const SizedBox(height: 16),
-                                    TextFormField(
-                                      controller: _passwordController,
-                                      obscureText: _obscurePassword,
-                                      onChanged: (_) => _clearError(),
-                                      decoration: _inputDecoration(
-                                        label: languageProvider.t('password'),
-                                        icon: Icons.lock_outline_rounded,
-                                        isDark: isDark,
-                                        iconColor: deepGold,
-                                        mutedColor: mutedColor,
-                                        suffixIcon: IconButton(
-                                          onPressed: () {
-                                            setState(() {
-                                              _obscurePassword =
-                                                  !_obscurePassword;
-                                            });
-                                          },
-                                          icon: Icon(
-                                            _obscurePassword
-                                                ? Icons.visibility_off_outlined
-                                                : Icons.visibility_outlined,
-                                            color: deepGold,
-                                          ),
-                                        ),
-                                      ),
-                                      validator: (value) {
-                                        if (value == null || value.isEmpty) {
-                                          return languageProvider.t('password');
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                    const SizedBox(height: 22),
-                                    DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        gradient: const LinearGradient(
-                                          colors: [
-                                            Color(0xFFFFD86A),
-                                            Color(0xFFD6A735),
-                                          ],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ),
-                                        borderRadius: BorderRadius.circular(18),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: primaryGold.withValues(
-                                              alpha: isDark ? 0.18 : 0.24,
-                                            ),
-                                            blurRadius: 18,
-                                            offset: const Offset(0, 10),
-                                          ),
-                                        ],
-                                      ),
-                                      child: SizedBox(
-                                        width: double.infinity,
-                                        height: 56,
-                                        child: FilledButton(
-                                          onPressed: authProvider.isLoading
-                                              ? null
-                                              : _submit,
-                                          style: FilledButton.styleFrom(
-                                            backgroundColor: Colors.transparent,
-                                            disabledBackgroundColor:
-                                                Colors.transparent,
-                                            foregroundColor: const Color(
-                                              0xFF201607,
-                                            ),
-                                            disabledForegroundColor:
-                                                const Color(
-                                                  0xFF201607,
-                                                ).withValues(alpha: 0.72),
-                                            shadowColor: Colors.transparent,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(18),
-                                            ),
-                                          ),
-                                          child: authProvider.isLoading
-                                              ? const SizedBox(
-                                                  width: 22,
-                                                  height: 22,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                        strokeWidth: 2.2,
-                                                        color: Color(
-                                                          0xFF201607,
-                                                        ),
-                                                      ),
-                                                )
-                                              : Text(
-                                                  languageProvider.t('sign_in'),
-                                                  style: const TextStyle(
-                                                    fontSize: 17,
-                                                    fontWeight: FontWeight.w800,
-                                                  ),
-                                                ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            LegalSupportLinks(
-                              compact: true,
-                              foregroundColor: deepGold,
-                            ),
-                          ],
-                        ),
                       ),
                     ),
                   ),
@@ -433,6 +234,267 @@ class _SignInScreenState extends State<SignInScreen> {
           },
         ),
       ),
+    );
+  }
+
+  Widget _buildBrandHeader({
+    required LanguageProvider languageProvider,
+    required AppBrandingProvider brandingProvider,
+    required ThemeProvider themeProvider,
+    required bool isDark,
+    required Color primaryGold,
+    required Color deepGold,
+    required Color mutedColor,
+    required List<Color> logoGradient,
+    required double logoSize,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: _buildHeaderControls(
+            languageProvider,
+            themeProvider: themeProvider,
+            isDark: isDark,
+          ),
+        ),
+        const SizedBox(height: 18),
+        Container(
+          width: logoSize,
+          height: logoSize,
+          padding: EdgeInsets.all(logoSize < 116 ? 14 : 16),
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              colors: logoGradient,
+              center: const Alignment(-0.1, -0.15),
+              radius: 0.9,
+            ),
+            borderRadius: BorderRadius.circular(logoSize < 116 ? 26 : 30),
+            border: Border.all(
+              color: isDark
+                  ? primaryGold.withValues(alpha: 0.46)
+                  : const Color(0xFFE7C76E),
+              width: 1.4,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isDark
+                    ? Colors.black.withValues(alpha: 0.22)
+                    : primaryGold.withValues(alpha: 0.14),
+                blurRadius: 24,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: _buildBrandLogo(brandingProvider, iconColor: deepGold),
+        ),
+        const SizedBox(height: 20),
+        _buildAppTitle(brandingProvider.appTitle, isDark: isDark),
+        const SizedBox(height: 10),
+        Text(
+          languageProvider.t('sign_in_to_continue'),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: mutedColor,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSignInPanel({
+    required LanguageProvider languageProvider,
+    required AuthProvider authProvider,
+    required bool isDark,
+    required Color surfaceColor,
+    required Color primaryGold,
+    required Color deepGold,
+    required Color textColor,
+    required Color mutedColor,
+    required Color borderColor,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: surfaceColor.withValues(alpha: isDark ? 0.92 : 0.96),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: borderColor),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.24 : 0.08),
+                blurRadius: isDark ? 34 : 30,
+                offset: const Offset(0, 16),
+              ),
+            ],
+          ),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            isDark
+                                ? const Color(0xFF2B210E)
+                                : const Color(0xFFFFF4D6),
+                            isDark
+                                ? const Color(0xFF4A3712)
+                                : const Color(0xFFF3D987),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(
+                        Icons.local_shipping_rounded,
+                        color: deepGold,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        languageProvider.t('welcome_back'),
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 16),
+                  _buildErrorMessage(_errorMessage!, isDark: isDark),
+                ],
+                const SizedBox(height: 22),
+                TextFormField(
+                  controller: _emailController,
+                  onChanged: (_) => _clearError(),
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: _inputDecoration(
+                    label: languageProvider.t('email'),
+                    icon: Icons.email_outlined,
+                    isDark: isDark,
+                    iconColor: deepGold,
+                    mutedColor: mutedColor,
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return languageProvider.t('email');
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  onChanged: (_) => _clearError(),
+                  decoration: _inputDecoration(
+                    label: languageProvider.t('password'),
+                    icon: Icons.lock_outline_rounded,
+                    isDark: isDark,
+                    iconColor: deepGold,
+                    mutedColor: mutedColor,
+                    suffixIcon: IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        color: deepGold,
+                      ),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return languageProvider.t('password');
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 22),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFD86A), Color(0xFFD6A735)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: primaryGold.withValues(
+                          alpha: isDark ? 0.18 : 0.24,
+                        ),
+                        blurRadius: 18,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: FilledButton(
+                      onPressed: authProvider.isLoading ? null : _submit,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        disabledBackgroundColor: Colors.transparent,
+                        foregroundColor: const Color(0xFF201607),
+                        disabledForegroundColor: const Color(
+                          0xFF201607,
+                        ).withValues(alpha: 0.72),
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                      child: authProvider.isLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                color: Color(0xFF201607),
+                              ),
+                            )
+                          : Text(
+                              languageProvider.t('sign_in'),
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        LegalSupportLinks(compact: true, foregroundColor: deepGold),
+      ],
     );
   }
 
