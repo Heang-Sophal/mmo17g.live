@@ -87,13 +87,12 @@ class AuthApiController extends Controller
 
             // ពិនិត្យមើលថាតើមាន User ឬអត់
             if (! $user) {
-                // កត់ត្រាការព្យាយាមខុស
                 $this->recordFailedAttempt($email, $ipAddress);
 
                 return response()->json([
                     'success' => false,
-                    'message' => $this->roleAccessMessage($appContext),
-                    'error_type' => 'invalid_credentials',
+                    'message' => 'No account found with this email address.',
+                    'error_type' => 'invalid_email',
                 ], 401);
             }
 
@@ -121,18 +120,30 @@ class AuthApiController extends Controller
 
             // ពិនិត្យមើល Password
             if (! Hash::check($password, $user->password)) {
-                // កត់ត្រាការព្យាយាមខុស
                 $this->recordFailedAttempt($email, $ipAddress);
 
-                // រាប់ចំនួនដងដែលបានព្យាយាមខុស
-                $attemptsCount = $this->getFailedAttemptsCount($email, $ipAddress);
-                $remainingAttempts = self::MAX_LOGIN_ATTEMPTS - $attemptsCount;
+                // រាប់ចំនួនដងខុស Password តាម Email ប៉ុណ្ណោះ (មិនចាំបាច់ IP)
+                $emailFailures = $this->getPasswordFailuresByEmail($email);
+
+                if ($emailFailures >= self::MAX_LOGIN_ATTEMPTS) {
+                    // ចាក់សោ Account បន្ទាប់ពីខុស ៣ ដង
+                    $user->update(['statut' => 0]);
+                    $this->clearFailedAttempts($email, $ipAddress);
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Your account has been locked due to '.self::MAX_LOGIN_ATTEMPTS.' failed login attempts. Please contact administrator.',
+                        'error_type' => 'account_locked',
+                    ], 403);
+                }
+
+                $remainingAttempts = max(0, self::MAX_LOGIN_ATTEMPTS - $emailFailures);
 
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid password.',
                     'error_type' => 'invalid_password',
-                    'attempts_remaining' => max(0, $remainingAttempts),
+                    'attempts_remaining' => $remainingAttempts,
                     'max_attempts' => self::MAX_LOGIN_ATTEMPTS,
                 ], 401);
             }
@@ -291,6 +302,16 @@ class AuthApiController extends Controller
         $query->where('created_at', '>=', now()->subMinutes(self::BLOCK_DURATION_MINUTES));
 
         return $query->count();
+    }
+
+    /**
+     * រាប់ចំនួនដង Login ខុស Password តាម Email ប៉ុណ្ណោះ (ប្រើសម្រាប់ Lock Account)
+     */
+    private function getPasswordFailuresByEmail(string $email): int
+    {
+        return LoginFailedAttempt::where('email', $email)
+            ->where('created_at', '>=', now()->subMinutes(self::BLOCK_DURATION_MINUTES))
+            ->count();
     }
 
     /**

@@ -245,6 +245,7 @@ class AuthProvider extends ChangeNotifier {
         'error_type': e.errorType,
         'message': e.message,
         'blocked_until': e.blockedUntil,
+        'attempts_remaining': e.attemptsRemaining,
       };
     } catch (e) {
       _isLoading = false;

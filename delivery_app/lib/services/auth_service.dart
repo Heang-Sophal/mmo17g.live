@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:delivery_app/config/api_config.dart';
+import 'package:delivery_app/core/token_storage.dart';
 import 'package:http/http.dart' as http;
 
 class AuthService {
@@ -30,6 +31,9 @@ class AuthService {
       data['error_type']?.toString() ?? 'login_failed',
       response.statusCode,
       blockedUntil: data['blocked_until']?.toString(),
+      attemptsRemaining: data['attempts_remaining'] is int
+          ? data['attempts_remaining'] as int
+          : null,
     );
   }
 
@@ -59,6 +63,17 @@ class AuthService {
         .timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
   }
 
+  /// Returns true if an access token is currently stored.
+  Future<bool> isLoggedIn() async {
+    final token = await TokenStorage().getAccessToken();
+    return token != null && token.isNotEmpty;
+  }
+
+  /// Returns the last cached user map from local storage, or null if none.
+  Future<Map<String, dynamic>?> getCurrentUser() async {
+    return TokenStorage().getCachedUser();
+  }
+
   Map<String, dynamic> _decodeResponse(http.Response response) {
     if (response.body.isEmpty) {
       return <String, dynamic>{};
@@ -79,12 +94,14 @@ class AuthException implements Exception {
     this.errorType,
     this.statusCode, {
     this.blockedUntil,
+    this.attemptsRemaining,
   });
 
   final String message;
   final String errorType;
   final int statusCode;
   final String? blockedUntil;
+  final int? attemptsRemaining;
 
   @override
   String toString() => 'AuthException($statusCode, $errorType, $message)';

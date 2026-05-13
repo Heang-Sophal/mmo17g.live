@@ -41,23 +41,43 @@ class _SignInScreenState extends State<SignInScreen> {
     if (!mounted) return;
     if (result['success'] == true) return;
 
-    setState(() {
-      _errorMessage = _mapErrorMessage(
+    try {
+      final msg = _mapErrorMessage(
         result['error_type']?.toString(),
+        result['attempts_remaining'] is int
+            ? result['attempts_remaining'] as int
+            : null,
         languageProvider,
       );
-    });
+      setState(() {
+        _errorMessage = msg;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage =
+            result['message']?.toString() ?? languageProvider.t('login_failed');
+      });
+    }
   }
 
   String _mapErrorMessage(
     String? errorType,
+    int? attemptsRemaining,
     LanguageProvider languageProvider,
   ) {
     switch (errorType) {
+      case 'invalid_email':
       case 'invalid_credentials':
         return languageProvider.t('invalid_email');
       case 'invalid_password':
-        return languageProvider.t('invalid_password');
+        final base = languageProvider.t('invalid_password');
+        if (attemptsRemaining != null && attemptsRemaining > 0) {
+          final remaining = languageProvider
+              .t('login_attempts_remaining')
+              .replaceAll('{count}', '$attemptsRemaining');
+          return '$base $remaining';
+        }
+        return base;
       case 'account_locked':
         return languageProvider.t('account_locked');
       case 'account_blocked':

@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class DeliveryAlertsScreen extends StatefulWidget {
-  const DeliveryAlertsScreen({super.key});
+  const DeliveryAlertsScreen({super.key, this.onUnreadCountChanged});
+
+  final ValueChanged<int>? onUnreadCountChanged;
 
   @override
   State<DeliveryAlertsScreen> createState() => DeliveryAlertsScreenState();
@@ -19,6 +21,9 @@ class DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
   bool _isLoading = true;
   bool _isMarkingAll = false;
   String? _error;
+
+  int get unreadCount =>
+      _alerts.where((alert) => !_isAlertRead(alert['is_read'])).length;
 
   @override
   void initState() {
@@ -46,6 +51,7 @@ class DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
         _alerts = alerts;
         _isLoading = false;
       });
+      _notifyUnreadCountChanged();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -72,6 +78,7 @@ class DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
       setState(() {
         _alerts = _alerts.map((alert) => {...alert, 'is_read': true}).toList();
       });
+      _notifyUnreadCountChanged();
     } finally {
       if (mounted) {
         setState(() {
@@ -81,8 +88,24 @@ class DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
     }
   }
 
+  Future<void> markAlertReadByRef(String saleRef) async {
+    if (saleRef.isEmpty) return;
+    final normalizedRef = saleRef.trim().toLowerCase();
+    final matches = _alerts
+        .where(
+          (a) =>
+              !_isAlertRead(a['is_read']) &&
+              a['sale_ref']?.toString().trim().toLowerCase() == normalizedRef,
+        )
+        .toList();
+    for (final alert in matches) {
+      await _markAsRead(alert);
+      if (!mounted) return;
+    }
+  }
+
   Future<void> _markAsRead(Map<String, dynamic> alert) async {
-    if (alert['is_read'] == true) return;
+    if (_isAlertRead(alert['is_read'])) return;
 
     final token = context.read<AuthProvider>().token;
     if (token == null || token.isEmpty) return;
@@ -99,6 +122,7 @@ class DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
         return item;
       }).toList();
     });
+    _notifyUnreadCountChanged();
   }
 
   Future<void> _openAlertOrder(Map<String, dynamic> alert) async {
@@ -156,7 +180,7 @@ class DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
             )
           else
             ..._alerts.map((alert) {
-              final isRead = alert['is_read'] == true;
+              final isRead = _isAlertRead(alert['is_read']);
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: InkWell(
@@ -248,6 +272,14 @@ class DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
     if (parsed == null) return raw;
 
     return '${parsed.day.toString().padLeft(2, '0')}/${parsed.month.toString().padLeft(2, '0')}/${parsed.year} ${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
+  }
+
+  void _notifyUnreadCountChanged() {
+    widget.onUnreadCountChanged?.call(unreadCount);
+  }
+
+  bool _isAlertRead(dynamic value) {
+    return value == true || value == 1 || value == '1' || value == 'true';
   }
 }
 

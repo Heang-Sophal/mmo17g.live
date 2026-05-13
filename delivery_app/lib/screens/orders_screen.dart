@@ -12,12 +12,16 @@ class OrdersScreen extends StatefulWidget {
     this.autoOpenInitialOrder = false,
     this.showStandaloneScaffold = false,
     this.recordMode = false,
+    this.onOrdersChanged,
+    this.onOrderOpened,
   });
 
   final String? initialSaleRef;
   final bool autoOpenInitialOrder;
   final bool showStandaloneScaffold;
   final bool recordMode;
+  final VoidCallback? onOrdersChanged;
+  final void Function(String saleRef)? onOrderOpened;
 
   @override
   State<OrdersScreen> createState() => OrdersScreenState();
@@ -86,6 +90,7 @@ class OrdersScreenState extends State<OrdersScreen> {
         _orders = orders;
         _isLoading = false;
       });
+      widget.onOrdersChanged?.call();
       _openInitialOrderIfNeeded(orders);
     } catch (e) {
       if (!mounted) return;
@@ -537,6 +542,11 @@ class OrdersScreenState extends State<OrdersScreen> {
   }
 
   void _showOrderDetails(Map<String, dynamic> order) {
+    final saleRef = order['Ref']?.toString().trim() ?? '';
+    if (saleRef.isNotEmpty) {
+      widget.onOrderOpened?.call(saleRef);
+    }
+
     final languageProvider = context.read<LanguageProvider>();
     Map<String, dynamic> currentOrder = Map<String, dynamic>.from(order);
     final shippingController = TextEditingController(

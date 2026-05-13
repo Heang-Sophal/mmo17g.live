@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:delivery_app/config/api_config.dart';
 import 'package:http/http.dart' as http;
@@ -50,6 +51,32 @@ class DeliveryApiService {
     Map<String, dynamic> profileData,
   ) async {
     return _put(ApiConfig.profile, body: profileData);
+  }
+
+  Future<Map<String, dynamic>> uploadProfilePhoto(File photo) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiConfig.baseUrl}/profile/upload-photo'),
+      );
+
+      if (_token != null) {
+        request.headers['Authorization'] = 'Bearer $_token';
+        request.headers['Accept'] = 'application/json';
+      }
+
+      request.files.add(await http.MultipartFile.fromPath('photo', photo.path));
+
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: ApiConfig.timeoutSeconds),
+      );
+
+      final response = await http.Response.fromStream(streamedResponse);
+      return _decodeAndValidate(response);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException('Upload error: ${e.toString()}', 0);
+    }
   }
 
   Future<Map<String, dynamic>> changePassword({

@@ -3360,6 +3360,13 @@
                                 <span class="checkmark"></span>
                               </label>
                             </b-col>
+                            <b-col md="6" class="mb-2">
+                              <label class="checkbox checkbox-outline-primary d-block">
+                                <input type="checkbox" v-model="permissions" value="mobile_seller_alerts">
+                                <span>ការជូនដំណឹង</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
                           </b-row>
                         </b-card-text>
                       </b-card-body>
@@ -3420,6 +3427,13 @@
                               <label class="checkbox checkbox-outline-primary d-block">
                                 <input type="checkbox" v-model="permissions" value="mobile_delivery_profile">
                                 <span>ប្រវត្តិរូប</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+                            <b-col md="6" class="mb-2">
+                              <label class="checkbox checkbox-outline-primary d-block">
+                                <input type="checkbox" v-model="permissions" value="mobile_delivery_alerts">
+                                <span>ការជូនដំណឹង</span>
                                 <span class="checkmark"></span>
                               </label>
                             </b-col>

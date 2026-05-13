@@ -1,3 +1,4 @@
+import 'package:delivery_app/controllers/navigation_bar_controller.dart';
 import 'package:delivery_app/providers/auth_provider.dart';
 import 'package:delivery_app/providers/app_branding_provider.dart';
 import 'package:delivery_app/providers/language_provider.dart';
@@ -33,6 +34,7 @@ class DeliveryApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => AppBrandingProvider()..loadBranding(),
         ),
+        ChangeNotifierProvider(create: (_) => NavigationBarController()),
       ],
       child: Consumer3<LanguageProvider, AppBrandingProvider, ThemeProvider>(
         builder:
@@ -199,7 +201,7 @@ class _AuthGateState extends State<AuthGate> {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
-        if (!authProvider.isInitialized || authProvider.isLoading) {
+        if (!authProvider.isInitialized) {
           return const SplashScreen();
         }
 

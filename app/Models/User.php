@@ -10,6 +10,22 @@ class User extends Authenticatable
 {
     use HasApiTokens, Notifiable;
 
+    private const MOBILE_PERMISSION_NAMES = [
+        'mobile_seller_pos',
+        'mobile_seller_orders',
+        'mobile_seller_products',
+        'mobile_seller_sale_returns',
+        'mobile_seller_profile',
+        'mobile_seller_reports',
+        'mobile_seller_alerts',
+        'mobile_delivery_record_items',
+        'mobile_delivery_record_reports',
+        'mobile_delivery_deliveries',
+        'mobile_delivery_reports',
+        'mobile_delivery_profile',
+        'mobile_delivery_alerts',
+    ];
+
     protected $dates = ['deleted_at'];
 
     /**
@@ -158,6 +174,10 @@ class User extends Authenticatable
 
     public function mobilePermissionNames(): array
     {
+        if ($this->hasAnyRoleNamed(['Owner'])) {
+            return self::allMobilePermissionNames();
+        }
+
         $roles = $this->relationLoaded('roles')
             ? $this->roles
             : $this->roles()->with('permissions')->get();
@@ -179,6 +199,32 @@ class User extends Authenticatable
             ->unique()
             ->values()
             ->all();
+    }
+
+    public static function allMobilePermissionNames(): array
+    {
+        try {
+            $permissions = Permission::query()
+                ->where('name', 'like', 'mobile_%')
+                ->pluck('name')
+                ->map(function ($permissionName) {
+                    return trim((string) $permissionName);
+                })
+                ->filter(function ($permissionName) {
+                    return $permissionName !== '' && str_starts_with($permissionName, 'mobile_');
+                })
+                ->unique()
+                ->values()
+                ->all();
+
+            if (! empty($permissions)) {
+                return $permissions;
+            }
+        } catch (\Throwable $e) {
+            // Fall back to the known mobile permission list if the DB is unavailable.
+        }
+
+        return self::MOBILE_PERMISSION_NAMES;
     }
 
     public function hasMobilePermission(string $permissionName): bool
