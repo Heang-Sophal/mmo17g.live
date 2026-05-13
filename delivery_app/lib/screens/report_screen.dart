@@ -119,6 +119,41 @@ class ReportScreenState extends State<ReportScreen> {
     });
   }
 
+  void _applyDateShortcut(String shortcut) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    switch (shortcut) {
+      case 'today':
+        setState(() {
+          _startDate = today;
+          _endDate = today;
+        });
+        _filterOrdersByDate();
+      case 'yesterday':
+        final yesterday = today.subtract(const Duration(days: 1));
+        setState(() {
+          _startDate = yesterday;
+          _endDate = yesterday;
+        });
+        _filterOrdersByDate();
+      case 'this_week':
+        setState(() {
+          _startDate = today.subtract(Duration(days: today.weekday - 1));
+          _endDate = today;
+        });
+        _filterOrdersByDate();
+      case 'this_month':
+        setState(() {
+          _startDate = DateTime(now.year, now.month, 1);
+          _endDate = today;
+        });
+        _filterOrdersByDate();
+      case 'custom':
+        _selectDateRange();
+    }
+  }
+
   Future<void> _selectDateRange() async {
     final picked = await showDateRangePicker(
       context: context,
@@ -408,13 +443,21 @@ class ReportScreenState extends State<ReportScreen> {
                     onPressed: () => _exportPDF(languageProvider),
                     tooltip: languageProvider.t('export_pdf'),
                   ),
-                  IconButton(
+                  PopupMenuButton<String>(
                     icon: const Icon(
                       Icons.calendar_month,
                       color: Color(0xFFD6A735),
                     ),
-                    onPressed: _selectDateRange,
-                    tooltip: 'Select Date',
+                    tooltip: languageProvider.t('custom_range'),
+                    onSelected: _applyDateShortcut,
+                    itemBuilder: (context) => [
+                      _shortcutItem('today', Icons.today, languageProvider.t('today')),
+                      _shortcutItem('yesterday', Icons.history, languageProvider.t('yesterday')),
+                      _shortcutItem('this_week', Icons.view_week, languageProvider.t('this_week')),
+                      _shortcutItem('this_month', Icons.calendar_month, languageProvider.t('this_month')),
+                      const PopupMenuDivider(),
+                      _shortcutItem('custom', Icons.date_range, languageProvider.t('custom_range')),
+                    ],
                   ),
                   IconButton(
                     icon: const Icon(Icons.refresh, color: Color(0xFFD6A735)),
@@ -705,6 +748,19 @@ class ReportScreenState extends State<ReportScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  PopupMenuItem<String> _shortcutItem(String value, IconData icon, String label) {
+    return PopupMenuItem(
+      value: value,
+      child: Row(
+        children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 10),
+          Text(label),
+        ],
+      ),
     );
   }
 

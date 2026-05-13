@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
+import '../core/token_storage.dart';
 
 class AuthService {
   final http.Client _client;
@@ -104,6 +105,17 @@ class AuthService {
     } catch (e) {
       return {'authenticated': false};
     }
+  }
+
+  /// Returns true if an access token is currently stored.
+  Future<bool> isLoggedIn() async {
+    final token = await TokenStorage().getAccessToken();
+    return token != null && token.isNotEmpty;
+  }
+
+  /// Returns the last cached user map from local storage, or null if none.
+  Future<Map<String, dynamic>?> getCurrentUser() async {
+    return TokenStorage().getCachedUser();
   }
 
   void dispose() {

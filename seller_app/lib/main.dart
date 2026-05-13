@@ -261,8 +261,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
-        // ពេលកំពុង Load
-        if (authProvider.isLoading || !authProvider.isInitialized) {
+        // ពេលកំពុង Load (init phase only — not during sign-in)
+        if (!authProvider.isInitialized) {
           return const Splashscreen();
         }
 

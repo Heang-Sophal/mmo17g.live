@@ -487,6 +487,13 @@ class StoreFrontController extends Controller
         return (float) ($p->stock ?? 0) > 0;
     }
 
+    public function privacyPolicy()
+    {
+        $s = StoreSetting::first();
+
+        return view('store.privacy-policy', compact('s'));
+    }
+
     /**
      * Product IDs that have at least one unit in stock in the given warehouse.
      * Used when hide_out_of_stock is enabled.

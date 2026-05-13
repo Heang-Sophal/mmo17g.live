@@ -19,7 +19,9 @@ class DeliveryAlertService
             return;
         }
 
-        $deliveryUsers = $this->queryDeliveryUsersForWarehouse((int) $sale->warehouse_id)->get();
+        $deliveryUsers = $this->queryDeliveryUsersForWarehouse((int) $sale->warehouse_id)
+            ->where('users.id', '!=', $sale->user_id)  // exclude the creator
+            ->get();
         if ($deliveryUsers->isEmpty()) {
             return;
         }
@@ -40,6 +42,7 @@ class DeliveryAlertService
             'customer_name' => $customerName,
             'grand_total' => (float) $sale->GrandTotal,
             'shipping_status' => $sale->shipping_status ?: 'pending',
+            'seller_name' => $createdBy,
             'created_at' => optional($sale->created_at)->toIso8601String(),
         ];
 

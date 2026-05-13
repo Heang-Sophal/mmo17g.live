@@ -303,7 +303,17 @@ export default {
       to: "",
       from: "",
       // Optional price format key for frontend display (loaded from system settings/localStorage)
-      price_format_key: null
+      price_format_key: null,
+      // FIX #4 & #5: Grand totals returned by server (computed over ALL pages, not just current page)
+      grandTotals: {
+        totalCost: 0,
+        totalPaidAmount: 0,
+        totalShipping: 0,
+        totalProfit: 0,
+        saleByCash: 0,
+        saleByKhqr: 0,
+        cashDifference: 0,
+      }
     };
   },
 
@@ -426,48 +436,16 @@ export default {
       return [...this.sales, summaryRow];
     },
 
-    // Global footer totals used in the custom tfoot slot
+    // FIX #4 & #5: Use grand totals from the server (all pages), not just current page rows.
     footerTotals() {
-      const sales = Array.isArray(this.sales) ? this.sales : [];
-      let totalCost = 0;
-      let totalPaidAmount = 0;
-      let totalShipping = 0;
-      let saleByCash = 0;
-      let saleByKhqr = 0;
-
-      for (let i = 0; i < sales.length; i++) {
-        const row = sales[i] || {};
-        const cost = parseFloat(row.product_cost) || 0;
-        const paidAmount = parseFloat(row.paid_amount) || 0;
-        const shipping = parseFloat(row.shipping) || 0;
-        const paymentMethod = (row.payment_method || '').toLowerCase();
-
-        if (!isNaN(cost)) totalCost += cost;
-        if (!isNaN(paidAmount)) totalPaidAmount += paidAmount;
-        if (!isNaN(shipping)) totalShipping += shipping;
-
-        // Calculate Sale By Cash and Sale By KHQR (include shipping)
-        if (paymentMethod === 'cash') {
-          saleByCash += paidAmount + shipping;
-        } else if (paymentMethod === 'khqr') {
-          saleByKhqr += paidAmount + shipping;
-        }
-      }
-
-      // Profit = Total Paid Amount - (Total Cost + Total Shipping)
-      const totalProfit = totalPaidAmount - (totalCost + totalShipping);
-
-      // Cash Difference = Profit - Sale By KHQR
-      const cashDifference = totalProfit - saleByKhqr;
-
       return {
-        totalCost: totalCost,
-        totalPaidAmount: totalPaidAmount,
-        totalShipping: totalShipping,
-        totalProfit: totalProfit,
-        saleByCash: saleByCash,
-        saleByKhqr: saleByKhqr,
-        cashDifference: cashDifference,
+        totalCost:       this.grandTotals.totalCost,
+        totalPaidAmount: this.grandTotals.totalPaidAmount,
+        totalShipping:   this.grandTotals.totalShipping,
+        totalProfit:     this.grandTotals.totalProfit,
+        saleByCash:      this.grandTotals.saleByCash,
+        saleByKhqr:      this.grandTotals.saleByKhqr,
+        cashDifference:  this.grandTotals.cashDifference,
       };
     }
   },
@@ -974,6 +952,10 @@ export default {
           this.sellers = response.data.sellers;
           this.totalRows = response.data.totalRows;
           this.rows[0].children = this.sales;
+          // FIX #4 & #5: Update grand totals from server response
+          if (response.data.grandTotals) {
+            this.grandTotals = response.data.grandTotals;
+          }
 
           // Complete the animation of theprogress bar.
           NProgress.done();

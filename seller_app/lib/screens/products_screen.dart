@@ -10,7 +10,9 @@ import 'package:seller_app/services/api_service.dart';
 import 'package:seller_app/controllers/navigation_bar_controller.dart';
 
 class ProductsScreen extends StatefulWidget {
-  const ProductsScreen({super.key});
+  const ProductsScreen({super.key, this.menuButton});
+
+  final Widget? menuButton;
 
   @override
   State<ProductsScreen> createState() => _ProductsScreenState();
@@ -175,6 +177,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
               style: TextStyle(color: textColor),
             ),
             backgroundColor: isDark ? const Color(0xFF16213E) : Colors.white,
+            leading: widget.menuButton,
+            leadingWidth: widget.menuButton != null ? 96 : null,
             actions: [
               IconButton(
                 icon: productProvider.isLoading

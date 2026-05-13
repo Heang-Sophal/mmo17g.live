@@ -9,7 +9,9 @@ import 'package:seller_app/providers/language_provider.dart';
 import 'package:seller_app/utils/top_notification.dart';
 
 class SalesReturnScreen extends StatefulWidget {
-  const SalesReturnScreen({super.key});
+  const SalesReturnScreen({super.key, this.menuButton});
+
+  final Widget? menuButton;
 
   @override
   State<SalesReturnScreen> createState() => _SalesReturnScreenState();
@@ -186,6 +188,8 @@ class _SalesReturnScreenState extends State<SalesReturnScreen>
         scrolledUnderElevation: 0,
         backgroundColor: backgroundColor,
         surfaceTintColor: Colors.transparent,
+        leading: widget.menuButton,
+        leadingWidth: widget.menuButton != null ? 96 : null,
         title: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

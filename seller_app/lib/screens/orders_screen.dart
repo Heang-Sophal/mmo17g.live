@@ -14,10 +14,12 @@ class OrdersScreen extends StatefulWidget {
     super.key,
     this.initialSaleRef,
     this.autoOpenInitialOrder = false,
+    this.menuButton,
   });
 
   final String? initialSaleRef;
   final bool autoOpenInitialOrder;
+  final Widget? menuButton;
 
   @override
   State<OrdersScreen> createState() => _OrdersScreenState();
@@ -197,6 +199,8 @@ class _OrdersScreenState extends State<OrdersScreen>
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
         backgroundColor: backgroundColor,
+        leading: widget.menuButton,
+        leadingWidth: widget.menuButton != null ? 96 : null,
         title: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -513,18 +517,18 @@ class _OrdersScreenState extends State<OrdersScreen>
                   ],
                 ),
                 const SizedBox(height: 14),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildStatusChip(status),
+                    warehouseName.isNotEmpty
+                        ? _buildMetaTag(
+                            icon: Icons.warehouse_rounded,
+                            label: warehouseName,
+                            color: const Color(0xFF4F46E5),
+                          )
+                        : const SizedBox(),
                     _buildPaymentStatusChip(paymentStatus),
-                    if (warehouseName.isNotEmpty)
-                      _buildMetaTag(
-                        icon: Icons.warehouse_rounded,
-                        label: warehouseName,
-                        color: const Color(0xFF4F46E5),
-                      ),
+                    _buildStatusChip(status),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -539,17 +543,19 @@ class _OrdersScreenState extends State<OrdersScreen>
                   child: Column(
                     children: [
                       _buildOrderInfoLine(
-                        icon: Icons.person_rounded,
-                        value:
-                            order['client_name']?.toString() ??
-                            languageProvider.t('client_name'),
-                      ),
-                      const SizedBox(height: 10),
-                      _buildOrderInfoLine(
                         icon: Icons.call_rounded,
                         value:
                             order['client_phone']?.toString().isNotEmpty == true
                             ? order['client_phone'].toString()
+                            : '-',
+                      ),
+                      const SizedBox(height: 10),
+                      _buildOrderInfoLine(
+                        icon: Icons.location_on_rounded,
+                        value:
+                            order['client_address']?.toString().isNotEmpty ==
+                                true
+                            ? order['client_address'].toString()
                             : '-',
                         muted: true,
                       ),
@@ -919,7 +925,7 @@ class _OrdersScreenState extends State<OrdersScreen>
         label = status;
     }
 
-    return _buildMetaTag(
+    return _buildAnimatedMetaTag(
       icon: Icons.local_shipping_rounded,
       label: label,
       color: color,
@@ -930,12 +936,43 @@ class _OrdersScreenState extends State<OrdersScreen>
     final languageProvider = context.read<LanguageProvider>();
     final isPaid = paymentStatus.toLowerCase() == 'paid';
 
-    return _buildMetaTag(
+    return _buildAnimatedMetaTag(
       icon: isPaid
           ? Icons.verified_rounded
           : Icons.account_balance_wallet_outlined,
       label: isPaid ? languageProvider.t('paid') : languageProvider.t('unpaid'),
       color: isPaid ? const Color(0xFF16A34A) : const Color(0xFFF59E0B),
+    );
+  }
+
+  Widget _buildAnimatedMetaTag({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _PulsingDot(color: color),
+          const SizedBox(width: 5),
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1370,5 +1407,61 @@ class _OrdersScreenState extends State<OrdersScreen>
       default:
         return status;
     }
+  }
+}
+
+class _PulsingDot extends StatefulWidget {
+  final Color color;
+  const _PulsingDot({required this.color});
+
+  @override
+  State<_PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<_PulsingDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _opacity;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _opacity = Tween<double>(begin: 0.35, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+    _scale = Tween<double>(begin: 0.7, end: 1.15).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return Transform.scale(
+          scale: _scale.value,
+          child: Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: widget.color.withValues(alpha: _opacity.value),
+            ),
+          ),
+        );
+      },
+    );
   }
 }

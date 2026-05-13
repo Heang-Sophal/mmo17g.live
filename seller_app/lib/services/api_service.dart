@@ -531,6 +531,42 @@ class ApiService {
     }
   }
 
+  /// ស្វែងរកអតិថិជនតាមលេខទូរស័ព្ទ
+  /// GET /api/customers?search={phone}  — returns exact-match customer or null
+  Future<Map<String, dynamic>?> lookupCustomerByPhone(String phone) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/customers').replace(
+        queryParameters: {'search': phone},
+      );
+      final response = await _client
+          .get(uri, headers: _getHeaders())
+          .timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final items = data['data'];
+        if (items is! List) return null;
+        final cleaned = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+        for (final item in items) {
+          final itemPhone = (item['phone'] ?? '')
+              .toString()
+              .replaceAll(RegExp(r'[\s\-\(\)]'), '');
+          if (itemPhone == cleaned) {
+            return {
+              'id': item['id'],
+              'name': (item['name'] ?? '').toString(),
+              'phone': (item['phone'] ?? '').toString(),
+              'address': (item['address'] ?? item['adresse'] ?? '').toString(),
+            };
+          }
+        }
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   void dispose() {
     _client.close();
   }

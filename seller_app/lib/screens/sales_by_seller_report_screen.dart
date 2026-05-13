@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:seller_app/config/api_config.dart';
 import 'package:seller_app/providers/auth_provider.dart';
@@ -124,51 +125,71 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
         return;
       }
 
-      // Backend returns: {totalRows, sales, sellers, customers, warehouses}
+      // Backend returns: {totalRows, sales, grandTotals, sellers, customers, warehouses}
       final sales = data['sales'];
 
       if (response.statusCode == 200 && sales != null && sales is List) {
         final salesList = List<Map<String, dynamic>>.from(sales);
 
-        // Calculate totals
         double totalCost = 0;
         double totalPaidAmount = 0;
         double totalShipping = 0;
         double saleByCash = 0;
         double saleByKhqr = 0;
+        double totalProfit = 0;
+        double cashDifference = 0;
 
-        for (var row in salesList) {
-          final cost = (row['product_cost'] ?? 0).toDouble();
-          final paidAmount = (row['paid_amount'] ?? 0).toDouble();
-          final shipping = (row['shipping'] ?? 0).toDouble();
-          final paymentMethod = (row['payment_method'] ?? '')
-              .toString()
-              .toLowerCase();
+        // Prefer server-computed grandTotals (accurate across all pages).
+        // Formulas mirror the web app:
+        //   Total Paid Amount = paid_amount - shipping  (product revenue only)
+        //   Sale By Cash/KHQR = paid_amount - shipping  (no shipping included)
+        //   Profit            = Total Paid Amount - Total Cost - Total Shipping
+        //   Cash Difference   = Profit - Sale By KHQR
+        if (data['grandTotals'] != null) {
+          final gt = data['grandTotals'] as Map<String, dynamic>;
+          totalCost       = (gt['totalCost']       ?? 0).toDouble();
+          totalPaidAmount = (gt['totalPaidAmount']  ?? 0).toDouble();
+          totalShipping   = (gt['totalShipping']    ?? 0).toDouble();
+          saleByCash      = (gt['saleByCash']       ?? 0).toDouble();
+          saleByKhqr      = (gt['saleByKhqr']       ?? 0).toDouble();
+          totalProfit     = (gt['totalProfit']      ?? 0).toDouble();
+          cashDifference  = (gt['cashDifference']   ?? 0).toDouble();
+        } else {
+          // Fallback: compute locally with corrected formulas
+          for (var row in salesList) {
+            final cost        = (row['product_cost']   ?? 0).toDouble();
+            final paidAmount  = (row['paid_amount']    ?? 0).toDouble();
+            final shipping    = (row['shipping']       ?? 0).toDouble();
+            final payMethod   = (row['payment_method'] ?? '').toString().toLowerCase();
 
-          totalCost += cost;
-          totalPaidAmount += paidAmount;
-          totalShipping += shipping;
+            totalCost      += cost;
+            totalShipping  += shipping;
+            // Total Paid Amount excludes shipping
+            totalPaidAmount += paidAmount;
 
-          if (paymentMethod == 'cash') {
-            saleByCash += paidAmount + shipping;
-          } else if (paymentMethod == 'khqr') {
-            saleByKhqr += paidAmount + shipping;
+            // Sale By Cash / KHQR exclude shipping (paidAmount already excludes it per row)
+            if (payMethod == 'cash') {
+              saleByCash += paidAmount;
+            } else if (payMethod == 'khqr') {
+              saleByKhqr += paidAmount;
+            }
           }
+          // Profit = Total Paid Amount - Total Cost - Total Shipping
+          totalProfit    = totalPaidAmount - totalCost - totalShipping;
+          // Cash Difference = Profit - Sale By KHQR
+          cashDifference = totalProfit - saleByKhqr;
         }
 
-        final totalProfit = totalPaidAmount - (totalCost + totalShipping);
-        final cashDifference = totalProfit - saleByKhqr;
-
         setState(() {
-          _reportData = salesList;
-          _totalCost = totalCost;
+          _reportData     = salesList;
+          _totalCost      = totalCost;
           _totalPaidAmount = totalPaidAmount;
-          _totalShipping = totalShipping;
-          _saleByCash = saleByCash;
-          _saleByKhqr = saleByKhqr;
-          _totalProfit = totalProfit;
+          _totalShipping  = totalShipping;
+          _saleByCash     = saleByCash;
+          _saleByKhqr     = saleByKhqr;
+          _totalProfit    = totalProfit;
           _cashDifference = cashDifference;
-          _isLoading = false;
+          _isLoading      = false;
         });
       } else {
         final languageProvider = context.read<LanguageProvider>();
@@ -186,6 +207,55 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
         _error = languageProvider.t('error');
         _isLoading = false;
       });
+    }
+  }
+
+  PopupMenuItem<String> _dateShortcutItem(String value, IconData icon, String label) {
+    return PopupMenuItem(
+      value: value,
+      child: Row(
+        children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 10),
+          Text(label),
+        ],
+      ),
+    );
+  }
+
+  void _applyDateShortcut(String shortcut) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    switch (shortcut) {
+      case 'today':
+        setState(() {
+          _startDate = today;
+          _endDate = today;
+        });
+        _loadReport();
+      case 'yesterday':
+        final yesterday = today.subtract(const Duration(days: 1));
+        setState(() {
+          _startDate = yesterday;
+          _endDate = yesterday;
+        });
+        _loadReport();
+      case 'this_week':
+        final weekStart = today.subtract(Duration(days: today.weekday - 1));
+        setState(() {
+          _startDate = weekStart;
+          _endDate = today;
+        });
+        _loadReport();
+      case 'this_month':
+        setState(() {
+          _startDate = DateTime(now.year, now.month, 1);
+          _endDate = today;
+        });
+        _loadReport();
+      case 'custom':
+        _selectDateRange();
     }
   }
 
@@ -250,10 +320,18 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
                 ),
               ],
             ),
-          IconButton(
-            icon: const Icon(Icons.filter_alt),
-            onPressed: _selectDateRange,
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.calendar_month),
             tooltip: languageProvider.t('select_date_range'),
+            onSelected: (value) => _applyDateShortcut(value),
+            itemBuilder: (context) => [
+              _dateShortcutItem('today', Icons.today, languageProvider.t('today')),
+              _dateShortcutItem('yesterday', Icons.history, languageProvider.t('yesterday')),
+              _dateShortcutItem('this_week', Icons.view_week, languageProvider.t('this_week')),
+              _dateShortcutItem('this_month', Icons.calendar_month, languageProvider.t('this_month')),
+              const PopupMenuDivider(),
+              _dateShortcutItem('custom', Icons.date_range, languageProvider.t('custom_range')),
+            ],
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -425,12 +503,12 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _buildSummaryItem(
-                    languageProvider.t('paid'),
+                    'Sale By Cash',
                     _saleByCash,
                     Colors.green,
                   ),
                   _buildSummaryItem(
-                    'KHQR',
+                    'Sale By KHQR',
                     _saleByKhqr,
                     const Color(0xFF17a2b8),
                   ),
@@ -518,31 +596,58 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
     final loading = _showLoading('Exporting PDF...');
 
     try {
+      // NotoSans covers Latin/ASCII; NotoSansKhmer is the fallback for Khmer glyphs.
+      final notoRegularData = await rootBundle.load('assets/fonts/NotoSans-Regular.ttf');
+      final notoBoldData = await rootBundle.load('assets/fonts/NotoSans-Bold.ttf');
+      final khmerData = await rootBundle.load('assets/fonts/NotoSansKhmer-Regular.ttf');
+      final notoRegular = pw.Font.ttf(notoRegularData);
+      final notoBold = pw.Font.ttf(notoBoldData);
+      final khmerFont = pw.Font.ttf(khmerData);
+
+      pw.TextStyle style({
+        double fontSize = 9,
+        pw.FontWeight fontWeight = pw.FontWeight.normal,
+        PdfColor? color,
+      }) => pw.TextStyle(
+        font: fontWeight == pw.FontWeight.bold ? notoBold : notoRegular,
+        fontFallback: [khmerFont],
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        color: color,
+      );
+
       final pdf = pw.Document();
 
       pdf.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4.landscape,
+          theme: pw.ThemeData.withFont(
+            base: notoRegular,
+            bold: notoBold,
+            fontFallback: [khmerFont],
+          ),
           header: (context) => pw.Container(
             alignment: pw.Alignment.centerRight,
             child: pw.Text(
               'Sales By Seller Report: ${_formatDateForApi(_startDate)} - ${_formatDateForApi(_endDate)}',
-              style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+              style: style(fontSize: 10, color: PdfColors.grey700),
             ),
           ),
           footer: (context) => pw.Container(
             alignment: pw.Alignment.centerRight,
             child: pw.Text(
               'Page ${context.pageNumber} of ${context.pagesCount}',
+              style: style(fontSize: 8),
             ),
           ),
           build: (context) => [
             pw.TableHelper.fromTextArray(
               border: pw.TableBorder.all(),
-              headerStyle: pw.TextStyle(
+              headerStyle: style(
                 fontWeight: pw.FontWeight.bold,
                 color: PdfColors.white,
               ),
+              cellStyle: style(),
               headerDecoration: const pw.BoxDecoration(
                 color: PdfColors.blueGrey800,
               ),
@@ -585,37 +690,56 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
             ),
             pw.SizedBox(height: 20),
             pw.Container(
-              padding: const pw.EdgeInsets.all(10),
+              padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: pw.BoxDecoration(
                 border: pw.Border.all(color: PdfColors.grey400),
                 borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5)),
               ),
-              child: pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                 children: [
-                  _pdfSummaryItem(
-                    'Cost: \$${_formatMoney(_totalCost)}',
-                    PdfColors.red,
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+                    children: [
+                      _pdfSummaryItem('Total Cost: \$${_formatMoney(_totalCost)}', PdfColors.red, style),
+                      _pdfSummaryItem('Total Paid: \$${_formatMoney(_totalPaidAmount)}', PdfColors.blue, style),
+                      _pdfSummaryItem('Shipping: \$${_formatMoney(_totalShipping)}', PdfColors.orange, style),
+                      _pdfSummaryItem(
+                        'Profit: \$${_formatMoney(_totalProfit)}',
+                        _totalProfit >= 0 ? PdfColors.green : PdfColors.red,
+                        style,
+                      ),
+                    ],
                   ),
-                  _pdfSummaryItem(
-                    'Paid: \$${_formatMoney(_totalPaidAmount)}',
-                    PdfColors.blue,
+                  pw.SizedBox(height: 6),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+                    children: [
+                      _pdfSummaryItem('Sale By Cash: \$${_formatMoney(_saleByCash)}', PdfColors.green, style),
+                      _pdfSummaryItem('Sale By KHQR: \$${_formatMoney(_saleByKhqr)}', PdfColors.teal, style),
+                    ],
                   ),
-                  _pdfSummaryItem(
-                    'Ship: \$${_formatMoney(_totalShipping)}',
-                    PdfColors.orange,
-                  ),
-                  _pdfSummaryItem(
-                    'Profit: \$${_formatMoney(_totalProfit)}',
-                    _totalProfit >= 0 ? PdfColors.green : PdfColors.red,
-                  ),
-                  _pdfSummaryItem(
-                    'Cash: \$${_formatMoney(_saleByCash)}',
-                    PdfColors.green,
-                  ),
-                  _pdfSummaryItem(
-                    'KHQR: \$${_formatMoney(_saleByKhqr)}',
-                    PdfColors.teal,
+                  pw.SizedBox(height: 8),
+                  pw.Container(
+                    padding: const pw.EdgeInsets.all(6),
+                    decoration: pw.BoxDecoration(
+                      color: _cashDifference >= 0 ? PdfColors.green100 : PdfColors.red100,
+                      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                      border: pw.Border.all(
+                        color: _cashDifference >= 0 ? PdfColors.green : PdfColors.red,
+                      ),
+                    ),
+                    child: pw.Text(
+                      _cashDifference >= 0
+                          ? 'Cash From Boss: \$${_formatMoney(_cashDifference)}'
+                          : 'Cash To Boss: \$${_formatMoney(_cashDifference.abs())}',
+                      style: style(
+                        fontSize: 10,
+                        fontWeight: pw.FontWeight.bold,
+                        color: _cashDifference >= 0 ? PdfColors.green900 : PdfColors.red900,
+                      ),
+                      textAlign: pw.TextAlign.center,
+                    ),
                   ),
                 ],
               ),
@@ -624,7 +748,14 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
         ),
       );
 
-      final dir = await getApplicationDocumentsDirectory();
+      // path_provider uses objective_c FFI on iOS; fall back to the system
+      // temp directory if the framework isn't available (e.g. simulator).
+      Directory dir;
+      try {
+        dir = await getApplicationDocumentsDirectory();
+      } catch (_) {
+        dir = Directory.systemTemp;
+      }
       final fileName =
           'sales_report_${_formatDateForApi(_startDate)}_to_${_formatDateForApi(_endDate)}.pdf';
       final filePath = '${dir.path}/$fileName';
@@ -632,21 +763,28 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
       await file.writeAsBytes(await pdf.save());
 
       loading.remove();
-      _showSuccess('PDF exported successfully!');
-      OpenFile.open(filePath);
+      _showSuccess('PDF saved: $fileName');
+
+      try {
+        await OpenFile.open(filePath);
+      } catch (_) {}
     } catch (e) {
       loading.remove();
       _showError('Failed to export PDF: $e');
     }
   }
 
-  pw.Widget _pdfSummaryItem(String text, PdfColor color) {
+  pw.Widget _pdfSummaryItem(
+    String text,
+    PdfColor color,
+    pw.TextStyle Function({double fontSize, pw.FontWeight fontWeight, PdfColor? color}) styleBuilder,
+  ) {
     return pw.Text(
       text,
-      style: pw.TextStyle(
+      style: styleBuilder(
         fontSize: 8,
-        color: color,
         fontWeight: pw.FontWeight.bold,
+        color: color,
       ),
     );
   }
@@ -697,25 +835,43 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
       }
 
       sheet.appendRow([]);
+      // Summary row 1: labels + values aligned to correct columns
+      // Columns: Date | Ref | Product | QTY | Cost | Paid | Ship | Pay Method | Seller
       sheet.appendRow([
         excel_lib.TextCellValue('SUMMARY'),
-        excel_lib.TextCellValue(''),
-        excel_lib.TextCellValue(''),
-        excel_lib.TextCellValue(''),
+        excel_lib.TextCellValue('Total Cost'),
+        excel_lib.TextCellValue('Total Paid'),
+        excel_lib.TextCellValue('Total Shipping'),
         excel_lib.TextCellValue(_formatMoney(_totalCost)),
         excel_lib.TextCellValue(_formatMoney(_totalPaidAmount)),
         excel_lib.TextCellValue(_formatMoney(_totalShipping)),
-        excel_lib.TextCellValue(''),
-        excel_lib.TextCellValue(''),
+        excel_lib.TextCellValue('Profit'),
+        excel_lib.TextCellValue(_formatMoney(_totalProfit)),
       ]);
+      // Summary row 2: Sale By Cash / Sale By KHQR
       sheet.appendRow([
         excel_lib.TextCellValue(''),
-        excel_lib.TextCellValue(''),
-        excel_lib.TextCellValue(''),
+        excel_lib.TextCellValue('Sale By Cash'),
+        excel_lib.TextCellValue('Sale By KHQR'),
         excel_lib.TextCellValue(''),
         excel_lib.TextCellValue(_formatMoney(_saleByCash)),
         excel_lib.TextCellValue(_formatMoney(_saleByKhqr)),
-        excel_lib.TextCellValue(_formatMoney(_totalProfit)),
+        excel_lib.TextCellValue(''),
+        excel_lib.TextCellValue(''),
+        excel_lib.TextCellValue(''),
+      ]);
+      // Summary row 3: Cash Difference
+      final cashLabel = _cashDifference >= 0
+          ? 'Cash From Boss'
+          : 'Cash To Boss';
+      sheet.appendRow([
+        excel_lib.TextCellValue(''),
+        excel_lib.TextCellValue(cashLabel),
+        excel_lib.TextCellValue(''),
+        excel_lib.TextCellValue(''),
+        excel_lib.TextCellValue(_formatMoney(_cashDifference.abs())),
+        excel_lib.TextCellValue(''),
+        excel_lib.TextCellValue(''),
         excel_lib.TextCellValue(''),
         excel_lib.TextCellValue(''),
       ]);
@@ -736,8 +892,15 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
       await file.writeAsBytes(excel.encode()!);
 
       loading.remove();
-      _showSuccess('Excel exported successfully!');
-      OpenFile.open(filePath);
+      _showSuccess('Excel saved: $fileName');
+
+      // Open the file — may fail on iOS Simulator (objective_c.dylib issue),
+      // but the file is already saved successfully.
+      try {
+        await OpenFile.open(filePath);
+      } catch (_) {
+        // Ignore open errors on simulator; file was saved successfully.
+      }
     } catch (e) {
       loading.remove();
       _showError('Failed to export Excel: $e');

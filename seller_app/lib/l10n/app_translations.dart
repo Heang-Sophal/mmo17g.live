@@ -44,14 +44,13 @@ const Map<String, String> _en = {
       'Your account has been deactivated. Contact administrator.',
   'account_locked': 'Account Locked',
   'account_locked_msg':
-      'Your account has been locked by administrator. Please contact support.',
+      'Your account has been locked due to too many failed attempts. Please contact administrator.',
   'access_denied': 'Access Denied',
   'connection_error': 'Connection Error',
   'unable_connect_server': 'Unable to connect to server.',
   'login_failed': 'Login Failed',
   'unknown_error': 'An unknown error occurred.',
-
-  // Home/Dashboard
+  'login_attempts_remaining': '({count} attempt(s) remaining.)',
   'dashboard': 'Dashboard',
   'overview': 'Overview',
   'todays_sales': 'Today\'s Sales',
@@ -122,6 +121,7 @@ const Map<String, String> _en = {
   'customer_phone': 'Customer Phone *',
   'phone_hint': '+855 or 0XX...',
   'customer_address': 'Customer Address *',
+  'customer_found': 'Customer found',
   'payment_method_title': 'Payment Method',
   'cod_cash': 'COD (Cash)',
   'cash_on_delivery': 'Cash on Delivery',
@@ -265,6 +265,11 @@ const Map<String, String> _en = {
   // Sales Report
   'sales_by_seller': 'Sales by Seller',
   'select_date_range': 'Select Date Range',
+  'today': 'Today',
+  'yesterday': 'Yesterday',
+  'this_week': 'This Week',
+  'this_month': 'This Month',
+  'custom_range': 'Custom Range',
   'from_date': 'From Date',
   'to_date': 'To Date',
   'generate_report': 'Generate Report',
@@ -296,6 +301,13 @@ const Map<String, String> _en = {
   'notification_delivery_completed_title': 'Delivery completed',
   'notification_delivery_completed_message':
       '{deliveryName} completed order {saleRef} for {customerName}.',
+
+  // Alert card roles & actions
+  'role_recorder': 'Recorder',
+  'role_delivery': 'Delivery',
+  'action_sale_created': 'Created a sale',
+  'action_delivery_accepted': 'Accepted delivery',
+  'action_delivery_completed': 'Completed delivery',
 
   // Account Settings
   'change_profile_photo': 'Change Profile Photo',
@@ -370,12 +382,13 @@ const Map<String, String> _km = {
   'account_deactivated_msg': 'គណនីរបស់អ្នកត្រូវបានបិទ។ សូមទាក់ទងអ្នកគ្រប់គ្រង។',
   'account_locked': 'គណនីត្រូវបានចាក់សោ',
   'account_locked_msg':
-      'គណនីរបស់អ្នកត្រូវបានចាក់សោដោយអ្នកគ្រប់គ្រង។ សូមទាក់ទងការគាំទ្រ។',
+      'គណនីរបស់អ្នកត្រូវបានចាក់សោដោយសារការចូលខុសច្រើនដង។ សូមទាក់ទងអ្នកគ្រប់គ្រង។',
   'access_denied': 'ការចូលប្រើត្រូវបានបដិសេធ',
   'connection_error': 'កំហាប់ភ្ជាប់',
   'unable_connect_server': 'មិនអាចភ្ជាប់ទៅម៉ាស៊ីនមេបានទេ។',
   'login_failed': 'ការចូលគណនីបរាជ័យ',
   'unknown_error': 'មានកំហុសមិនស្គាល់បានកើតឡើង។',
+  'login_attempts_remaining': '(នៅសល់ {count} ដង)',
 
   // Home/Dashboard
   'dashboard': 'ផ្ទាំងគ្រប់គ្រង',
@@ -448,6 +461,7 @@ const Map<String, String> _km = {
   'customer_phone': 'លេខទូរស័ព្ទអតិថិជន *',
   'phone_hint': '+855 ឬ 0XX...',
   'customer_address': 'អាសយដ្ឋានអតិថិជន *',
+  'customer_found': 'រកឃើញអតិថិជន',
   'payment_method_title': 'វិធីបង់ប្រាក់',
   'cod_cash': 'បង់ប្រាក់ផ្ទាល់ (សាច់ប្រាក់)',
   'cash_on_delivery': 'បង់ប្រាក់ពេលដឹកជញ្ជូន',
@@ -539,6 +553,13 @@ const Map<String, String> _km = {
   'notification_delivery_completed_message':
       '{deliveryName} បានបញ្ចប់ការដឹកជញ្ជូនសម្រាប់ {saleRef} របស់ {customerName}។',
 
+  // Alert card roles & actions
+  'role_recorder': 'អ្នកកត់',
+  'role_delivery': 'អ្នកដឹក',
+  'action_sale_created': 'បានកត់ការលក់',
+  'action_delivery_accepted': 'បានទទួលការដឹក',
+  'action_delivery_completed': 'បានបញ្ចប់ការដឹក',
+
   // Products
   'search': 'ស្វែងរក...',
   'price': 'តម្លៃ',
@@ -612,6 +633,11 @@ const Map<String, String> _km = {
   // Sales Report
   'sales_by_seller': 'ការលក់តាមអ្នកលក់',
   'select_date_range': 'ជ្រើសរើសកាលបរិច្ឆេទ',
+  'today': 'ថ្ងៃនេះ',
+  'yesterday': 'ម្សិលមិញ',
+  'this_week': 'សប្តាហ៍នេះ',
+  'this_month': 'ខែនេះ',
+  'custom_range': 'ជ្រើសរើសផ្ទាល់',
   'from_date': 'ពីកាលបរិច្ឆេទ',
   'to_date': 'ដល់កាលបរិច្ឆេទ',
   'generate_report': 'បង្កើតរបាយការណ៍',

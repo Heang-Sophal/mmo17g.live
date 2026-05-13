@@ -233,6 +233,7 @@
           <h6>{{ __('messages.Support') }}</h6>
           <ul class="list-unstyled small">
             <li><a class="link-light text-decoration-none" href="{{ route('store.contact') }}">{{ __('messages.ContactUs') }}</a></li>
+            <li><a class="link-light text-decoration-none" href="{{ route('store.privacy-policy') }}">Privacy Policy</a></li>
           </ul>
         </div>
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -5,6 +6,7 @@ import 'package:seller_app/providers/cart_provider.dart';
 import 'package:seller_app/providers/order_provider.dart';
 import 'package:seller_app/providers/auth_provider.dart';
 import 'package:seller_app/providers/language_provider.dart';
+import 'package:seller_app/services/api_service.dart';
 import 'package:seller_app/utils/phone_validator.dart';
 
 class CheckoutScreen extends StatefulWidget {
@@ -33,6 +35,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String? _phoneError;
   String? _countryFlag;
 
+  final ApiService _apiService = ApiService();
+  Timer? _debounceTimer;
+  bool _isLookingUp = false;
+  Map<String, dynamic>? _foundCustomer;
+  bool _addressAutoFilled = false;
+
   @override
   void initState() {
     super.initState();
@@ -46,8 +54,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   void _onPhoneChanged() {
+    _debounceTimer?.cancel();
+    final phone = _customerPhoneController.text;
+
     setState(() {
-      String phone = _customerPhoneController.text;
       if (phone.isEmpty) {
         _phoneError = null;
         _countryFlag = null;
@@ -55,11 +65,50 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         _countryFlag = PhoneValidator.getCountryFlag(phone);
         _phoneError = PhoneValidator.getValidationError(phone);
       }
+
+      if (_addressAutoFilled || _foundCustomer != null) {
+        _addressAutoFilled = false;
+        _foundCustomer = null;
+        _customerAddressController.clear();
+      }
+      _isLookingUp = false;
+    });
+
+    final digits = phone.replaceAll(RegExp(r'[^\d]'), '');
+    if (digits.length >= 6) {
+      _debounceTimer = Timer(
+        const Duration(milliseconds: 600),
+        () => _lookupCustomer(phone),
+      );
+    }
+  }
+
+  Future<void> _lookupCustomer(String phone) async {
+    if (!mounted) return;
+    final token = context.read<AuthProvider>().token;
+    _apiService.setToken(token);
+    setState(() => _isLookingUp = true);
+
+    final customer = await _apiService.lookupCustomerByPhone(phone);
+
+    if (!mounted) return;
+    setState(() {
+      _isLookingUp = false;
+      _foundCustomer = customer;
+      if (customer != null) {
+        final address = (customer['address'] ?? '').toString();
+        if (address.isNotEmpty) {
+          _customerAddressController.text = address;
+          _addressAutoFilled = true;
+        }
+      }
     });
   }
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
+    _apiService.dispose();
     _cashReceivedController.dispose();
     _customerNameController.dispose();
     _customerPhoneController.dispose();
@@ -269,8 +318,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             ],
                           ),
                         ),
-                        // Clear Button
-                        if (_customerPhoneController.text.isNotEmpty)
+                        // Loading indicator or clear button
+                        if (_isLookingUp)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            child: SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        else if (_customerPhoneController.text.isNotEmpty)
                           IconButton(
                             icon: const Icon(Icons.clear, size: 20),
                             onPressed: () {
@@ -289,6 +347,29 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         style: const TextStyle(color: Colors.red, fontSize: 12),
                       ),
                     ),
+                  // Customer found chip
+                  if (_foundCustomer != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6, left: 4),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.check_circle,
+                            color: Colors.green,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${languageProvider.t('customer_found')}: ${_foundCustomer!['name']}',
+                            style: const TextStyle(
+                              color: Colors.green,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   const SizedBox(height: 12),
 
                   // Customer Address (Required)
@@ -297,9 +378,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     decoration: InputDecoration(
                       labelText: languageProvider.t('customer_address'),
                       prefixIcon: const Icon(Icons.location_on_outlined),
+                      suffixIcon: _addressAutoFilled
+                          ? const Tooltip(
+                              message: 'Auto-filled',
+                              child: Icon(
+                                Icons.auto_fix_high,
+                                color: Colors.green,
+                                size: 18,
+                              ),
+                            )
+                          : null,
                       border: const OutlineInputBorder(),
                     ),
                     maxLines: 2,
+                    onChanged: (_) {
+                      if (_addressAutoFilled) {
+                        setState(() => _addressAutoFilled = false);
+                      }
+                    },
                   ),
                   const SizedBox(height: 20),
 

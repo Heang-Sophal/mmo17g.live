@@ -11,7 +11,10 @@ import 'package:seller_app/screens/orders_screen.dart';
 import 'package:seller_app/utils/top_notification.dart';
 
 class DeliveryAlertsScreen extends StatefulWidget {
-  const DeliveryAlertsScreen({super.key});
+  const DeliveryAlertsScreen({super.key, this.onUnreadCountChanged, this.menuButton});
+
+  final ValueChanged<int>? onUnreadCountChanged;
+  final Widget? menuButton;
 
   @override
   State<DeliveryAlertsScreen> createState() => _DeliveryAlertsScreenState();
@@ -89,6 +92,7 @@ class _DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
           _alerts = List<Map<String, dynamic>>.from(data['data'] ?? []);
           _isLoading = false;
         });
+        _notifyUnreadCountChanged();
         return;
       }
 
@@ -131,6 +135,7 @@ class _DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
           return alert;
         }).toList();
       });
+      _notifyUnreadCountChanged();
     } catch (_) {}
   }
 
@@ -155,6 +160,7 @@ class _DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
       setState(() {
         _alerts = _alerts.map((alert) => {...alert, 'is_read': true}).toList();
       });
+      _notifyUnreadCountChanged();
       showTopNotification(
         context,
         languageProvider.t('mark_all_read_success'),
@@ -196,7 +202,15 @@ class _DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
   }
 
   int get _unreadCount =>
-      _alerts.where((alert) => alert['is_read'] != true).length;
+      _alerts.where((alert) => !_isAlertRead(alert['is_read'])).length;
+
+  void _notifyUnreadCountChanged() {
+    widget.onUnreadCountChanged?.call(_unreadCount);
+  }
+
+  bool _isAlertRead(dynamic value) {
+    return value == true || value == 1 || value == '1' || value == 'true';
+  }
 
   String _formatDate(dynamic value) {
     if (value == null) return '';
@@ -224,6 +238,8 @@ class _DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
         backgroundColor: backgroundColor,
+        leading: widget.menuButton,
+        leadingWidth: widget.menuButton != null ? 96 : null,
         title: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -375,165 +391,327 @@ class _DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
   ) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final isRead = alert['is_read'] == true;
-    final saleRef = alert['sale_ref']?.toString() ?? '';
-    final warehouseName = alert['warehouse_name']?.toString() ?? '';
-    final title = _localizedAlertTitle(alert, languageProvider);
-    final message = _localizedAlertMessage(alert, languageProvider);
+    final isRead = _isAlertRead(alert['is_read']);
+    final type = alert['type']?.toString() ?? '';
+    final saleRef = alert['sale_ref']?.toString().trim() ?? '';
+    final payload = Map<String, dynamic>.from(alert['payload'] ?? {});
+
+    final typeColor = _alertTypeColor(type);
+    final typeIcon = _alertTypeIcon(type);
+    final actorName = _alertActorName(type, payload);
+    final roleLabel = _alertRoleLabel(type, languageProvider);
+    final actionLabel = _alertActionLabel(type, languageProvider);
+    final timeText = _formatDate(alert['created_at']);
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () => _openAlertOrder(alert),
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(22),
         child: Ink(
           decoration: BoxDecoration(
             color: isRead
                 ? (isDark
                       ? Colors.white.withValues(alpha: 0.03)
-                      : Colors.white.withValues(alpha: 0.9))
-                : (isDark ? const Color(0xFF1B1436) : const Color(0xFFF8F4FF)),
-            borderRadius: BorderRadius.circular(26),
+                      : Colors.white.withValues(alpha: 0.96))
+                : (isDark
+                      ? typeColor.withValues(alpha: 0.07)
+                      : typeColor.withValues(alpha: 0.04)),
+            borderRadius: BorderRadius.circular(22),
             border: Border.all(
               color: isRead
                   ? (isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : const Color(0xFFE3E7F4))
-                  : const Color(0xFFDCCFFB),
+                        ? Colors.white.withValues(alpha: 0.07)
+                        : const Color(0xFFE8ECF5))
+                  : typeColor.withValues(alpha: isDark ? 0.28 : 0.20),
             ),
             boxShadow: [
               BoxShadow(
                 color: isRead
-                    ? (isDark
-                          ? Colors.black.withValues(alpha: 0.12)
-                          : const Color(0xFFB7C2E9).withValues(alpha: 0.14))
-                    : const Color(0xFFA88BFF).withValues(alpha: 0.18),
-                blurRadius: 24,
-                offset: const Offset(0, 12),
+                    ? Colors.black.withValues(alpha: isDark ? 0.10 : 0.05)
+                    : typeColor.withValues(alpha: isDark ? 0.14 : 0.09),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: isRead
-                            ? Colors.grey.withValues(alpha: 0.12)
-                            : theme.colorScheme.primary.withValues(alpha: 0.14),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.notifications_active_rounded,
-                        color: isRead
-                            ? (isDark ? Colors.white60 : Colors.grey[600])
-                            : theme.colorScheme.primary,
-                      ),
+                // ── Left accent bar ──────────────────────────
+                Container(
+                  width: 4,
+                  decoration: BoxDecoration(
+                    color: isRead
+                        ? (isDark
+                              ? Colors.white.withValues(alpha: 0.12)
+                              : const Color(0xFFD1D9EE))
+                        : typeColor,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(22),
+                      bottomLeft: Radius.circular(22),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  title,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w800,
-                                    color: isDark
-                                        ? Colors.white
-                                        : const Color(0xFF111827),
-                                  ),
+                  ),
+                ),
+                // ── Main content ─────────────────────────────
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 16, 16, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ── Row 1: Sale ref + status badge ───
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                saleRef.isNotEmpty
+                                    ? saleRef
+                                    : languageProvider.t('nav_alerts'),
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.3,
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF111827),
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              _buildAlertStatusChip(
-                                label: isRead
+                            ),
+                            const SizedBox(width: 8),
+                            // New / Read badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isRead
+                                    ? (isDark
+                                          ? Colors.white.withValues(alpha: 0.07)
+                                          : const Color(0xFFF1F5F9))
+                                    : typeColor.withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                isRead
                                     ? languageProvider.t('all_read')
                                     : languageProvider.t('new_alert'),
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: isRead
+                                      ? (isDark
+                                            ? Colors.white54
+                                            : const Color(0xFF64748B))
+                                      : typeColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        // ── Row 2: Actor icon + name + role ──
+                        Row(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: typeColor.withValues(
+                                  alpha: isRead ? 0.08 : 0.14,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                typeIcon,
+                                size: 18,
                                 color: isRead
-                                    ? const Color(0xFF64748B)
-                                    : theme.colorScheme.primary,
+                                    ? typeColor.withValues(alpha: 0.55)
+                                    : typeColor,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Actor name (if available)
+                                  if (actorName.isNotEmpty)
+                                    Text(
+                                      actorName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDark
+                                            ? Colors.white
+                                            : const Color(0xFF1D2939),
+                                      ),
+                                    ),
+                                  const SizedBox(height: 4),
+                                  // Role chip + action text
+                                  Wrap(
+                                    spacing: 6,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: typeColor.withValues(
+                                            alpha: 0.12,
+                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(999),
+                                        ),
+                                        child: Text(
+                                          roleLabel,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            color: typeColor,
+                                          ),
+                                        ),
+                                      ),
+                                      Text(
+                                        '· $actionLabel',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark
+                                              ? Colors.white.withValues(
+                                                  alpha: 0.72,
+                                                )
+                                              : const Color(0xFF475467),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        // ── Row 3: Time ──────────────────────
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.schedule_rounded,
+                              size: 13,
+                              color: isDark
+                                  ? Colors.white38
+                                  : const Color(0xFF98A2B3),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              timeText,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: isDark
+                                    ? Colors.white38
+                                    : const Color(0xFF98A2B3),
+                              ),
+                            ),
+                            if (saleRef.isNotEmpty) ...[
+                              const Spacer(),
+                              Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                size: 12,
+                                color: isRead
+                                    ? (isDark
+                                          ? Colors.white24
+                                          : const Color(0xFFCBD5E1))
+                                    : typeColor.withValues(alpha: 0.55),
                               ),
                             ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            message,
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              height: 1.45,
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.76)
-                                  : const Color(0xFF475467),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (saleRef.isNotEmpty)
-                      _buildAlertStatusChip(
-                        label: '${languageProvider.t('sale')}: $saleRef',
-                        color: const Color(0xFF4F46E5),
-                        icon: Icons.receipt_long_rounded,
-                      ),
-                    if (warehouseName.isNotEmpty)
-                      _buildAlertStatusChip(
-                        label: warehouseName,
-                        color: const Color(0xFF0F766E),
-                        icon: Icons.warehouse_rounded,
-                      ),
-                    _buildAlertStatusChip(
-                      label: _formatDate(alert['created_at']),
-                      color: const Color(0xFF64748B),
-                      icon: Icons.schedule_rounded,
-                    ),
-                  ],
-                ),
-                if (saleRef.isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.open_in_new_rounded,
-                        size: 16,
-                        color: theme.colorScheme.primary,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        languageProvider.t('tap_to_open_order'),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: theme.colorScheme.primary,
+                          ],
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ],
+                ),
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  // ── Alert type helpers ────────────────────────────────────────
+
+  Color _alertTypeColor(String type) {
+    switch (type) {
+      case 'sale_created':
+        return const Color(0xFF7C3AED);
+      case 'delivery_accepted':
+        return const Color(0xFF0EA5E9);
+      case 'delivery_completed':
+        return const Color(0xFF16A34A);
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  IconData _alertTypeIcon(String type) {
+    switch (type) {
+      case 'sale_created':
+        return Icons.receipt_long_rounded;
+      case 'delivery_accepted':
+        return Icons.local_shipping_rounded;
+      case 'delivery_completed':
+        return Icons.check_circle_rounded;
+      default:
+        return Icons.notifications_rounded;
+    }
+  }
+
+  String _alertActorName(String type, Map<String, dynamic> payload) {
+    switch (type) {
+      case 'delivery_accepted':
+      case 'delivery_completed':
+        return payload['delivery_name']?.toString().trim() ?? '';
+      case 'sale_created':
+        return payload['seller_name']?.toString().trim() ??
+            payload['created_by']?.toString().trim() ??
+            '';
+      default:
+        return '';
+    }
+  }
+
+  String _alertRoleLabel(String type, LanguageProvider lang) {
+    switch (type) {
+      case 'sale_created':
+        return lang.t('role_recorder');
+      case 'delivery_accepted':
+      case 'delivery_completed':
+        return lang.t('role_delivery');
+      default:
+        return lang.t('nav_alerts');
+    }
+  }
+
+  String _alertActionLabel(String type, LanguageProvider lang) {
+    switch (type) {
+      case 'sale_created':
+        return lang.t('action_sale_created');
+      case 'delivery_accepted':
+        return lang.t('action_delivery_accepted');
+      case 'delivery_completed':
+        return lang.t('action_delivery_completed');
+      default:
+        return lang.t('nav_alerts');
+    }
   }
 
   Widget _buildHeaderAction({
@@ -644,37 +822,6 @@ class _DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
     );
   }
 
-  Widget _buildAlertStatusChip({
-    required String label,
-    required Color color,
-    IconData? icon,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 4),
-          ],
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildStateCard({
     required IconData icon,
     required String title,
@@ -747,81 +894,4 @@ class _DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
     );
   }
 
-  String _localizedAlertTitle(
-    Map<String, dynamic> alert,
-    LanguageProvider languageProvider,
-  ) {
-    switch (alert['type']?.toString()) {
-      case 'sale_created':
-        return languageProvider.t('notification_sale_created_title');
-      case 'delivery_accepted':
-        return languageProvider.t('notification_delivery_accepted_title');
-      case 'delivery_completed':
-        return languageProvider.t('notification_delivery_completed_title');
-      default:
-        return alert['title']?.toString() ?? languageProvider.t('nav_alerts');
-    }
-  }
-
-  String _localizedAlertMessage(
-    Map<String, dynamic> alert,
-    LanguageProvider languageProvider,
-  ) {
-    final payload = Map<String, dynamic>.from(alert['payload'] ?? {});
-    final customerName =
-        payload['customer_name']?.toString().trim().isNotEmpty == true
-        ? payload['customer_name'].toString()
-        : '-';
-    final saleRef = payload['sale_ref']?.toString().trim().isNotEmpty == true
-        ? payload['sale_ref'].toString()
-        : (alert['sale_ref']?.toString() ?? '-');
-    final warehouseName =
-        payload['warehouse_name']?.toString().trim().isNotEmpty == true
-        ? payload['warehouse_name'].toString()
-        : (alert['warehouse_name']?.toString() ?? '-');
-    final deliveryName =
-        payload['delivery_name']?.toString().trim().isNotEmpty == true
-        ? payload['delivery_name'].toString()
-        : '-';
-
-    switch (alert['type']?.toString()) {
-      case 'sale_created':
-        return _fillTemplate(
-          languageProvider.t('notification_sale_created_message'),
-          {
-            'saleRef': saleRef,
-            'customerName': customerName,
-            'warehouseName': warehouseName,
-          },
-        );
-      case 'delivery_accepted':
-        return _fillTemplate(
-          languageProvider.t('notification_delivery_accepted_message'),
-          {
-            'saleRef': saleRef,
-            'customerName': customerName,
-            'deliveryName': deliveryName,
-          },
-        );
-      case 'delivery_completed':
-        return _fillTemplate(
-          languageProvider.t('notification_delivery_completed_message'),
-          {
-            'saleRef': saleRef,
-            'customerName': customerName,
-            'deliveryName': deliveryName,
-          },
-        );
-      default:
-        return alert['message']?.toString() ?? '';
-    }
-  }
-
-  String _fillTemplate(String template, Map<String, String> values) {
-    var result = template;
-    for (final entry in values.entries) {
-      result = result.replaceAll('{${entry.key}}', entry.value);
-    }
-    return result;
-  }
 }

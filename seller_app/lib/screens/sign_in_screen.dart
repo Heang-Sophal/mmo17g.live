@@ -338,11 +338,6 @@ class _SignInScreenState extends State<SignInScreen> {
                                             'please_enter_password',
                                           );
                                         }
-                                        if (value.length < 6) {
-                                          return languageProvider.t(
-                                            'password_min_6_chars',
-                                          );
-                                        }
                                         return null;
                                       },
                                     ),
@@ -852,7 +847,6 @@ class _SignInScreenState extends State<SignInScreen> {
     }
 
     if (isSuccess) {
-      // Clear any previous errors
       setState(() {
         _errorMessage = null;
         _errorTitle = null;
@@ -861,15 +855,24 @@ class _SignInScreenState extends State<SignInScreen> {
         '🔐 _handleLogin: auth state updated, AuthWrapper will show main app',
       );
     } else {
-      // Show error inline on the form
       debugPrint(
         '🔐 _handleLogin: showing inline error for errorType=${result['error_type']}',
       );
-      _setErrorFromResult(result);
+      try {
+        _setErrorFromResult(result);
+      } catch (e) {
+        debugPrint('🔐 _handleLogin: _setErrorFromResult threw: $e');
+        setState(() {
+          _errorTitle = 'Error';
+          _errorMessage =
+              result['message']?.toString() ?? 'Login failed. Please try again.';
+        });
+      }
     }
   }
 
   void _setErrorFromResult(Map<String, dynamic> result) {
+    final lp = context.read<LanguageProvider>();
     final errorType = result['error_type'];
     final message = result['message'];
     final attemptsRemaining = result['attempts_remaining'];
@@ -879,47 +882,43 @@ class _SignInScreenState extends State<SignInScreen> {
       '🔐 _setErrorFromResult: errorType=$errorType, message=$message',
     );
 
-    if (errorType == 'account_blocked') {
-      _errorTitle = 'Account Temporarily Blocked';
-      _errorMessage =
-          'Too many failed login attempts. Try again after ${_formatBlockedTime(blockedUntil)}.';
-    } else if (errorType == 'invalid_credentials') {
-      _errorTitle = 'Invalid Email';
-      _errorMessage = 'No account found with this email.';
-      if (attemptsRemaining != null) {
-        _errorMessage =
-            '$_errorMessage ($attemptsRemaining attempt(s) remaining.)';
-      }
-    } else if (errorType == 'invalid_password') {
-      _errorTitle = 'Invalid Password';
-      _errorMessage = message ?? 'The password you entered is incorrect.';
-      if (attemptsRemaining != null) {
-        _errorMessage =
-            '$_errorMessage ($attemptsRemaining attempt(s) remaining.)';
-      }
-    } else if (errorType == 'account_deactivated') {
-      _errorTitle = 'Account Deactivated';
-      _errorMessage =
-          'Your account has been deactivated. Contact administrator.';
-    } else if (errorType == 'account_locked') {
-      _errorTitle = 'Account Locked';
-      _errorMessage =
-          'Your account has been locked by administrator. Please contact support.';
-    } else if (errorType == 'insufficient_permissions') {
-      _errorTitle = 'Access Denied';
-      _errorMessage =
-          'Only users with "Sale", "Delivery", "Admin", "Owner", or "Recorder" role can access this app.';
-    } else if (errorType == 'network_error') {
-      _errorTitle = 'Connection Error';
-      _errorMessage = message ?? 'Unable to connect to server.';
-    } else {
-      _errorTitle = 'Login Failed';
-      _errorMessage = message ?? 'An unknown error occurred.';
+    switch (errorType) {
+      case 'account_blocked':
+        _errorTitle = lp.t('account_blocked');
+        _errorMessage = lp
+            .t('account_blocked_msg')
+            .replaceAll('{time}', _formatBlockedTime(blockedUntil));
+      case 'invalid_email':
+      case 'invalid_credentials':
+        _errorTitle = lp.t('invalid_email_title');
+        _errorMessage = lp.t('invalid_email_msg');
+      case 'invalid_password':
+        _errorTitle = lp.t('invalid_password_title');
+        _errorMessage = lp.t('invalid_password_msg');
+        if (attemptsRemaining != null) {
+          final remaining = lp
+              .t('login_attempts_remaining')
+              .replaceAll('{count}', '$attemptsRemaining');
+          _errorMessage = '$_errorMessage $remaining';
+        }
+      case 'account_deactivated':
+        _errorTitle = lp.t('account_deactivated');
+        _errorMessage = lp.t('account_deactivated_msg');
+      case 'account_locked':
+        _errorTitle = lp.t('account_locked');
+        _errorMessage = lp.t('account_locked_msg');
+      case 'insufficient_permissions':
+        _errorTitle = lp.t('access_denied');
+        _errorMessage = lp.t('only_sale_role_access');
+      case 'network_error':
+        _errorTitle = lp.t('connection_error');
+        _errorMessage = message ?? lp.t('unable_connect_server');
+      default:
+        _errorTitle = lp.t('login_failed');
+        _errorMessage = message ?? lp.t('unknown_error');
     }
 
-    setState(() {
-      // Rebuild to show error
-    });
+    setState(() {});
   }
 
   void _clearError() {

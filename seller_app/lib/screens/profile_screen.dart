@@ -9,7 +9,9 @@ import 'package:seller_app/screens/sales_by_seller_report_screen.dart';
 import 'package:seller_app/controllers/navigation_bar_controller.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.menuButton});
+
+  final Widget? menuButton;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -71,6 +73,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(languageProvider.t('profile')),
+        leading: widget.menuButton,
+        leadingWidth: widget.menuButton != null ? 96 : null,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

@@ -240,7 +240,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                 subtitle: languageProvider.t('sign_out'),
                 titleColor: Colors.red,
                 iconColor: Colors.red,
-                onTap: authProvider.signOut,
+                onTap: () => _showLogoutDialog(context),
               ),
             ],
           ),
@@ -494,6 +494,43 @@ class ProfileScreenState extends State<ProfileScreen> {
               }
             },
             child: Text(languageProvider.t('change_password')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    final authProvider = context.read<AuthProvider>();
+    final languageProvider = context.read<LanguageProvider>();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.logout, color: Colors.red, size: 28),
+            const SizedBox(width: 8),
+            Text(languageProvider.t('logout')),
+          ],
+        ),
+        content: Text(languageProvider.t('sign_out')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(languageProvider.t('cancel')),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await authProvider.signOut();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Logout'),
           ),
         ],
       ),

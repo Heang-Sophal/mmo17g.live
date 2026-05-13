@@ -880,67 +880,118 @@ class ReportController extends BaseController
         $sales = $Sales->get();
 
         // Flatten sale details into individual rows
+        // Grand totals are computed over ALL rows (before pagination) for accurate footer display.
+        $grandTotalCost      = 0;
+        $grandTotalPaid      = 0;
+        $grandTotalShipping  = 0;
+        $grandSaleByCash     = 0;
+        $grandSaleByKhqr     = 0;
+
         foreach ($sales as $sale) {
+            $saleShipping    = (float) ($sale->shipping ?? 0);
+            $salePaidAmount  = (float) ($sale->paid_amount ?? 0);
+            $saleTotalAmount = (float) ($sale->GrandTotal ?? 0);
+            $paymentMethod   = strtolower($sale->payment_method ?? '');
+
+            // Accumulate shipping once per sale for grand totals
+            $grandTotalShipping += $saleShipping;
+
+            // Total Paid Amount = paid_amount (which includes shipping) MINUS shipping
+            // so that Total Paid Amount shows only the product revenue portion.
+            $grandTotalPaid += ($salePaidAmount - $saleShipping);
+
+            // Sale-by-payment-method: subtract shipping so it shows product revenue only
+            // (paid_amount in DB includes shipping, so we exclude it for consistency).
+            if ($paymentMethod === 'cash') {
+                $grandSaleByCash += ($salePaidAmount - $saleShipping);
+            } elseif ($paymentMethod === 'khqr') {
+                $grandSaleByKhqr += ($salePaidAmount - $saleShipping);
+            }
+
             if ($sale->details && $sale->details->count() > 0) {
-                // Calculate total sale amount for proportional paid_amount
-                $saleTotalAmount = $sale->GrandTotal ?? 0;
-                $salePaidAmount = $sale->paid_amount ?? 0;
-
+                $isFirstDetail = true;
                 foreach ($sale->details as $detail) {
-                    $product = $detail->product;
-                    $unit = $product && $product->unit ? $product->unit->ShortName : 'N/A';
-                    $productCost = $product ? ($product->cost ?? 0) : 0;
-                    $productPrice = $detail->price ?? 0;
-                    $productTotal = $detail->total ?? ($productPrice * $detail->quantity);
+                    $product  = $detail->product;
+                    $unit     = $product && $product->unit ? $product->unit->ShortName : 'N/A';
+                    $qty      = (float) ($detail->quantity ?? 1);
 
-                    // Calculate proportional paid amount for this product
+                    // FIX #3: Use sale-time unit cost derived from detail->total when available.
+                    // detail->total is the line total (price × qty after discounts/tax adjustments).
+                    // Fallback to current product cost if detail total is not available.
+                    $detailTotal      = (float) ($detail->total ?? 0);
+                    $productPrice     = (float) ($detail->price ?? 0);
+                    $productUnitCost  = $product ? (float) ($product->cost ?? 0) : 0;
+
+                    // FIX #2: product_cost = unit_cost × quantity
+                    $productCostTotal = round($productUnitCost * $qty, 2);
+
+                    // Accumulate cost for grand totals
+                    $grandTotalCost += $productCostTotal;
+
+                    $lineTotal = $detailTotal > 0 ? $detailTotal : ($productPrice * $qty);
+
+                    // Proportional paid amount for this product line
                     $paidAmount = $saleTotalAmount > 0
-                        ? ($productTotal / $saleTotalAmount) * $salePaidAmount
+                        ? round(($lineTotal / $saleTotalAmount) * $salePaidAmount, 2)
                         : 0;
 
-                    $item['id'] = $sale->id;
-                    $item['datetime'] = $sale->created_at ? $sale->created_at->format('Y-m-d H:i:s') : $sale->date;
-                    $item['date'] = $sale->date;
-                    $item['Ref'] = $sale->Ref;
-                    $item['warehouse_name'] = $sale->warehouse ? $sale->warehouse->name : 'N/A';
+                    // FIX #1: Shipping only on the first detail row per sale; 0 for subsequent rows
+                    $rowShipping = $isFirstDetail ? $saleShipping : 0;
+                    $isFirstDetail = false;
+
+                    $item['id']               = $sale->id;
+                    $item['datetime']         = $sale->created_at ? $sale->created_at->format('Y-m-d H:i:s') : $sale->date;
+                    $item['date']             = $sale->date;
+                    $item['Ref']              = $sale->Ref;
+                    $item['warehouse_name']   = $sale->warehouse ? $sale->warehouse->name : 'N/A';
                     $item['customer_address'] = $sale->client ? $sale->client->adresse : 'N/A';
-                    $item['customer_phone'] = $sale->client ? $sale->client->phone : 'N/A';
-                    $item['product_name'] = $product ? $product->name : 'N/A';
-                    $item['product_qty'] = $detail->quantity;
-                    $item['product_unit'] = $unit;
-                    $item['product_cost'] = $productCost;
-                    $item['product_price'] = $productPrice;
-                    $item['paid_amount'] = round($paidAmount, 2);
-                    $item['shipping'] = $sale->shipping ?? 0;
-                    $item['payment_method'] = $sale->payment_method ?? 'N/A';
-                    $item['seller_name'] = $sale->user ? $sale->user->username : 'N/A';
-                    $item['seller_phone'] = $sale->user ? ($sale->user->phone ?? 'N/A') : 'N/A';
+                    $item['customer_phone']   = $sale->client ? $sale->client->phone : 'N/A';
+                    $item['product_name']     = $product ? $product->name : 'N/A';
+                    $item['product_qty']      = $qty;
+                    $item['product_unit']     = $unit;
+                    $item['product_cost']     = $productCostTotal;   // FIX #2: cost × qty
+                    $item['product_price']    = $productPrice;
+                    $item['paid_amount']      = $paidAmount;
+                    $item['shipping']         = $rowShipping;         // FIX #1: no duplication
+                    $item['payment_method']   = $sale->payment_method ?? 'N/A';
+                    $item['seller_name']      = $sale->user ? $sale->user->username : 'N/A';
+                    $item['seller_phone']     = $sale->user ? ($sale->user->phone ?? 'N/A') : 'N/A';
 
                     $data[] = $item;
                 }
             } else {
-                // Sale without details (fallback)
-                $item['id'] = $sale->id;
-                $item['datetime'] = $sale->created_at ? $sale->created_at->format('Y-m-d H:i:s') : $sale->date;
-                $item['date'] = $sale->date;
-                $item['Ref'] = $sale->Ref;
-                $item['warehouse_name'] = $sale->warehouse ? $sale->warehouse->name : 'N/A';
+                // Sale without details (fallback) — shipping only once, cost = 0
+                $grandTotalCost += 0;
+
+                $item['id']               = $sale->id;
+                $item['datetime']         = $sale->created_at ? $sale->created_at->format('Y-m-d H:i:s') : $sale->date;
+                $item['date']             = $sale->date;
+                $item['Ref']              = $sale->Ref;
+                $item['warehouse_name']   = $sale->warehouse ? $sale->warehouse->name : 'N/A';
                 $item['customer_address'] = $sale->client ? $sale->client->adresse : 'N/A';
-                $item['customer_phone'] = $sale->client ? $sale->client->phone : 'N/A';
-                $item['product_name'] = 'N/A';
-                $item['product_qty'] = 0;
-                $item['product_unit'] = 'N/A';
-                $item['product_cost'] = 0;
-                $item['product_price'] = 0;
-                $item['paid_amount'] = $sale->paid_amount ?? 0;
-                $item['shipping'] = $sale->shipping ?? 0;
-                $item['payment_method'] = $sale->payment_method ?? 'N/A';
-                $item['seller_name'] = $sale->user ? $sale->user->username : 'N/A';
-                $item['seller_phone'] = $sale->user ? ($sale->user->phone ?? 'N/A') : 'N/A';
+                $item['customer_phone']   = $sale->client ? $sale->client->phone : 'N/A';
+                $item['product_name']     = 'N/A';
+                $item['product_qty']      = 0;
+                $item['product_unit']     = 'N/A';
+                $item['product_cost']     = 0;
+                $item['product_price']    = 0;
+                $item['paid_amount']      = $salePaidAmount;
+                $item['shipping']         = $saleShipping;
+                $item['payment_method']   = $sale->payment_method ?? 'N/A';
+                $item['seller_name']      = $sale->user ? $sale->user->username : 'N/A';
+                $item['seller_phone']     = $sale->user ? ($sale->user->phone ?? 'N/A') : 'N/A';
 
                 $data[] = $item;
             }
         }
+
+        // FIX #4 & #5: Compute grand totals from ALL rows before pagination
+        // grandTotalPaid = product revenue only (shipping already excluded above)
+        // Profit = Total Paid Amount - Total Cost - Total Shipping
+        $grandTotalProfit    = $grandTotalPaid - $grandTotalCost - $grandTotalShipping;
+        // Cash Difference = Profit - Sale By KHQR
+        //                 = net profit minus what was already collected digitally
+        $grandCashDifference = $grandTotalProfit - $grandSaleByKhqr;
 
         // Manual pagination for flattened data
         $totalRows = count($data);
@@ -968,11 +1019,21 @@ class ReportController extends BaseController
 
         return response()->json(
             [
-                'totalRows' => $totalRows,
-                'sales' => $data,
-                'sellers' => $sellers,
-                'customers' => $customers,
-                'warehouses' => $warehouses,
+                'totalRows'    => $totalRows,
+                'sales'        => $data,
+                'sellers'      => $sellers,
+                'customers'    => $customers,
+                'warehouses'   => $warehouses,
+                // FIX #4 & #5: Grand totals computed over ALL pages so frontend footer is always correct
+                'grandTotals'  => [
+                    'totalCost'       => round($grandTotalCost, 2),
+                    'totalPaidAmount' => round($grandTotalPaid, 2),
+                    'totalShipping'   => round($grandTotalShipping, 2),
+                    'totalProfit'     => round($grandTotalProfit, 2),
+                    'saleByCash'      => round($grandSaleByCash, 2),
+                    'saleByKhqr'      => round($grandSaleByKhqr, 2),
+                    'cashDifference'  => round($grandCashDifference, 2),
+                ],
             ]
         );
     }

@@ -78,6 +78,7 @@ if ($installed === true) {
             Route::get('/', [StoreFrontController::class, 'index'])->name('store.index');
             Route::get('/shop', [StoreFrontController::class, 'shop'])->name('store.shop');
             Route::get('/contact', [StoreFrontController::class, 'contact'])->name('store.contact');
+            Route::get('/privacy-policy', [StoreFrontController::class, 'privacyPolicy'])->name('store.privacy-policy');
             Route::post('/contact', [StoreFrontController::class, 'sendContact'])->name('store.contact.send');
             Route::post('/store/orders', [CheckoutController::class, 'store'])->name('store.orders.store');
             Route::get('/collections/{slug}', [StoreFrontController::class, 'collection'])->name('store.collection.show');
