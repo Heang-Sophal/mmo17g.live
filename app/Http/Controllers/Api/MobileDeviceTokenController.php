@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\MobileDeviceToken;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class MobileDeviceTokenController extends Controller
 {
+    private static ?bool $hasFirebaseProjectIdColumn = null;
+
     public function store(Request $request): JsonResponse
     {
         $user = $request->user('api');
@@ -32,16 +35,23 @@ class MobileDeviceTokenController extends Controller
         $appType = $validated['app_type'] ?? 'seller';
         $firebaseProjectId = trim((string) ($validated['firebase_project_id'] ?? ''));
 
+        $values = [
+            'user_id' => $user->id,
+            'app_type' => $appType,
+            'platform' => $validated['platform'] ?? null,
+            'device_name' => $validated['device_name'] ?? null,
+            'last_used_at' => now(),
+        ];
+
+        if ($this->hasFirebaseProjectIdColumn()) {
+            $values['firebase_project_id'] = $firebaseProjectId !== ''
+                ? $firebaseProjectId
+                : null;
+        }
+
         $deviceToken = MobileDeviceToken::updateOrCreate(
             ['fcm_token' => $token],
-            [
-                'user_id' => $user->id,
-                'app_type' => $appType,
-                'firebase_project_id' => $firebaseProjectId !== '' ? $firebaseProjectId : null,
-                'platform' => $validated['platform'] ?? null,
-                'device_name' => $validated['device_name'] ?? null,
-                'last_used_at' => now(),
-            ]
+            $values
         );
 
         return response()->json([
@@ -80,5 +90,23 @@ class MobileDeviceTokenController extends Controller
             'success' => true,
             'message' => 'Device token removed.',
         ]);
+    }
+
+    private function hasFirebaseProjectIdColumn(): bool
+    {
+        if (self::$hasFirebaseProjectIdColumn !== null) {
+            return self::$hasFirebaseProjectIdColumn;
+        }
+
+        try {
+            self::$hasFirebaseProjectIdColumn = Schema::hasColumn(
+                'mobile_device_tokens',
+                'firebase_project_id'
+            );
+        } catch (\Throwable) {
+            self::$hasFirebaseProjectIdColumn = false;
+        }
+
+        return self::$hasFirebaseProjectIdColumn;
     }
 }

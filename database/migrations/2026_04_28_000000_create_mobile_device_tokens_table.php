@@ -14,6 +14,9 @@ class CreateMobileDeviceTokensTable extends Migration
             $table->integer('user_id')->index('mobile_device_tokens_user_id');
             $table->string('fcm_token', 512)->unique('mobile_device_tokens_fcm_token_unique');
             $table->string('app_type', 50)->default('seller')->index('mobile_device_tokens_app_type');
+            $table->string('firebase_project_id', 191)
+                ->nullable()
+                ->index('mobile_device_tokens_firebase_project_id_index');
             $table->string('platform', 50)->nullable();
             $table->string('device_name', 191)->nullable();
             $table->timestamp('last_used_at')->nullable();
