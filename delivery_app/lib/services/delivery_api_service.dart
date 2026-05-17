@@ -102,19 +102,34 @@ class DeliveryApiService {
     await _post('${ApiConfig.alerts}/read-all');
   }
 
-  Future<Map<String, dynamic>> acceptOrder(String orderId) async {
-    final data = await _post(ApiConfig.acceptOrder(orderId));
+  Future<Map<String, dynamic>> acceptOrder(
+    String orderId, {
+    bool recordMode = false,
+  }) async {
+    final data = await _post(
+      ApiConfig.acceptOrder(orderId),
+      body: recordMode ? {'mode': 'record', 'record_mode': true} : null,
+    );
     return (data['data'] as Map?)?.cast<String, dynamic>() ?? {};
   }
 
-  Future<Map<String, dynamic>> completeOrder(String orderId) async {
-    final data = await _post(ApiConfig.completeOrder(orderId));
+  Future<Map<String, dynamic>> completeOrder(
+    String orderId, {
+    bool recordMode = false,
+  }) async {
+    final data = await _post(
+      ApiConfig.completeOrder(orderId),
+      body: recordMode ? {'mode': 'record', 'record_mode': true} : null,
+    );
     return (data['data'] as Map?)?.cast<String, dynamic>() ?? {};
   }
 
   /// Ask backend to send notifications related to an order action (optional)
-  Future<void> notifyOrderAction(String orderId, String action,
-      {Map<String, dynamic>? extra}) async {
+  Future<void> notifyOrderAction(
+    String orderId,
+    String action, {
+    Map<String, dynamic>? extra,
+  }) async {
     final body = <String, dynamic>{'action': action};
     if (extra != null) body.addAll(extra);
 

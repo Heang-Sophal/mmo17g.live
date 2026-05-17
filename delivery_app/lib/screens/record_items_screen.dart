@@ -431,7 +431,10 @@ class RecordItemsScreenState extends State<RecordItemsScreen> {
     });
 
     try {
-      final updatedOrder = await _apiService.acceptOrder(orderId);
+      final updatedOrder = await _apiService.acceptOrder(
+        orderId,
+        recordMode: widget.recordMode,
+      );
       if (!mounted) return;
 
       setState(() {
@@ -475,7 +478,10 @@ class RecordItemsScreenState extends State<RecordItemsScreen> {
     });
 
     try {
-      final updatedOrder = await _apiService.completeOrder(orderId);
+      final updatedOrder = await _apiService.completeOrder(
+        orderId,
+        recordMode: widget.recordMode,
+      );
       if (!mounted) return;
 
       setState(() {

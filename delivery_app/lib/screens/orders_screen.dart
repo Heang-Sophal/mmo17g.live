@@ -442,7 +442,10 @@ class OrdersScreenState extends State<OrdersScreen> {
     });
 
     try {
-      final updatedOrder = await _apiService.acceptOrder(orderId);
+      final updatedOrder = await _apiService.acceptOrder(
+        orderId,
+        recordMode: widget.recordMode,
+      );
       if (!mounted) return;
 
       setState(() {
@@ -488,7 +491,10 @@ class OrdersScreenState extends State<OrdersScreen> {
     });
 
     try {
-      final updatedOrder = await _apiService.completeOrder(orderId);
+      final updatedOrder = await _apiService.completeOrder(
+        orderId,
+        recordMode: widget.recordMode,
+      );
       if (!mounted) return;
 
       setState(() {

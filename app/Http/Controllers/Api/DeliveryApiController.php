@@ -242,7 +242,8 @@ class DeliveryApiController extends Controller
         $sale->shipping_status = 'shipped';
         $sale->save();
         $sale->refresh();
-        app(DeliveryAlertService::class)->createSellerAcceptedAlert($sale, $user);
+        $actionMode = $this->deliveryActionMode($request, $user);
+        app(DeliveryAlertService::class)->createSellerAcceptedAlert($sale, $user, $actionMode);
 
         return response()->json([
             'success' => true,
@@ -314,8 +315,9 @@ class DeliveryApiController extends Controller
         $sale->save();
         $sale->refresh();
 
-        app(DeliveryAlertService::class)->createSellerCompletedAlert($sale, $user);
-        $this->sendDeliveryCompletedTelegram($sale, $user);
+        $actionMode = $this->deliveryActionMode($request, $user);
+        app(DeliveryAlertService::class)->createSellerCompletedAlert($sale, $user, $actionMode);
+        $this->sendDeliveryCompletedTelegram($sale, $user, $actionMode);
 
         return response()->json([
             'success' => true,
@@ -526,7 +528,7 @@ class DeliveryApiController extends Controller
         return $normalizedStatus;
     }
 
-    protected function sendDeliveryCompletedTelegram(Sale $sale, $deliveryUser): void
+    protected function sendDeliveryCompletedTelegram(Sale $sale, $deliveryUser, string $actionMode = 'delivery'): void
     {
         try {
             $warehouse = $sale->warehouse;
@@ -539,6 +541,9 @@ class DeliveryApiController extends Controller
             $replyToMessageId = $sale->telegram_sale_message_id
                 ? (int) $sale->telegram_sale_message_id
                 : null;
+            $actorName = $deliveryUser?->name ?: ($deliveryUser?->username ?: '');
+            $actorPhone = $deliveryUser?->phone ?? '';
+            $isRecordAction = $actionMode === 'record';
 
             $messageResult = $telegramService->sendDeliveryCompletedNotificationResult(
                 [
@@ -549,8 +554,13 @@ class DeliveryApiController extends Controller
                     'GrandTotal' => (float) $sale->GrandTotal,
                     'payment_status' => $sale->payment_statut ?? 'unpaid',
                     'seller_name' => $sale->user?->name ?? '',
-                    'delivery_name' => $deliveryUser?->name ?? 'Delivery User',
-                    'delivery_phone' => $deliveryUser?->phone ?? '',
+                    'actor_role' => $actionMode,
+                    'actor_name' => $actorName,
+                    'actor_phone' => $actorPhone,
+                    'recorder_name' => $isRecordAction ? $actorName : ($sale->user?->name ?? ''),
+                    'recorder_phone' => $isRecordAction ? $actorPhone : ($sale->user?->phone ?? ''),
+                    'delivery_name' => $isRecordAction ? '' : ($actorName ?: 'Delivery User'),
+                    'delivery_phone' => $isRecordAction ? '' : $actorPhone,
                     'completed_at' => now()->format('Y-m-d H:i:s'),
                 ],
                 $warehouse->name ?? 'Warehouse',
@@ -583,6 +593,22 @@ class DeliveryApiController extends Controller
     private function canAccessDeliveryApp($user): bool
     {
         return $user->hasAnyRoleNamed(['Delivery', 'Laivrison', 'Recorder', 'Admin', 'Owner']);
+    }
+
+    private function deliveryActionMode(Request $request, $user): string
+    {
+        $mode = strtolower(trim((string) $request->input('mode', '')));
+        $recordMode = filter_var($request->input('record_mode', false), FILTER_VALIDATE_BOOLEAN);
+
+        if ($mode === 'record' || $recordMode) {
+            return 'record';
+        }
+
+        if ($mode === 'delivery') {
+            return 'delivery';
+        }
+
+        return $user?->isRecorderUser() ? 'record' : 'delivery';
     }
 
     private function canUseAnyMobilePermission($user, array $permissionNames): bool

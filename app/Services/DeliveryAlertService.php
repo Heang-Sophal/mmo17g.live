@@ -58,25 +58,27 @@ class DeliveryAlertService
         }
     }
 
-    public function createSellerAcceptedAlert(Sale $sale, User $deliveryUser): void
+    public function createSellerAcceptedAlert(Sale $sale, User $deliveryUser, ?string $actionMode = null): void
     {
         $this->createSellerStatusAlert(
             $sale,
             $deliveryUser,
             'delivery_accepted',
             'អ្នកដឹកបានទទួលការបញ្ជាទិញ',
-            'បានទទួល '
+            'បានទទួល ',
+            $actionMode
         );
     }
 
-    public function createSellerCompletedAlert(Sale $sale, User $deliveryUser): void
+    public function createSellerCompletedAlert(Sale $sale, User $deliveryUser, ?string $actionMode = null): void
     {
         $this->createSellerStatusAlert(
             $sale,
             $deliveryUser,
             'delivery_completed',
             'ការដឹកជញ្ជូនបានបញ្ចប់',
-            'បានបញ្ចប់ '
+            'បានបញ្ចប់ ',
+            $actionMode
         );
     }
 
@@ -186,7 +188,8 @@ class DeliveryAlertService
         User $deliveryUser,
         string $type,
         string $title,
-        string $statusLabel
+        string $statusLabel,
+        ?string $actionMode = null
     ): void {
         if (! Schema::hasTable('delivery_alerts') || ! $sale->user_id) {
             return;
@@ -203,6 +206,8 @@ class DeliveryAlertService
         $customerName = $sale->client?->name ?: 'អតិថិជនដើរចូល';
         $saleRef = $sale->Ref ?: ('SALE-'.$sale->id);
         $deliveryName = $deliveryUser->name ?: ($deliveryUser->username ?: 'អ្នកដឹក');
+        $actorRole = $this->normalizeActorRole($actionMode, $deliveryUser);
+        $actorLabel = $actorRole === 'record' ? 'អ្នកកត់ត្រា' : 'អ្នកដឹក';
         $formattedTotal = number_format((float) $sale->GrandTotal, 2, '.', ',');
 
         $payload = [
@@ -214,15 +219,42 @@ class DeliveryAlertService
             'grand_total' => (float) $sale->GrandTotal,
             'shipping_status' => $sale->shipping_status ?: 'pending',
             'payment_status' => $sale->payment_statut ?: 'unpaid',
+            'actor_role' => $actorRole,
+            'actor_name' => $deliveryName,
+            'actor_phone' => $deliveryUser->phone ?? '',
             'delivery_name' => $deliveryName,
             'delivery_phone' => $deliveryUser->phone ?? '',
+            'recorder_name' => $actorRole === 'record' ? $deliveryName : ($seller->name ?? ''),
+            'recorder_phone' => $actorRole === 'record' ? ($deliveryUser->phone ?? '') : ($seller->phone ?? ''),
             'event' => $type,
             'updated_at' => now()->toIso8601String(),
         ];
 
-        $message = "{$deliveryName} {$statusLabel}ការបញ្ជាទិញ {$saleRef} របស់ {$customerName} ({$formattedTotal}) ពី {$warehouseName}។";
+        $displayTitle = $title;
+        if ($actorRole === 'record') {
+            $displayTitle = $type === 'delivery_completed'
+                ? 'ការកត់ត្រាបានបញ្ចប់'
+                : 'អ្នកកត់ត្រាបានទទួលការបញ្ជាទិញ';
+        }
 
-        $this->createAlertForUser($seller, $sale, $type, $title, $message, $payload);
+        $message = "{$actorLabel} {$deliveryName} {$statusLabel}ការបញ្ជាទិញ {$saleRef} របស់ {$customerName} ({$formattedTotal}) ពី {$warehouseName}។";
+
+        $this->createAlertForUser($seller, $sale, $type, $displayTitle, $message, $payload);
+    }
+
+    private function normalizeActorRole(?string $actionMode, User $user): string
+    {
+        $normalized = strtolower(trim((string) $actionMode));
+
+        if ($normalized === 'record') {
+            return 'record';
+        }
+
+        if ($normalized === 'delivery') {
+            return 'delivery';
+        }
+
+        return $user->isRecorderUser() ? 'record' : 'delivery';
     }
 
     protected function createAlertForUser(

@@ -160,7 +160,7 @@ class _RecordGoodsScreenState extends State<RecordGoodsScreen> {
       setState(() => _isSaving = true);
       try {
         _api.setToken(token);
-        await _api.acceptOrder(widget.orderId);
+        await _api.acceptOrder(widget.orderId, recordMode: true);
         if (!mounted) return;
         setState(() {
           _accepted = true;
@@ -189,7 +189,7 @@ class _RecordGoodsScreenState extends State<RecordGoodsScreen> {
     setState(() => _isSaving = true);
     try {
       _api.setToken(token);
-      await _api.completeOrder(widget.orderId);
+      await _api.completeOrder(widget.orderId, recordMode: true);
       if (!mounted) return;
       setState(() => _isSaving = false);
 

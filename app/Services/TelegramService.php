@@ -274,16 +274,32 @@ class TelegramService
 
         $saleRef = $this->escape((string) ($deliveryData['ref'] ?? 'N/A'));
         $customerAddress = $this->escape((string) ($deliveryData['customer_address'] ?? 'N/A'));
-        $sellerName = $this->escape((string) ($deliveryData['seller_name'] ?? 'N/A'));
+        $recorderName = $this->escape((string) ($deliveryData['recorder_name'] ?? ($deliveryData['seller_name'] ?? '')));
+        $recorderPhone = $this->escape((string) ($deliveryData['recorder_phone'] ?? ''));
+        $deliveryName = $this->escape((string) ($deliveryData['delivery_name'] ?? ''));
+        $deliveryPhone = $this->escape((string) ($deliveryData['delivery_phone'] ?? ''));
+        $actorRole = strtolower(trim((string) ($deliveryData['actor_role'] ?? 'delivery')));
+        $completedLabel = $actorRole === 'record' ? 'បានកត់ត្រារួចនៅ' : 'បានដឹករួចនៅ';
         $completedAt = $this->escape($this->formatDisplayDateTime($deliveryData['completed_at'] ?? null));
         $grandTotal = $this->formatAmount($deliveryData['GrandTotal'] ?? 0);
 
         $message = '';
         $message .= "🧾 <b>លេខយោង:</b> {$saleRef}\n";
         $message .= "📍 <b>អាសយដ្ឋានអតិថិជន:</b> {$customerAddress}\n";
-        $message .= "👨‍💼 <b>អ្នកលក់:</b> {$sellerName}\n";
+        if ($recorderName !== '') {
+            $message .= "📝 <b>អ្នកកត់ត្រា:</b> {$recorderName}\n";
+        }
+        if ($recorderPhone !== '') {
+            $message .= "📞 <b>លេខអ្នកកត់ត្រា:</b> {$recorderPhone}\n";
+        }
+        if ($deliveryName !== '') {
+            $message .= "🚚 <b>អ្នកដឹក:</b> {$deliveryName}\n";
+        }
+        if ($deliveryPhone !== '') {
+            $message .= "📞 <b>លេខអ្នកដឹក:</b> {$deliveryPhone}\n";
+        }
         $message .= "💵 <b>សរុប:</b> {$grandTotal} {$currency}\n";
-        $message .= "🕒 <b>បានដឹករួចនៅ:</b> {$completedAt}";
+        $message .= "🕒 <b>{$completedLabel}:</b> {$completedAt}";
 
         return $message;
     }

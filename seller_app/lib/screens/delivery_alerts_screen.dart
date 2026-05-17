@@ -11,7 +11,11 @@ import 'package:seller_app/screens/orders_screen.dart';
 import 'package:seller_app/utils/top_notification.dart';
 
 class DeliveryAlertsScreen extends StatefulWidget {
-  const DeliveryAlertsScreen({super.key, this.onUnreadCountChanged, this.menuButton});
+  const DeliveryAlertsScreen({
+    super.key,
+    this.onUnreadCountChanged,
+    this.menuButton,
+  });
 
   final ValueChanged<int>? onUnreadCountChanged;
   final Widget? menuButton;
@@ -399,7 +403,7 @@ class _DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
     final typeColor = _alertTypeColor(type);
     final typeIcon = _alertTypeIcon(type);
     final actorName = _alertActorName(type, payload);
-    final roleLabel = _alertRoleLabel(type, languageProvider);
+    final roleLabel = _alertRoleLabel(type, payload, languageProvider);
     final actionLabel = _alertActionLabel(type, languageProvider);
     final timeText = _formatDate(alert['created_at']);
 
@@ -568,8 +572,9 @@ class _DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
                                           color: typeColor.withValues(
                                             alpha: 0.12,
                                           ),
-                                          borderRadius:
-                                              BorderRadius.circular(999),
+                                          borderRadius: BorderRadius.circular(
+                                            999,
+                                          ),
                                         ),
                                         child: Text(
                                           roleLabel,
@@ -679,7 +684,9 @@ class _DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
     switch (type) {
       case 'delivery_accepted':
       case 'delivery_completed':
-        return payload['delivery_name']?.toString().trim() ?? '';
+        return payload['actor_name']?.toString().trim() ??
+            payload['delivery_name']?.toString().trim() ??
+            '';
       case 'sale_created':
         return payload['seller_name']?.toString().trim() ??
             payload['created_by']?.toString().trim() ??
@@ -689,12 +696,20 @@ class _DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
     }
   }
 
-  String _alertRoleLabel(String type, LanguageProvider lang) {
+  String _alertRoleLabel(
+    String type,
+    Map<String, dynamic> payload,
+    LanguageProvider lang,
+  ) {
     switch (type) {
       case 'sale_created':
         return lang.t('role_recorder');
       case 'delivery_accepted':
       case 'delivery_completed':
+        final actorRole = payload['actor_role']?.toString().toLowerCase() ?? '';
+        if (actorRole == 'record') {
+          return lang.t('role_recorder');
+        }
         return lang.t('role_delivery');
       default:
         return lang.t('nav_alerts');
@@ -893,5 +908,4 @@ class _DeliveryAlertsScreenState extends State<DeliveryAlertsScreen> {
       ),
     );
   }
-
 }
