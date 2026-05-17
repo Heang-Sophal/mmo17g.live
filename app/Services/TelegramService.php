@@ -219,10 +219,9 @@ class TelegramService
 
         $warehouse = $this->escape((string) $warehouseName);
         $saleRef = $this->escape((string) ($saleData['ref'] ?? 'N/A'));
-        $customerName = $this->escape((string) ($saleData['customer_name'] ?? 'Walk-in Customer'));
         $customerAddress = $this->escape((string) ($saleData['customer_address'] ?? 'N/A'));
         $customerPhone = $this->escape((string) ($saleData['customer_phone'] ?? 'N/A'));
-        $paymentMethod = $this->escape((string) ($saleData['payment_method'] ?? 'N/A'));
+        $paymentMethod = $this->paymentDisplayForSaleMessage($saleData['payment_method'] ?? null);
         $sellerName = $this->escape((string) ($saleData['seller_name'] ?? ($saleData['created_by'] ?? 'Unknown')));
         $sellerPhone = $this->escape((string) ($saleData['seller_phone'] ?? 'N/A'));
         $dateTime = $this->escape($this->formatDisplayDateTime($saleData['datetime'] ?? ($saleData['date'] ?? null)));
@@ -231,7 +230,6 @@ class TelegramService
         $message = "🛒 <b>ការលក់ថ្មី / New Sale</b>\n\n";
         $message .= "🏭 <b>ឃ្លាំង:</b> {$warehouse}\n";
         $message .= "🧾 <b>លេខយោង:</b> {$saleRef}\n";
-        $message .= "👤 <b>អតិថិជន:</b> {$customerName}\n";
         $message .= "📍 <b>ទីតាំងអតិថិជន:</b> {$customerAddress}\n";
         $message .= "📱 <b>លេខអតិថិជន:</b> {$customerPhone}\n";
         $message .= "💳 <b>វិធីបង់ប្រាក់:</b> {$paymentMethod}\n";
@@ -252,6 +250,21 @@ class TelegramService
         $message .= '<i>ប្រព័ន្ធ MMO 17G POS</i>';
 
         return $message;
+    }
+
+    private function paymentDisplayForSaleMessage($paymentMethod): string
+    {
+        $normalized = strtolower(trim((string) $paymentMethod));
+
+        if ($normalized === 'khqr') {
+            return 'ទូទាត់រួច';
+        }
+
+        if ($normalized === 'cash') {
+            return 'មិនទាន់ទូទាត់(COD)';
+        }
+
+        return $this->escape((string) ($paymentMethod ?: 'N/A'));
     }
 
     private function formatDeliveryCompletedMessage(array $deliveryData, string $warehouseName): string

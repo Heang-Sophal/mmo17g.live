@@ -12,6 +12,7 @@ import 'package:seller_app/screens/orders_screen.dart';
 import 'package:seller_app/screens/pos_screen.dart';
 import 'package:seller_app/screens/profile_screen.dart';
 import 'package:seller_app/screens/sales_return_screen.dart';
+import 'package:seller_app/screens/sales_by_seller_report_screen.dart';
 import 'package:seller_app/screens/delivery_alerts_screen.dart';
 import 'package:seller_app/controllers/navigation_bar_controller.dart';
 import 'package:seller_app/providers/language_provider.dart';
@@ -124,8 +125,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       Navigator.push(
         context,
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              const POSScreen(),
+          pageBuilder: (context, animation, secondaryAnimation) => POSScreen(
+            menuButton: _buildDashboardMenuButton(
+              context.read<LanguageProvider>(),
+              onPressed: _openDrawerAfterClosingPushedScreen,
+            ),
+          ),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             const begin = Offset(0.0, 1.0); // ចាប់ផ្តើមពីខាងក្រោម
             const end = Offset.zero; // បញ្ចប់នៅចំកណ្តាលអេក្រង់
@@ -270,12 +275,26 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
 
   void _openDrawer() => _scaffoldKey.currentState?.openDrawer();
 
-  Widget _buildDashboardMenuButton(LanguageProvider languageProvider) {
+  void _openDrawerAfterClosingPushedScreen() {
+    Navigator.of(context).maybePop().then((_) {
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _openDrawer();
+        }
+      });
+    });
+  }
+
+  Widget _buildDashboardMenuButton(
+    LanguageProvider languageProvider, {
+    VoidCallback? onPressed,
+  }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final foregroundColor = isDark ? _goldSoft : _warmInk;
 
     return TextButton.icon(
-      onPressed: _openDrawer,
+      onPressed: onPressed ?? _openDrawer,
       icon: Icon(Icons.menu_rounded, color: foregroundColor, size: 22),
       label: Text(
         languageProvider.t('menu'),
@@ -503,7 +522,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                           Navigator.push(
                             context,
                             PageRouteBuilder(
-                              pageBuilder: (ctx, anim, _) => const POSScreen(),
+                              pageBuilder: (ctx, anim, _) => POSScreen(
+                                menuButton: _buildDashboardMenuButton(
+                                  languageProvider,
+                                  onPressed:
+                                      _openDrawerAfterClosingPushedScreen,
+                                ),
+                              ),
                               transitionsBuilder: (ctx, anim, _, child) {
                                 return SlideTransition(
                                   position:
@@ -701,6 +726,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       profile,
       'mobile_seller_sale_returns',
     );
+    final canViewReports = _hasPermission(profile, 'mobile_seller_reports');
     final canViewProfile = _hasPermission(profile, 'mobile_seller_profile');
     final canViewAlerts = _hasPermission(profile, 'mobile_seller_alerts');
 
@@ -708,7 +734,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     final screensList = <Widget>[
       const HomeScreen(), // 0
     ];
-    int productsIndex = -1, salesReturnIndex = -1, profileIndex = -1;
+    int productsIndex = -1,
+        salesReturnIndex = -1,
+        reportsIndex = -1,
+        profileIndex = -1;
     _ordersIndex = -1;
     _alertsIndex = -1;
 
@@ -773,6 +802,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
           ),
         );
         salesReturnIndex = screensList.length - 1;
+      }
+      if (canViewReports) {
+        screensList.add(
+          SalesBySellerReportScreen(
+            menuButton: _buildDashboardMenuButton(languageProvider),
+          ),
+        );
+        reportsIndex = screensList.length - 1;
       }
       if (canViewProfile) {
         screensList.add(
@@ -967,6 +1004,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
           'icon': Icons.inventory_2_rounded,
           'title': languageProvider.t('nav_products'),
           'screenIndex': productsIndex,
+          'isPos': false,
+        });
+      }
+
+      // Reports (drawer only)
+      if (reportsIndex != -1) {
+        allDrawerItems.add({
+          'icon': Icons.assessment_rounded,
+          'title': languageProvider.t('nav_reports'),
+          'screenIndex': reportsIndex,
           'isPos': false,
         });
       }

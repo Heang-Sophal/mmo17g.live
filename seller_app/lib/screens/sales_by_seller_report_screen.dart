@@ -14,7 +14,9 @@ import 'package:open_file/open_file.dart';
 import 'package:excel/excel.dart' as excel_lib;
 
 class SalesBySellerReportScreen extends StatefulWidget {
-  const SalesBySellerReportScreen({super.key});
+  const SalesBySellerReportScreen({super.key, this.menuButton});
+
+  final Widget? menuButton;
 
   @override
   State<SalesBySellerReportScreen> createState() =>
@@ -147,23 +149,25 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
         //   Cash Difference   = Profit - Sale By KHQR
         if (data['grandTotals'] != null) {
           final gt = data['grandTotals'] as Map<String, dynamic>;
-          totalCost       = (gt['totalCost']       ?? 0).toDouble();
-          totalPaidAmount = (gt['totalPaidAmount']  ?? 0).toDouble();
-          totalShipping   = (gt['totalShipping']    ?? 0).toDouble();
-          saleByCash      = (gt['saleByCash']       ?? 0).toDouble();
-          saleByKhqr      = (gt['saleByKhqr']       ?? 0).toDouble();
-          totalProfit     = (gt['totalProfit']      ?? 0).toDouble();
-          cashDifference  = (gt['cashDifference']   ?? 0).toDouble();
+          totalCost = (gt['totalCost'] ?? 0).toDouble();
+          totalPaidAmount = (gt['totalPaidAmount'] ?? 0).toDouble();
+          totalShipping = (gt['totalShipping'] ?? 0).toDouble();
+          saleByCash = (gt['saleByCash'] ?? 0).toDouble();
+          saleByKhqr = (gt['saleByKhqr'] ?? 0).toDouble();
+          totalProfit = (gt['totalProfit'] ?? 0).toDouble();
+          cashDifference = (gt['cashDifference'] ?? 0).toDouble();
         } else {
           // Fallback: compute locally with corrected formulas
           for (var row in salesList) {
-            final cost        = (row['product_cost']   ?? 0).toDouble();
-            final paidAmount  = (row['paid_amount']    ?? 0).toDouble();
-            final shipping    = (row['shipping']       ?? 0).toDouble();
-            final payMethod   = (row['payment_method'] ?? '').toString().toLowerCase();
+            final cost = (row['product_cost'] ?? 0).toDouble();
+            final paidAmount = (row['paid_amount'] ?? 0).toDouble();
+            final shipping = (row['shipping'] ?? 0).toDouble();
+            final payMethod = (row['payment_method'] ?? '')
+                .toString()
+                .toLowerCase();
 
-            totalCost      += cost;
-            totalShipping  += shipping;
+            totalCost += cost;
+            totalShipping += shipping;
             // Total Paid Amount excludes shipping
             totalPaidAmount += paidAmount;
 
@@ -175,21 +179,21 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
             }
           }
           // Profit = Total Paid Amount - Total Cost - Total Shipping
-          totalProfit    = totalPaidAmount - totalCost - totalShipping;
+          totalProfit = totalPaidAmount - totalCost - totalShipping;
           // Cash Difference = Profit - Sale By KHQR
           cashDifference = totalProfit - saleByKhqr;
         }
 
         setState(() {
-          _reportData     = salesList;
-          _totalCost      = totalCost;
+          _reportData = salesList;
+          _totalCost = totalCost;
           _totalPaidAmount = totalPaidAmount;
-          _totalShipping  = totalShipping;
-          _saleByCash     = saleByCash;
-          _saleByKhqr     = saleByKhqr;
-          _totalProfit    = totalProfit;
+          _totalShipping = totalShipping;
+          _saleByCash = saleByCash;
+          _saleByKhqr = saleByKhqr;
+          _totalProfit = totalProfit;
           _cashDifference = cashDifference;
-          _isLoading      = false;
+          _isLoading = false;
         });
       } else {
         final languageProvider = context.read<LanguageProvider>();
@@ -210,7 +214,11 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
     }
   }
 
-  PopupMenuItem<String> _dateShortcutItem(String value, IconData icon, String label) {
+  PopupMenuItem<String> _dateShortcutItem(
+    String value,
+    IconData icon,
+    String label,
+  ) {
     return PopupMenuItem(
       value: value,
       child: Row(
@@ -284,6 +292,8 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: widget.menuButton,
+        leadingWidth: widget.menuButton != null ? 96 : null,
         title: Text(languageProvider.t('sales_by_seller')),
         actions: [
           if (_reportData.isNotEmpty)
@@ -325,12 +335,32 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
             tooltip: languageProvider.t('select_date_range'),
             onSelected: (value) => _applyDateShortcut(value),
             itemBuilder: (context) => [
-              _dateShortcutItem('today', Icons.today, languageProvider.t('today')),
-              _dateShortcutItem('yesterday', Icons.history, languageProvider.t('yesterday')),
-              _dateShortcutItem('this_week', Icons.view_week, languageProvider.t('this_week')),
-              _dateShortcutItem('this_month', Icons.calendar_month, languageProvider.t('this_month')),
+              _dateShortcutItem(
+                'today',
+                Icons.today,
+                languageProvider.t('today'),
+              ),
+              _dateShortcutItem(
+                'yesterday',
+                Icons.history,
+                languageProvider.t('yesterday'),
+              ),
+              _dateShortcutItem(
+                'this_week',
+                Icons.view_week,
+                languageProvider.t('this_week'),
+              ),
+              _dateShortcutItem(
+                'this_month',
+                Icons.calendar_month,
+                languageProvider.t('this_month'),
+              ),
               const PopupMenuDivider(),
-              _dateShortcutItem('custom', Icons.date_range, languageProvider.t('custom_range')),
+              _dateShortcutItem(
+                'custom',
+                Icons.date_range,
+                languageProvider.t('custom_range'),
+              ),
             ],
           ),
           IconButton(
@@ -502,11 +532,7 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildSummaryItem(
-                    'Sale By Cash',
-                    _saleByCash,
-                    Colors.green,
-                  ),
+                  _buildSummaryItem('Sale By Cash', _saleByCash, Colors.green),
                   _buildSummaryItem(
                     'Sale By KHQR',
                     _saleByKhqr,
@@ -597,9 +623,15 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
 
     try {
       // NotoSans covers Latin/ASCII; NotoSansKhmer is the fallback for Khmer glyphs.
-      final notoRegularData = await rootBundle.load('assets/fonts/NotoSans-Regular.ttf');
-      final notoBoldData = await rootBundle.load('assets/fonts/NotoSans-Bold.ttf');
-      final khmerData = await rootBundle.load('assets/fonts/NotoSansKhmer-Regular.ttf');
+      final notoRegularData = await rootBundle.load(
+        'assets/fonts/NotoSans-Regular.ttf',
+      );
+      final notoBoldData = await rootBundle.load(
+        'assets/fonts/NotoSans-Bold.ttf',
+      );
+      final khmerData = await rootBundle.load(
+        'assets/fonts/NotoSansKhmer-Regular.ttf',
+      );
       final notoRegular = pw.Font.ttf(notoRegularData);
       final notoBold = pw.Font.ttf(notoBoldData);
       final khmerFont = pw.Font.ttf(khmerData);
@@ -690,7 +722,10 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
             ),
             pw.SizedBox(height: 20),
             pw.Container(
-              padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              padding: const pw.EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 8,
+              ),
               decoration: pw.BoxDecoration(
                 border: pw.Border.all(color: PdfColors.grey400),
                 borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5)),
@@ -701,9 +736,21 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
                   pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
                     children: [
-                      _pdfSummaryItem('Total Cost: \$${_formatMoney(_totalCost)}', PdfColors.red, style),
-                      _pdfSummaryItem('Total Paid: \$${_formatMoney(_totalPaidAmount)}', PdfColors.blue, style),
-                      _pdfSummaryItem('Shipping: \$${_formatMoney(_totalShipping)}', PdfColors.orange, style),
+                      _pdfSummaryItem(
+                        'Total Cost: \$${_formatMoney(_totalCost)}',
+                        PdfColors.red,
+                        style,
+                      ),
+                      _pdfSummaryItem(
+                        'Total Paid: \$${_formatMoney(_totalPaidAmount)}',
+                        PdfColors.blue,
+                        style,
+                      ),
+                      _pdfSummaryItem(
+                        'Shipping: \$${_formatMoney(_totalShipping)}',
+                        PdfColors.orange,
+                        style,
+                      ),
                       _pdfSummaryItem(
                         'Profit: \$${_formatMoney(_totalProfit)}',
                         _totalProfit >= 0 ? PdfColors.green : PdfColors.red,
@@ -715,18 +762,32 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
                   pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
                     children: [
-                      _pdfSummaryItem('Sale By Cash: \$${_formatMoney(_saleByCash)}', PdfColors.green, style),
-                      _pdfSummaryItem('Sale By KHQR: \$${_formatMoney(_saleByKhqr)}', PdfColors.teal, style),
+                      _pdfSummaryItem(
+                        'Sale By Cash: \$${_formatMoney(_saleByCash)}',
+                        PdfColors.green,
+                        style,
+                      ),
+                      _pdfSummaryItem(
+                        'Sale By KHQR: \$${_formatMoney(_saleByKhqr)}',
+                        PdfColors.teal,
+                        style,
+                      ),
                     ],
                   ),
                   pw.SizedBox(height: 8),
                   pw.Container(
                     padding: const pw.EdgeInsets.all(6),
                     decoration: pw.BoxDecoration(
-                      color: _cashDifference >= 0 ? PdfColors.green100 : PdfColors.red100,
-                      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                      color: _cashDifference >= 0
+                          ? PdfColors.green100
+                          : PdfColors.red100,
+                      borderRadius: const pw.BorderRadius.all(
+                        pw.Radius.circular(4),
+                      ),
                       border: pw.Border.all(
-                        color: _cashDifference >= 0 ? PdfColors.green : PdfColors.red,
+                        color: _cashDifference >= 0
+                            ? PdfColors.green
+                            : PdfColors.red,
                       ),
                     ),
                     child: pw.Text(
@@ -736,7 +797,9 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
                       style: style(
                         fontSize: 10,
                         fontWeight: pw.FontWeight.bold,
-                        color: _cashDifference >= 0 ? PdfColors.green900 : PdfColors.red900,
+                        color: _cashDifference >= 0
+                            ? PdfColors.green900
+                            : PdfColors.red900,
                       ),
                       textAlign: pw.TextAlign.center,
                     ),
@@ -777,7 +840,12 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
   pw.Widget _pdfSummaryItem(
     String text,
     PdfColor color,
-    pw.TextStyle Function({double fontSize, pw.FontWeight fontWeight, PdfColor? color}) styleBuilder,
+    pw.TextStyle Function({
+      double fontSize,
+      pw.FontWeight fontWeight,
+      PdfColor? color,
+    })
+    styleBuilder,
   ) {
     return pw.Text(
       text,

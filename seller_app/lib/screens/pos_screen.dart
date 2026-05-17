@@ -13,7 +13,9 @@ import 'package:seller_app/services/api_service.dart';
 import 'package:seller_app/utils/top_notification.dart';
 
 class POSScreen extends StatefulWidget {
-  const POSScreen({super.key});
+  const POSScreen({super.key, this.menuButton});
+
+  final Widget? menuButton;
 
   @override
   State<POSScreen> createState() => _POSScreenState();
@@ -185,6 +187,8 @@ class _POSScreenState extends State<POSScreen> {
             elevation: 0,
             scrolledUnderElevation: 0,
             surfaceTintColor: Colors.transparent,
+            leading: widget.menuButton,
+            leadingWidth: widget.menuButton != null ? 96 : null,
             title: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
