@@ -500,17 +500,39 @@ class UserController extends BaseController
 
         $user = User::where('deleted_at', '=', null)->findOrFail($id);
 
-        // Delete all profile edit logs for this user this year
-        $yearStart = now()->startOfYear();
-        $deletedCount = \App\Models\ProfileEditLog::where('user_id', $user->id)
-            ->where('created_at', '>=', $yearStart)
-            ->delete();
+        $previousEditCount = $this->profileEditCountForLimit($user);
+        $resetAt = now();
+
+        $user->profile_edit_limit_reset_at = $resetAt;
+        $user->profile_edit_limit_reset_by = $request->user('api')?->id;
+        $user->save();
 
         return response()->json([
             'success' => true,
             'message' => 'Edit limit reset successfully for '.$user->username.'. They can now edit their profile 3 more times this year.',
-            'deleted_logs' => $deletedCount,
+            'previous_edit_count' => $previousEditCount,
+            'reset_at' => $resetAt->toIso8601String(),
+            'reset_by' => $user->profile_edit_limit_reset_by,
         ]);
+    }
+
+    private function profileEditCountForLimit(User $user): int
+    {
+        return \App\Models\ProfileEditLog::where('user_id', $user->id)
+            ->where('created_at', '>=', $this->profileEditLimitWindowStart($user))
+            ->count();
+    }
+
+    private function profileEditLimitWindowStart(User $user): \Carbon\Carbon
+    {
+        $yearStart = now()->startOfYear();
+        $resetAt = $user->profile_edit_limit_reset_at;
+
+        if ($resetAt && $resetAt->greaterThan($yearStart)) {
+            return $resetAt;
+        }
+
+        return $yearStart;
     }
 
     // ------------- UNLOCK USER ACCOUNT ---------\\

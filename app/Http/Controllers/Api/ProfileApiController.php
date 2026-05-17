@@ -29,11 +29,8 @@ class ProfileApiController extends Controller
                 ], 404);
             }
 
-            // រាប់ចំនួនដងដែលបានកែប្រែក្នុងឆ្នាំនេះ
-            $yearStart = now()->startOfYear();
-            $editCount = ProfileEditLog::where('user_id', $user->id)
-                ->where('created_at', '>=', $yearStart)
-                ->count();
+            // រាប់ចំនួនដងចាប់ពីដើមឆ្នាំ ឬ reset marker ចុងក្រោយ
+            $editCount = $this->profileEditCount($user);
 
             return response()->json([
                 'success' => true,
@@ -65,11 +62,8 @@ class ProfileApiController extends Controller
                 ], 404);
             }
 
-            // ពិនិត្យមើលចំនួនដងដែលបានកែប្រែ
-            $yearStart = now()->startOfYear();
-            $editCount = ProfileEditLog::where('user_id', $user->id)
-                ->where('created_at', '>=', $yearStart)
-                ->count();
+            // ពិនិត្យមើលចំនួនដងចាប់ពីដើមឆ្នាំ ឬ reset marker ចុងក្រោយ
+            $editCount = $this->profileEditCount($user);
 
             if ($editCount >= 3) {
                 return response()->json([
@@ -163,9 +157,7 @@ class ProfileApiController extends Controller
             DB::commit();
 
             // ទាញទិន្នន័យ Profile ថ្មី
-            $newEditCount = ProfileEditLog::where('user_id', $user->id)
-                ->where('created_at', '>=', $yearStart)
-                ->count();
+            $newEditCount = $this->profileEditCount($user);
 
             return response()->json([
                 'success' => true,
@@ -360,10 +352,22 @@ class ProfileApiController extends Controller
                 'photo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             ]);
 
+            $editCount = $this->profileEditCount($user);
+            if ($editCount >= 3) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You have reached the maximum profile edit limit (3 times per year)',
+                    'edit_count' => $editCount,
+                    'edit_limit' => 3,
+                ], 429);
+            }
+
+            $oldAvatar = $user->avatar;
+
             // លុបរូបចាស់ (បើមាន)
-            if ($user->avatar) {
-                if ($user->avatar !== 'no_avatar.png') {
-                    media_delete('avatar', $user->avatar);
+            if ($oldAvatar) {
+                if ($oldAvatar !== 'no_avatar.png') {
+                    media_delete('avatar', $oldAvatar);
                 }
             }
 
@@ -380,21 +384,16 @@ class ProfileApiController extends Controller
             $user->save();
 
             // កត់ត្រាក្នុង Edit Log (រាប់ជា 1 edit)
-            $yearStart = now()->startOfYear();
-            $editCount = ProfileEditLog::where('user_id', $user->id)
-                ->where('created_at', '>=', $yearStart)
-                ->count();
+            ProfileEditLog::create([
+                'user_id' => $user->id,
+                'field_changed' => 'avatar',
+                'old_value' => $oldAvatar ?? 'none',
+                'new_value' => $photoName,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
 
-            if ($editCount < 3) {
-                ProfileEditLog::create([
-                    'user_id' => $user->id,
-                    'field_changed' => 'avatar',
-                    'old_value' => $user->avatar ?? 'none',
-                    'new_value' => $photoName,
-                    'ip_address' => $request->ip(),
-                    'user_agent' => $request->userAgent(),
-                ]);
-            }
+            $newEditCount = $this->profileEditCount($user);
 
             return response()->json([
                 'success' => true,
@@ -402,8 +401,8 @@ class ProfileApiController extends Controller
                 'data' => [
                     'avatar' => $photoName,
                     'avatar_url' => avatar_image_url($photoName),
-                    'edit_count' => $editCount + 1,
-                    'edits_remaining' => max(0, 3 - ($editCount + 1)),
+                    'edit_count' => $newEditCount,
+                    'edits_remaining' => max(0, 3 - $newEditCount),
                 ],
             ], 200);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -485,6 +484,26 @@ class ProfileApiController extends Controller
             'edit_limit' => 3,
             'can_edit' => $editCount < 3,
             'edits_remaining' => max(0, 3 - $editCount),
+            'edit_limit_reset_at' => $user->profile_edit_limit_reset_at?->toIso8601String(),
         ];
+    }
+
+    private function profileEditCount(User $user): int
+    {
+        return ProfileEditLog::where('user_id', $user->id)
+            ->where('created_at', '>=', $this->profileEditWindowStart($user))
+            ->count();
+    }
+
+    private function profileEditWindowStart(User $user): \Carbon\Carbon
+    {
+        $yearStart = now()->startOfYear();
+        $resetAt = $user->profile_edit_limit_reset_at;
+
+        if ($resetAt && $resetAt->greaterThan($yearStart)) {
+            return $resetAt;
+        }
+
+        return $yearStart;
     }
 }

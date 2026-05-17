@@ -35,6 +35,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'firstname', 'lastname', 'username', 'email', 'password', 'phone', 'statut', 'avatar', 'role_id', 'is_all_warehouses', 'record_view',
+        'profile_edit_limit_reset_at', 'profile_edit_limit_reset_by',
     ];
 
     /**
@@ -57,6 +58,8 @@ class User extends Authenticatable
         'statut' => 'integer',
         'is_all_warehouses' => 'integer',
         'record_view' => 'boolean',
+        'profile_edit_limit_reset_at' => 'datetime',
+        'profile_edit_limit_reset_by' => 'integer',
     ];
 
     /**
