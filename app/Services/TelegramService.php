@@ -274,11 +274,19 @@ class TelegramService
 
         $saleRef = $this->escape((string) ($deliveryData['ref'] ?? 'N/A'));
         $customerAddress = $this->escape((string) ($deliveryData['customer_address'] ?? 'N/A'));
-        $recorderName = $this->escape((string) ($deliveryData['recorder_name'] ?? ($deliveryData['seller_name'] ?? '')));
-        $recorderPhone = $this->escape((string) ($deliveryData['recorder_phone'] ?? ''));
-        $deliveryName = $this->escape((string) ($deliveryData['delivery_name'] ?? ''));
-        $deliveryPhone = $this->escape((string) ($deliveryData['delivery_phone'] ?? ''));
         $actorRole = strtolower(trim((string) ($deliveryData['actor_role'] ?? 'delivery')));
+        $recorderName = $this->displayableTelegramText(
+            $deliveryData['recorder_name'] ?? ($actorRole === 'record' ? ($deliveryData['actor_name'] ?? '') : '')
+        );
+        $recorderPhone = $this->displayableTelegramText(
+            $deliveryData['recorder_phone'] ?? ($actorRole === 'record' ? ($deliveryData['actor_phone'] ?? '') : '')
+        );
+        $deliveryName = $this->displayableTelegramText(
+            $deliveryData['delivery_name'] ?? ($actorRole === 'delivery' ? ($deliveryData['actor_name'] ?? '') : '')
+        );
+        $deliveryPhone = $this->displayableTelegramText(
+            $deliveryData['delivery_phone'] ?? ($actorRole === 'delivery' ? ($deliveryData['actor_phone'] ?? '') : '')
+        );
         $completedLabel = $actorRole === 'record' ? 'បានកត់ត្រារួចនៅ' : 'បានដឹករួចនៅ';
         $completedAt = $this->escape($this->formatDisplayDateTime($deliveryData['completed_at'] ?? null));
         $grandTotal = $this->formatAmount($deliveryData['GrandTotal'] ?? 0);
@@ -302,6 +310,17 @@ class TelegramService
         $message .= "🕒 <b>{$completedLabel}:</b> {$completedAt}";
 
         return $message;
+    }
+
+    private function displayableTelegramText($value): string
+    {
+        $text = trim((string) $value);
+
+        if ($text === '' || in_array(strtolower($text), ['n/a', 'na', 'null', 'none', '-'], true)) {
+            return '';
+        }
+
+        return $this->escape($text);
     }
 
     private function sendSaleProductImages(array $saleData, string $chatId, ?string $botToken = null): void
