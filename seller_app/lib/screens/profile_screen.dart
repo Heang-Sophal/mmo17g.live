@@ -7,6 +7,7 @@ import 'package:seller_app/providers/language_provider.dart';
 import 'package:seller_app/screens/account_settings_screen.dart';
 import 'package:seller_app/screens/sales_by_seller_report_screen.dart';
 import 'package:seller_app/controllers/navigation_bar_controller.dart';
+import 'package:seller_app/widgets/cached_image.dart';
 import 'package:seller_app/widgets/legal_support_links.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -157,31 +158,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             child: profile.avatarUrl != null && profile.avatarUrl!.isNotEmpty
                 ? ClipOval(
-                    child: Image.network(
-                      profile.avatarUrl!,
+                    child: CachedImage(
+                      url: profile.avatarUrl!,
                       fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Center(
-                          child: CircularProgressIndicator(
-                            value: loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded /
-                                      loadingProgress.expectedTotalBytes!
-                                : null,
-                            strokeWidth: 2,
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
-                          ),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(
-                          Icons.person,
-                          size: 50,
-                          color: Colors.white,
-                        );
-                      },
+                      width: 100,
+                      height: 100,
+                      errorWidget: const Icon(
+                        Icons.person,
+                        size: 50,
+                        color: Colors.white,
+                      ),
                     ),
                   )
                 : const Icon(Icons.person, size: 50, color: Colors.white),

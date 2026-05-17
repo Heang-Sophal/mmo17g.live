@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:seller_app/models/product.dart';
+import 'package:seller_app/widgets/cached_image.dart';
 
 class ProductCard extends StatelessWidget {
   final Product product;
@@ -33,29 +34,14 @@ class ProductCard extends StatelessWidget {
                 width: double.infinity,
                 decoration: BoxDecoration(color: Colors.grey[200]),
                 child: product.imageUrl.isNotEmpty
-                    ? Image.network(
-                        product.imageUrl,
+                    ? CachedImage(
+                        url: product.imageUrl,
                         fit: BoxFit.cover,
                         width: double.infinity,
                         height: double.infinity,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Center(
-                            child: CircularProgressIndicator(
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded /
-                                        loadingProgress.expectedTotalBytes!
-                                  : null,
-                              strokeWidth: 2,
-                              valueColor: const AlwaysStoppedAnimation<Color>(
-                                Color(0xFF6C63FF),
-                              ),
-                            ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return _buildPlaceholder();
-                        },
+                        cacheWidth: 420,
+                        cacheHeight: 420,
+                        errorWidget: _buildPlaceholder(),
                       )
                     : _buildPlaceholder(),
               ),

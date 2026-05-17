@@ -6,6 +6,7 @@ import 'package:seller_app/providers/profile_provider.dart';
 import 'package:seller_app/providers/auth_provider.dart';
 import 'package:seller_app/providers/language_provider.dart';
 import 'package:seller_app/services/api_service.dart';
+import 'package:seller_app/widgets/cached_image.dart';
 
 class AccountSettingsScreen extends StatefulWidget {
   const AccountSettingsScreen({super.key});
@@ -113,42 +114,16 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                                   )
                                 : _avatarUrl != null && _avatarUrl!.isNotEmpty
                                 ? ClipOval(
-                                    child: Image.network(
-                                      _avatarUrl!,
+                                    child: CachedImage(
+                                      url: _avatarUrl!,
                                       fit: BoxFit.cover,
                                       width: 120,
                                       height: 120,
-                                      loadingBuilder: (context, child, loadingProgress) {
-                                        if (loadingProgress == null) {
-                                          return child;
-                                        }
-                                        return Center(
-                                          child: CircularProgressIndicator(
-                                            value:
-                                                loadingProgress
-                                                        .expectedTotalBytes !=
-                                                    null
-                                                ? loadingProgress
-                                                          .cumulativeBytesLoaded /
-                                                      loadingProgress
-                                                          .expectedTotalBytes!
-                                                : null,
-                                            strokeWidth: 2,
-                                            valueColor:
-                                                const AlwaysStoppedAnimation<
-                                                  Color
-                                                >(Color(0xFF6C63FF)),
-                                          ),
-                                        );
-                                      },
-                                      errorBuilder:
-                                          (context, error, stackTrace) {
-                                            return const Icon(
-                                              Icons.person,
-                                              size: 60,
-                                              color: Color(0xFF6C63FF),
-                                            );
-                                          },
+                                      errorWidget: const Icon(
+                                        Icons.person,
+                                        size: 60,
+                                        color: Color(0xFF6C63FF),
+                                      ),
                                     ),
                                   )
                                 : const Icon(

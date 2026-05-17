@@ -1,6 +1,7 @@
 import 'package:delivery_app/providers/auth_provider.dart';
 import 'package:delivery_app/providers/language_provider.dart';
 import 'package:delivery_app/services/delivery_api_service.dart';
+import 'package:delivery_app/widgets/cached_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -667,12 +668,12 @@ class _ProfileAvatar extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(22),
         child: imageUrl != null && imageUrl!.isNotEmpty
-            ? Image.network(
-                imageUrl!,
+            ? CachedImage(
+                url: imageUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return _AvatarFallback(initials: initials);
-                },
+                cacheWidth: 220,
+                cacheHeight: 220,
+                errorWidget: _AvatarFallback(initials: initials),
               )
             : _AvatarFallback(initials: initials),
       ),

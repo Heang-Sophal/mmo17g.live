@@ -16,6 +16,7 @@ import 'package:seller_app/screens/delivery_alerts_screen.dart';
 import 'package:seller_app/controllers/navigation_bar_controller.dart';
 import 'package:seller_app/providers/language_provider.dart';
 import 'package:seller_app/providers/profile_provider.dart';
+import 'package:seller_app/widgets/cached_image.dart';
 
 const Color _goldPrimary = Color(0xFFD6A735);
 const Color _goldSoft = Color(0xFFFFE8A7);
@@ -123,19 +124,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       Navigator.push(
         context,
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => const POSScreen(),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const POSScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             const begin = Offset(0.0, 1.0); // ចាប់ផ្តើមពីខាងក្រោម
-            const end = Offset.zero;        // បញ្ចប់នៅចំកណ្តាលអេក្រង់
+            const end = Offset.zero; // បញ្ចប់នៅចំកណ្តាលអេក្រង់
             const curve = Curves.easeInOut; // ទម្រង់នៃចលនា
 
-            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+            var tween = Tween(
+              begin: begin,
+              end: end,
+            ).chain(CurveTween(curve: curve));
             var offsetAnimation = animation.drive(tween);
 
-            return SlideTransition(
-              position: offsetAnimation,
-              child: child,
-            );
+            return SlideTransition(position: offsetAnimation, child: child);
           },
         ),
       );
@@ -266,7 +268,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     );
   }
 
-
   void _openDrawer() => _scaffoldKey.currentState?.openDrawer();
 
   Widget _buildDashboardMenuButton(LanguageProvider languageProvider) {
@@ -333,14 +334,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: isDark
-                        ? [
-                            _goldDeep.withValues(alpha: 0.55),
-                            _darkSurface,
-                          ]
-                        : [
-                            _goldPrimary.withValues(alpha: 0.18),
-                            _warmSurface,
-                          ],
+                        ? [_goldDeep.withValues(alpha: 0.55), _darkSurface]
+                        : [_goldPrimary.withValues(alpha: 0.18), _warmSurface],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -371,22 +366,38 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                           ),
                         ],
                       ),
-                      child: CircleAvatar(
-                        radius: 28,
-                        backgroundColor: isDark
-                            ? _goldDeep.withValues(alpha: 0.35)
-                            : _goldSoft,
-                        backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                            ? NetworkImage(avatarUrl)
-                            : null,
-                        child: avatarUrl == null || avatarUrl.isEmpty
-                            ? Icon(
+                      child: avatarUrl != null && avatarUrl.isNotEmpty
+                          ? ClipOval(
+                              child: CachedImage(
+                                url: avatarUrl,
+                                width: 56,
+                                height: 56,
+                                fit: BoxFit.cover,
+                                errorWidget: Container(
+                                  width: 56,
+                                  height: 56,
+                                  color: isDark
+                                      ? _goldDeep.withValues(alpha: 0.35)
+                                      : _goldSoft,
+                                  child: Icon(
+                                    Icons.person_rounded,
+                                    size: 28,
+                                    color: isDark ? _goldSoft : _goldDeep,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : CircleAvatar(
+                              radius: 28,
+                              backgroundColor: isDark
+                                  ? _goldDeep.withValues(alpha: 0.35)
+                                  : _goldSoft,
+                              child: Icon(
                                 Icons.person_rounded,
                                 size: 28,
                                 color: isDark ? _goldSoft : _goldDeep,
-                              )
-                            : null,
-                      ),
+                              ),
+                            ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -394,7 +405,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            userName.isNotEmpty ? userName : languageProvider.t('nav_profile'),
+                            userName.isNotEmpty
+                                ? userName
+                                : languageProvider.t('nav_profile'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -493,12 +506,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                               pageBuilder: (ctx, anim, _) => const POSScreen(),
                               transitionsBuilder: (ctx, anim, _, child) {
                                 return SlideTransition(
-                                  position: Tween<Offset>(
-                                    begin: const Offset(0, 1),
-                                    end: Offset.zero,
-                                  )
-                                      .chain(CurveTween(curve: Curves.easeInOut))
-                                      .animate(anim),
+                                  position:
+                                      Tween<Offset>(
+                                            begin: const Offset(0, 1),
+                                            end: Offset.zero,
+                                          )
+                                          .chain(
+                                            CurveTween(curve: Curves.easeInOut),
+                                          )
+                                          .animate(anim),
                                   child: child,
                                 );
                               },
@@ -578,13 +594,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
             color: isSelected
                 ? activeColor.withValues(alpha: isDark ? 0.18 : 0.10)
                 : isDestructive
-                ? const Color(0xFFDC2626).withValues(alpha: isDark ? 0.07 : 0.04)
+                ? const Color(
+                    0xFFDC2626,
+                  ).withValues(alpha: isDark ? 0.07 : 0.04)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(20),
             border: isSelected
-                ? Border.all(
-                    color: activeColor.withValues(alpha: 0.35),
-                  )
+                ? Border.all(color: activeColor.withValues(alpha: 0.35))
                 : Border.all(color: Colors.transparent),
           ),
           child: Row(
@@ -692,17 +708,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     final screensList = <Widget>[
       const HomeScreen(), // 0
     ];
-    int productsIndex = -1,
-        salesReturnIndex = -1,
-        profileIndex = -1;
+    int productsIndex = -1, salesReturnIndex = -1, profileIndex = -1;
     _ordersIndex = -1;
     _alertsIndex = -1;
 
     if (authProvider.isDeliveryUser) {
-      screensList.add(OrdersScreen(
-        key: _ordersKey,
-        menuButton: _buildDashboardMenuButton(languageProvider),
-      ));
+      screensList.add(
+        OrdersScreen(
+          key: _ordersKey,
+          menuButton: _buildDashboardMenuButton(languageProvider),
+        ),
+      );
       _ordersIndex = screensList.length - 1;
 
       if (canViewAlerts) {
@@ -716,16 +732,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
         _alertsIndex = screensList.length - 1;
       }
 
-      screensList.add(ProfileScreen(
-        menuButton: _buildDashboardMenuButton(languageProvider),
-      ));
+      screensList.add(
+        ProfileScreen(menuButton: _buildDashboardMenuButton(languageProvider)),
+      );
       profileIndex = screensList.length - 1;
     } else {
       if (canViewOrders) {
-        screensList.add(OrdersScreen(
-          key: _ordersKey,
-          menuButton: _buildDashboardMenuButton(languageProvider),
-        ));
+        screensList.add(
+          OrdersScreen(
+            key: _ordersKey,
+            menuButton: _buildDashboardMenuButton(languageProvider),
+          ),
+        );
         _ordersIndex = screensList.length - 1;
       }
 
@@ -741,21 +759,27 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       }
 
       if (canViewProducts) {
-        screensList.add(ProductsScreen(
-          menuButton: _buildDashboardMenuButton(languageProvider),
-        ));
+        screensList.add(
+          ProductsScreen(
+            menuButton: _buildDashboardMenuButton(languageProvider),
+          ),
+        );
         productsIndex = screensList.length - 1;
       }
       if (canViewSaleReturns) {
-        screensList.add(SalesReturnScreen(
-          menuButton: _buildDashboardMenuButton(languageProvider),
-        ));
+        screensList.add(
+          SalesReturnScreen(
+            menuButton: _buildDashboardMenuButton(languageProvider),
+          ),
+        );
         salesReturnIndex = screensList.length - 1;
       }
       if (canViewProfile) {
-        screensList.add(ProfileScreen(
-          menuButton: _buildDashboardMenuButton(languageProvider),
-        ));
+        screensList.add(
+          ProfileScreen(
+            menuButton: _buildDashboardMenuButton(languageProvider),
+          ),
+        );
         profileIndex = screensList.length - 1;
       }
     }
@@ -765,10 +789,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     final allDrawerItems = <Map<String, dynamic>>[];
 
     Widget profileIconRegular = avatarUrl != null && avatarUrl.isNotEmpty
-        ? CircleAvatar(
-            radius: 13,
-            backgroundImage: NetworkImage(avatarUrl),
-            backgroundColor: Colors.transparent,
+        ? ClipOval(
+            child: CachedImage(
+              url: avatarUrl,
+              width: 26,
+              height: 26,
+              fit: BoxFit.cover,
+              errorWidget: const Icon(Icons.person_outline),
+            ),
           )
         : const Icon(Icons.person_outline);
 
@@ -779,21 +807,27 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
               shape: BoxShape.circle,
               border: Border.all(color: _goldPrimary, width: 2),
             ),
-            child: CircleAvatar(
-              radius: 12,
-              backgroundImage: NetworkImage(avatarUrl),
-              backgroundColor: Colors.transparent,
+            child: ClipOval(
+              child: CachedImage(
+                url: avatarUrl,
+                width: 24,
+                height: 24,
+                fit: BoxFit.cover,
+                errorWidget: const Icon(Icons.person),
+              ),
             ),
           )
         : const Icon(Icons.person);
 
     // ── Home ────────────────────────────────────────────────
     menuConfig.add({'isMore': false, 'screenIndex': 0});
-    destinations.add(NavigationDestination(
-      icon: const Icon(Icons.dashboard_outlined),
-      selectedIcon: const Icon(Icons.dashboard),
-      label: languageProvider.t('nav_home'),
-    ));
+    destinations.add(
+      NavigationDestination(
+        icon: const Icon(Icons.dashboard_outlined),
+        selectedIcon: const Icon(Icons.dashboard),
+        label: languageProvider.t('nav_home'),
+      ),
+    );
     allDrawerItems.add({
       'icon': Icons.dashboard_rounded,
       'title': languageProvider.t('nav_home'),
@@ -803,11 +837,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
 
     if (authProvider.isDeliveryUser) {
       menuConfig.add({'isMore': false, 'screenIndex': _ordersIndex});
-      destinations.add(NavigationDestination(
-        icon: const Icon(Icons.shopping_bag_outlined),
-        selectedIcon: const Icon(Icons.shopping_bag),
-        label: languageProvider.t('nav_orders'),
-      ));
+      destinations.add(
+        NavigationDestination(
+          icon: const Icon(Icons.shopping_bag_outlined),
+          selectedIcon: const Icon(Icons.shopping_bag),
+          label: languageProvider.t('nav_orders'),
+        ),
+      );
       allDrawerItems.add({
         'icon': Icons.shopping_bag_rounded,
         'title': languageProvider.t('nav_orders'),
@@ -817,17 +853,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
 
       if (_alertsIndex != -1) {
         menuConfig.add({'isMore': false, 'screenIndex': _alertsIndex});
-        destinations.add(NavigationDestination(
-          icon: _buildBadgeIcon(
-            const Icon(Icons.notifications_outlined),
-            _unreadAlertCount,
+        destinations.add(
+          NavigationDestination(
+            icon: _buildBadgeIcon(
+              const Icon(Icons.notifications_outlined),
+              _unreadAlertCount,
+            ),
+            selectedIcon: _buildBadgeIcon(
+              const Icon(Icons.notifications),
+              _unreadAlertCount,
+            ),
+            label: languageProvider.t('nav_alerts'),
           ),
-          selectedIcon: _buildBadgeIcon(
-            const Icon(Icons.notifications),
-            _unreadAlertCount,
-          ),
-          label: languageProvider.t('nav_alerts'),
-        ));
+        );
         allDrawerItems.add({
           'icon': Icons.notifications_rounded,
           'title': languageProvider.t('nav_alerts'),
@@ -838,11 +876,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       }
 
       menuConfig.add({'isMore': false, 'screenIndex': profileIndex});
-      destinations.add(NavigationDestination(
-        icon: profileIconRegular,
-        selectedIcon: profileIconSelected,
-        label: languageProvider.t('settings'),
-      ));
+      destinations.add(
+        NavigationDestination(
+          icon: profileIconRegular,
+          selectedIcon: profileIconSelected,
+          label: languageProvider.t('settings'),
+        ),
+      );
       allDrawerItems.add({
         'icon': Icons.settings_rounded,
         'title': languageProvider.t('settings'),
@@ -853,11 +893,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       // POS
       if (canViewPos) {
         menuConfig.add({'isMore': false, 'screenIndex': -1, 'isPos': true});
-        destinations.add(NavigationDestination(
-          icon: const Icon(Icons.point_of_sale_outlined),
-          selectedIcon: const Icon(Icons.point_of_sale),
-          label: languageProvider.t('pos'),
-        ));
+        destinations.add(
+          NavigationDestination(
+            icon: const Icon(Icons.point_of_sale_outlined),
+            selectedIcon: const Icon(Icons.point_of_sale),
+            label: languageProvider.t('pos'),
+          ),
+        );
         allDrawerItems.add({
           'icon': Icons.point_of_sale_rounded,
           'title': languageProvider.t('pos'),
@@ -869,11 +911,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       // Orders
       if (_ordersIndex != -1) {
         menuConfig.add({'isMore': false, 'screenIndex': _ordersIndex});
-        destinations.add(NavigationDestination(
-          icon: const Icon(Icons.shopping_bag_outlined),
-          selectedIcon: const Icon(Icons.shopping_bag),
-          label: languageProvider.t('nav_orders'),
-        ));
+        destinations.add(
+          NavigationDestination(
+            icon: const Icon(Icons.shopping_bag_outlined),
+            selectedIcon: const Icon(Icons.shopping_bag),
+            label: languageProvider.t('nav_orders'),
+          ),
+        );
         allDrawerItems.add({
           'icon': Icons.shopping_bag_rounded,
           'title': languageProvider.t('nav_orders'),
@@ -885,17 +929,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       // Alerts
       if (_alertsIndex != -1) {
         menuConfig.add({'isMore': false, 'screenIndex': _alertsIndex});
-        destinations.add(NavigationDestination(
-          icon: _buildBadgeIcon(
-            const Icon(Icons.notifications_outlined),
-            _unreadAlertCount,
+        destinations.add(
+          NavigationDestination(
+            icon: _buildBadgeIcon(
+              const Icon(Icons.notifications_outlined),
+              _unreadAlertCount,
+            ),
+            selectedIcon: _buildBadgeIcon(
+              const Icon(Icons.notifications),
+              _unreadAlertCount,
+            ),
+            label: languageProvider.t('nav_alerts'),
           ),
-          selectedIcon: _buildBadgeIcon(
-            const Icon(Icons.notifications),
-            _unreadAlertCount,
-          ),
-          label: languageProvider.t('nav_alerts'),
-        ));
+        );
         allDrawerItems.add({
           'icon': Icons.notifications_rounded,
           'title': languageProvider.t('nav_alerts'),
@@ -928,11 +974,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       // Settings / Profile
       if (profileIndex != -1) {
         menuConfig.add({'isMore': false, 'screenIndex': profileIndex});
-        destinations.add(NavigationDestination(
-          icon: profileIconRegular,
-          selectedIcon: profileIconSelected,
-          label: languageProvider.t('settings'),
-        ));
+        destinations.add(
+          NavigationDestination(
+            icon: profileIconRegular,
+            selectedIcon: profileIconSelected,
+            label: languageProvider.t('settings'),
+          ),
+        );
         allDrawerItems.add({
           'icon': Icons.settings_rounded,
           'title': languageProvider.t('settings'),
@@ -1048,4 +1096,3 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     );
   }
 }
-

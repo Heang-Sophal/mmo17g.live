@@ -48,13 +48,15 @@ class MediaFileController extends Controller
 
         $remoteUrl = media_remote_url($category, $filename);
         if ($remoteUrl) {
-            return redirect()->away($remoteUrl, 302);
+            return redirect()->away($remoteUrl, 302)->withHeaders([
+                'Cache-Control' => 'public, max-age=31536000, immutable',
+            ]);
         }
 
         foreach (media_local_paths($category, $filename) as $path) {
             if (is_file($path)) {
                 return response()->file($path, [
-                    'Cache-Control' => 'public, max-age=31536000',
+                    'Cache-Control' => 'public, max-age=31536000, immutable',
                 ]);
             }
         }

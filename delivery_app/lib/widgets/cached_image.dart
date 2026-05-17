@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -16,6 +18,8 @@ class CachedImage extends StatelessWidget {
     this.placeholder,
     this.errorWidget,
     this.shape,
+    this.cacheWidth,
+    this.cacheHeight,
   });
 
   final String? url;
@@ -26,6 +30,8 @@ class CachedImage extends StatelessWidget {
   final Widget? placeholder;
   final Widget? errorWidget;
   final BoxShape? shape;
+  final int? cacheWidth;
+  final int? cacheHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -36,20 +42,31 @@ class CachedImage extends StatelessWidget {
     if (url == null || url!.trim().isEmpty) {
       image = _error(colorScheme);
     } else {
+      final targetCacheWidth = _scaledCacheSize(context, cacheWidth, width);
+      final targetCacheHeight = _scaledCacheSize(context, cacheHeight, height);
+
       image = CachedNetworkImage(
         imageUrl: url!,
         width: width,
         height: height,
         fit: fit,
-        placeholder: (context, url) =>
-            placeholder ?? _shimmer(colorScheme),
+        memCacheWidth: targetCacheWidth,
+        memCacheHeight: targetCacheHeight,
+        maxWidthDiskCache: targetCacheWidth,
+        maxHeightDiskCache: targetCacheHeight,
+        useOldImageOnUrlChange: true,
+        fadeInDuration: const Duration(milliseconds: 120),
+        fadeOutDuration: const Duration(milliseconds: 80),
+        placeholder: (context, url) => placeholder ?? _shimmer(colorScheme),
         errorWidget: (context, url, error) =>
             errorWidget ?? _error(colorScheme),
       );
     }
 
     if (shape == BoxShape.circle) {
-      return ClipOval(child: SizedBox(width: width, height: height, child: image));
+      return ClipOval(
+        child: SizedBox(width: width, height: height, child: image),
+      );
     }
 
     if (borderRadius != null) {
@@ -59,22 +76,34 @@ class CachedImage extends StatelessWidget {
     return image;
   }
 
+  int? _scaledCacheSize(
+    BuildContext context,
+    int? explicitSize,
+    double? logicalSize,
+  ) {
+    if (explicitSize != null) return explicitSize;
+    if (logicalSize == null || !logicalSize.isFinite) return null;
+
+    final dpr = MediaQuery.maybeOf(context)?.devicePixelRatio ?? 1;
+    return math.max(1, (logicalSize * dpr).round());
+  }
+
   Widget _shimmer(ColorScheme cs) => Container(
-        width: width,
-        height: height,
-        color: cs.surfaceContainerHighest,
-      );
+    width: width,
+    height: height,
+    color: cs.surfaceContainerHighest,
+  );
 
   Widget _error(ColorScheme cs) => Container(
-        width: width,
-        height: height,
-        color: cs.surfaceContainerHighest,
-        child: Icon(
-          Icons.broken_image_rounded,
-          size: (width != null && height != null)
-              ? (width! < height! ? width! : height!) * 0.45
-              : 24,
-          color: cs.onSurface.withValues(alpha: 0.35),
-        ),
-      );
+    width: width,
+    height: height,
+    color: cs.surfaceContainerHighest,
+    child: Icon(
+      Icons.broken_image_rounded,
+      size: (width != null && height != null)
+          ? (width! < height! ? width! : height!) * 0.45
+          : 24,
+      color: cs.onSurface.withValues(alpha: 0.35),
+    ),
+  );
 }

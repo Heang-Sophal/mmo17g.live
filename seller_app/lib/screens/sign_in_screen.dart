@@ -4,6 +4,7 @@ import 'package:seller_app/providers/app_branding_provider.dart';
 import 'package:seller_app/providers/auth_provider.dart';
 import 'package:seller_app/providers/language_provider.dart';
 import 'package:seller_app/providers/theme_provider.dart';
+import 'package:seller_app/widgets/cached_image.dart';
 import 'package:seller_app/widgets/legal_support_links.dart';
 
 class SignInScreen extends StatefulWidget {
@@ -600,12 +601,16 @@ class _SignInScreenState extends State<SignInScreen> {
     if (brandingProvider.logoUrl != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(22),
-        child: Image.network(
-          brandingProvider.logoUrl!,
+        child: CachedImage(
+          url: brandingProvider.logoUrl!,
           fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return Icon(Icons.storefront_rounded, size: 72, color: iconColor);
-          },
+          cacheWidth: 256,
+          cacheHeight: 256,
+          errorWidget: Icon(
+            Icons.storefront_rounded,
+            size: 72,
+            color: iconColor,
+          ),
         ),
       );
     }

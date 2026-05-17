@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:seller_app/models/product.dart';
+import 'package:seller_app/widgets/cached_image.dart';
 
 class POSProductCard extends StatelessWidget {
   final Product product;
@@ -224,34 +225,15 @@ class POSProductCard extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(color: imageBackground),
-      child: Image.network(
-        product.imageUrl,
+      child: CachedImage(
+        url: product.imageUrl,
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) {
-            return child;
-          }
-
-          return Center(
-            child: SizedBox(
-              width: 28,
-              height: 28,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.4,
-                color: theme.colorScheme.primary,
-                value: loadingProgress.expectedTotalBytes != null
-                    ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
-                    : null,
-              ),
-            ),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
-          return _buildPlaceholder(context, isOutOfStock: isOutOfStock);
-        },
+        cacheWidth: 420,
+        cacheHeight: 420,
+        placeholder: _buildPlaceholder(context, isOutOfStock: isOutOfStock),
+        errorWidget: _buildPlaceholder(context, isOutOfStock: isOutOfStock),
       ),
     );
   }

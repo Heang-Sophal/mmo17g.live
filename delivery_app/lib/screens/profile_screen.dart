@@ -3,6 +3,7 @@ import 'package:delivery_app/providers/auth_provider.dart';
 import 'package:delivery_app/providers/language_provider.dart';
 import 'package:delivery_app/providers/profile_provider.dart';
 import 'package:delivery_app/providers/theme_provider.dart';
+import 'package:delivery_app/widgets/cached_image.dart';
 import 'package:delivery_app/widgets/legal_support_links.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -86,20 +87,34 @@ class ProfileScreenState extends State<ProfileScreen> {
           ),
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 34,
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
-                backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                    ? NetworkImage(avatarUrl)
-                    : null,
-                child: avatarUrl == null || avatarUrl.isEmpty
-                    ? const Icon(
+              avatarUrl != null && avatarUrl.isNotEmpty
+                  ? ClipOval(
+                      child: CachedImage(
+                        url: avatarUrl,
+                        width: 68,
+                        height: 68,
+                        fit: BoxFit.cover,
+                        errorWidget: Container(
+                          width: 68,
+                          height: 68,
+                          color: Colors.white.withValues(alpha: 0.2),
+                          child: const Icon(
+                            Icons.person_rounded,
+                            color: Colors.white,
+                            size: 34,
+                          ),
+                        ),
+                      ),
+                    )
+                  : CircleAvatar(
+                      radius: 34,
+                      backgroundColor: Colors.white.withValues(alpha: 0.2),
+                      child: const Icon(
                         Icons.person_rounded,
                         color: Colors.white,
                         size: 34,
-                      )
-                    : null,
-              ),
+                      ),
+                    ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(

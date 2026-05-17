@@ -9,6 +9,7 @@ import 'package:delivery_app/providers/theme_provider.dart';
 import 'package:delivery_app/screens/main_navigation_screen.dart';
 import 'package:delivery_app/screens/sign_in_screen.dart';
 import 'package:delivery_app/services/notification_service.dart';
+import 'package:delivery_app/widgets/cached_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -241,26 +242,24 @@ class SplashScreen extends StatelessWidget {
               brandingProvider.logoUrl != null
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(28),
-                      child: Image.network(
-                        brandingProvider.logoUrl!,
+                      child: CachedImage(
+                        url: brandingProvider.logoUrl!,
                         width: 96,
                         height: 96,
                         fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: 96,
-                            height: 96,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFD6A735),
-                              borderRadius: BorderRadius.circular(28),
-                            ),
-                            child: const Icon(
-                              Icons.local_shipping_rounded,
-                              color: Colors.white,
-                              size: 48,
-                            ),
-                          );
-                        },
+                        errorWidget: Container(
+                          width: 96,
+                          height: 96,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFD6A735),
+                            borderRadius: BorderRadius.circular(28),
+                          ),
+                          child: const Icon(
+                            Icons.local_shipping_rounded,
+                            color: Colors.white,
+                            size: 48,
+                          ),
+                        ),
                       ),
                     )
                   : Container(

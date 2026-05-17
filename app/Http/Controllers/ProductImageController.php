@@ -13,7 +13,9 @@ class ProductImageController extends Controller
 
         $remoteUrl = product_image_remote_url($filename);
         if ($remoteUrl) {
-            return redirect()->away($remoteUrl, 302);
+            return redirect()->away($remoteUrl, 302)->withHeaders([
+                'Cache-Control' => 'public, max-age=31536000, immutable',
+            ]);
         }
 
         $paths = [
@@ -24,7 +26,7 @@ class ProductImageController extends Controller
         foreach ($paths as $path) {
             if (is_file($path)) {
                 return response()->file($path, [
-                    'Cache-Control' => 'public, max-age=31536000',
+                    'Cache-Control' => 'public, max-age=31536000, immutable',
                 ]);
             }
         }

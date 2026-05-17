@@ -16,6 +16,7 @@ import 'package:seller_app/controllers/navigation_bar_controller.dart';
 import 'package:seller_app/screens/sign_in_screen.dart';
 import 'package:seller_app/screens/main_navigation_screen.dart';
 import 'package:seller_app/services/notification_service.dart';
+import 'package:seller_app/widgets/cached_image.dart';
 
 // Global navigator key for navigation from anywhere
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -296,18 +297,16 @@ class Splashscreen extends StatelessWidget {
             brandingProvider.logoUrl != null
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(20),
-                    child: Image.network(
-                      brandingProvider.logoUrl!,
+                    child: CachedImage(
+                      url: brandingProvider.logoUrl!,
                       width: 100,
                       height: 100,
                       fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(
-                          Icons.store,
-                          size: 100,
-                          color: _goldDeep,
-                        );
-                      },
+                      errorWidget: const Icon(
+                        Icons.store,
+                        size: 100,
+                        color: _goldDeep,
+                      ),
                     ),
                   )
                 : const Icon(Icons.store, size: 100, color: _goldDeep),

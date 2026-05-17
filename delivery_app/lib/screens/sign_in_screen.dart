@@ -2,6 +2,7 @@ import 'package:delivery_app/providers/app_branding_provider.dart';
 import 'package:delivery_app/providers/auth_provider.dart';
 import 'package:delivery_app/providers/language_provider.dart';
 import 'package:delivery_app/providers/theme_provider.dart';
+import 'package:delivery_app/widgets/cached_image.dart';
 import 'package:delivery_app/widgets/legal_support_links.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -592,16 +593,16 @@ class _SignInScreenState extends State<SignInScreen> {
     if (brandingProvider.logoUrl != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(22),
-        child: Image.network(
-          brandingProvider.logoUrl!,
+        child: CachedImage(
+          url: brandingProvider.logoUrl!,
           fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return Icon(
-              Icons.local_shipping_rounded,
-              color: iconColor,
-              size: 64,
-            );
-          },
+          cacheWidth: 256,
+          cacheHeight: 256,
+          errorWidget: Icon(
+            Icons.local_shipping_rounded,
+            color: iconColor,
+            size: 64,
+          ),
         ),
       );
     }

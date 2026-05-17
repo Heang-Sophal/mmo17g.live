@@ -10,6 +10,7 @@ import 'package:seller_app/screens/products_screen.dart';
 import 'package:seller_app/screens/orders_screen.dart';
 import 'package:seller_app/screens/sales_by_seller_report_screen.dart';
 import 'package:seller_app/controllers/navigation_bar_controller.dart';
+import 'package:seller_app/widgets/cached_image.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -454,7 +455,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(20),
                         child: (avatarUrl != null && avatarUrl.isNotEmpty)
-                            ? Image.network(avatarUrl, fit: BoxFit.cover)
+                            ? CachedImage(
+                                url: avatarUrl,
+                                fit: BoxFit.cover,
+                                cacheWidth: 180,
+                                cacheHeight: 180,
+                                errorWidget: Icon(
+                                  Icons.person_rounded,
+                                  color: heroTextColor,
+                                  size: 28,
+                                ),
+                              )
                             : Icon(
                                 Icons.person_rounded,
                                 color: heroTextColor,
