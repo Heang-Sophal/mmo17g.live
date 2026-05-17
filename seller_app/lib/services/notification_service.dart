@@ -71,12 +71,17 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   static bool _initialized = false;
+  static Future<void>? _initializing;
   static String? _authToken;
   static String? _userId;
 
-  static Future<void> initialize() async {
-    if (_initialized) return;
+  static Future<void> initialize() {
+    if (_initialized) return Future.value();
 
+    return _initializing ??= _initialize();
+  }
+
+  static Future<void> _initialize() async {
     try {
       if (Firebase.apps.isEmpty) {
         await Firebase.initializeApp();
@@ -149,6 +154,8 @@ class NotificationService {
       _initialized = true;
     } catch (error) {
       debugPrint('Notification init failed: $error');
+    } finally {
+      _initializing = null;
     }
   }
 
@@ -159,7 +166,13 @@ class NotificationService {
     _authToken = authToken;
     _userId = userId;
 
-    if (!_initialized || authToken == null || authToken.isEmpty) return;
+    if (authToken == null || authToken.isEmpty) return;
+
+    if (!_initialized) {
+      await initialize();
+    }
+
+    if (!_initialized) return;
 
     try {
       final token = await _getFcmTokenWithRetry();

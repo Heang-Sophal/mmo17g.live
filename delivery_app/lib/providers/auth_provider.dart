@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:delivery_app/services/auth_service.dart';
@@ -180,9 +181,11 @@ class AuthProvider extends ChangeNotifier {
             Map<String, dynamic>.from(result['user'] as Map),
           );
           await _persistSession();
-          await NotificationService.syncDeviceToken(
-            authToken: _token,
-            userId: _user?.id,
+          unawaited(
+            NotificationService.syncDeviceToken(
+              authToken: _token,
+              userId: _user?.id,
+            ),
           );
         } else {
           await _clearSession();
@@ -229,9 +232,11 @@ class AuthProvider extends ChangeNotifier {
       _isLoading = false;
       _isInitialized = true;
       await _persistSession();
-      await NotificationService.syncDeviceToken(
-        authToken: _token,
-        userId: _user?.id,
+      unawaited(
+        NotificationService.syncDeviceToken(
+          authToken: _token,
+          userId: _user?.id,
+        ),
       );
       notifyListeners();
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:delivery_app/controllers/navigation_bar_controller.dart';
 import 'package:delivery_app/providers/auth_provider.dart';
 import 'package:delivery_app/providers/app_branding_provider.dart';
@@ -16,8 +18,8 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.initialize();
   runApp(const DeliveryApp());
+  unawaited(NotificationService.initialize());
 }
 
 class DeliveryApp extends StatelessWidget {

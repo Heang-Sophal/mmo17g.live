@@ -1474,56 +1474,67 @@ Route::post('/orders', function (\Illuminate\Http\Request $request) {
                 ->decrement('qte', $item['quantity']);
         }
 
-        // Send Telegram notification to warehouse group
-        try {
-            \Log::info('Sending Telegram notification for mobile POS order - Sale ID: '.$sale->id);
+        app()->terminating(function () use (
+            $sale,
+            $validated,
+            $userId,
+            $customerName,
+            $customerPhone,
+            $customerAddress,
+            $grandTotal,
+            $products
+        ) {
+            // Telegram can take a few seconds, so keep it out of the mobile API response path.
+            try {
+                \Log::info('Sending Telegram notification for mobile POS order - Sale ID: '.$sale->id);
 
-            $warehouse = \App\Models\Warehouse::find($validated['warehouse_id']);
-            $seller = \App\Models\User::find($userId);
+                $warehouse = \App\Models\Warehouse::find($validated['warehouse_id']);
+                $seller = \App\Models\User::find($userId);
 
-            if ($warehouse && $warehouse->telegram_enabled && $warehouse->telegram_chat_id) {
-                // Prepare sale data for notification
-                $saleData = [
-                    'ref' => $sale->Ref,
-                    'customer_name' => $customerName,
-                    'customer_phone' => $customerPhone,
-                    'customer_address' => $customerAddress,
-                    'date' => $sale->date,
-                    'datetime' => $sale->created_at?->format('Y-m-d H:i:s'),
-                    'GrandTotal' => $grandTotal,
-                    'payment_method' => $validated['payment_method'],
-                    'payment_status' => $validated['payment_status'],
-                    'paid_amount' => $validated['paid_amount'],
-                    'due' => $grandTotal - $validated['paid_amount'],
-                    'seller_name' => $seller?->name ?? 'Mobile POS',
-                    'seller_phone' => $seller?->phone ?? '',
-                    'created_by' => $seller?->name ?? 'Mobile POS',
-                    'products' => $products,
-                ];
+                if ($warehouse && $warehouse->telegram_enabled && $warehouse->telegram_chat_id) {
+                    // Prepare sale data for notification
+                    $saleData = [
+                        'ref' => $sale->Ref,
+                        'customer_name' => $customerName,
+                        'customer_phone' => $customerPhone,
+                        'customer_address' => $customerAddress,
+                        'date' => $sale->date,
+                        'datetime' => $sale->created_at?->format('Y-m-d H:i:s'),
+                        'GrandTotal' => $grandTotal,
+                        'payment_method' => $validated['payment_method'],
+                        'payment_status' => $validated['payment_status'],
+                        'paid_amount' => $validated['paid_amount'],
+                        'due' => $grandTotal - $validated['paid_amount'],
+                        'seller_name' => $seller?->name ?? 'Mobile POS',
+                        'seller_phone' => $seller?->phone ?? '',
+                        'created_by' => $seller?->name ?? 'Mobile POS',
+                        'products' => $products,
+                    ];
 
-                // Send notification via TelegramService with warehouse-specific bot token
-                $telegramService = app(\App\Services\TelegramService::class);
-                $result = $telegramService->sendSaleNotificationResult(
-                    $saleData,
-                    $warehouse->name,
-                    $warehouse->telegram_chat_id,
-                    $warehouse->telegram_bot_token
-                );
+                    // Send notification via TelegramService with warehouse-specific bot token
+                    $telegramService = app(\App\Services\TelegramService::class);
+                    $result = $telegramService->sendSaleNotificationResult(
+                        $saleData,
+                        $warehouse->name,
+                        $warehouse->telegram_chat_id,
+                        $warehouse->telegram_bot_token
+                    );
 
-                if ($result && isset($result['message_id'])) {
-                    $sale->telegram_sale_chat_id = (string) $warehouse->telegram_chat_id;
-                    $sale->telegram_sale_message_id = (int) $result['message_id'];
-                    $sale->save();
+                    if ($result && isset($result['message_id'])) {
+                        $sale->telegram_sale_chat_id = (string) $warehouse->telegram_chat_id;
+                        $sale->telegram_sale_message_id = (int) $result['message_id'];
+                        $sale->save();
+                    }
+
+                    \Log::info('Telegram notification sent for mobile POS order - Result: '.($result ? 'success' : 'failed'));
+                } else {
+                    \Log::info('Telegram not enabled or chat ID missing for warehouse ID: '.$validated['warehouse_id']);
                 }
-
-                \Log::info('Telegram notification sent for mobile POS order - Result: '.($result ? 'success' : 'failed'));
-            } else {
-                \Log::info('Telegram not enabled or chat ID missing for warehouse ID: '.$validated['warehouse_id']);
+            } catch (\Throwable $e) {
+                \Log::error('Telegram notification failed for mobile POS order: '.$e->getMessage());
+                \Log::error('Telegram exception trace: '.$e->getTraceAsString());
             }
-        } catch (\Throwable $e) {
-            \Log::error('Telegram notification failed for mobile POS order: '.$e->getMessage());
-            \Log::error('Telegram exception trace: '.$e->getTraceAsString());
-        }
+        });
 
         return response()->json([
             'success' => true,

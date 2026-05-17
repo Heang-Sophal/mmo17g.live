@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -31,8 +33,8 @@ const Color _darkSurface = Color(0xFF21190B);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.initialize();
   runApp(const SellerApp());
+  unawaited(NotificationService.initialize());
 }
 
 class SellerApp extends StatelessWidget {
