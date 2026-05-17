@@ -1565,45 +1565,30 @@ Route::post('/orders', function (\Illuminate\Http\Request $request) {
 Route::get('/seller/products', function (\Illuminate\Http\Request $request) {
     try {
         $warehouseId = $request->query('warehouse_id');
+        $warehouseId = ($warehouseId && $warehouseId !== 'all') ? $warehouseId : null;
 
-        // ប្រើ Model ដើម្បី្យវាត្រង Soft Delete ដោយស្វ័យប្រវត្តិ
-        $query = \App\Models\Product::where('is_active', 1)
-            ->whereNull('deleted_at'); // ត្រងផលិតផលដែលលុបហើយ
+        $stockSubquery = \DB::table('product_warehouse')
+            ->select('product_id', \DB::raw('SUM(COALESCE(qte, 0)) as stock'))
+            ->whereNull('deleted_at')
+            ->groupBy('product_id');
 
-        // បើមាន warehouse_id ត្រងតាមឃ្លាំង
-        if ($warehouseId && $warehouseId !== 'all') {
-            // ត្រងតែផលិតផលដែលមានស្តុក > 0
-            $query->whereHas('product_warehouse', function ($q) use ($warehouseId) {
-                $q->where('warehouse_id', $warehouseId)
-                    ->where('qte', '>', 0);
-            });
-        } else {
-            // បើអត់ជ្រើសឃ្លាំង ត្រងតែផលិតផលដែលមានស្តុក > 0
-            $query->whereHas('product_warehouse', function ($q) {
-                $q->where('qte', '>', 0);
-            });
+        if ($warehouseId) {
+            $stockSubquery->where('warehouse_id', $warehouseId);
         }
 
-        $products = $query->orderBy('name', 'asc')->get()
+        $products = \App\Models\Product::query()
+            ->select('products.*', 'mobile_stock.stock as mobile_stock')
+            ->with(['category:id,name', 'brand:id,name'])
+            ->joinSub($stockSubquery, 'mobile_stock', function ($join) {
+                $join->on('products.id', '=', 'mobile_stock.product_id');
+            })
+            ->where('products.is_active', 1)
+            ->whereNull('products.deleted_at')
+            ->where('mobile_stock.stock', '>', 0)
+            ->orderBy('products.name', 'asc')
+            ->get()
             ->map(function ($product) use ($warehouseId) {
-                // ទាញទិន្នន័យ stock
-                $stockQuery = \DB::table('product_warehouse')
-                    ->where('product_id', $product->id)
-                    ->whereNull('deleted_at');
-
-                // បើមាន warehouse_id យកតាមឃ្លាំងនោះ
-                // បើអត់ យកពីគ្រប់ឃ្លាំង (បូកបញ្ចូលគ្នា)
-                if ($warehouseId && $warehouseId !== 'all') {
-                    $stockQuery->where('warehouse_id', $warehouseId);
-                    $stockData = $stockQuery->first();
-                    $stock = $stockData ? (int) $stockData->qte : 0;
-                } else {
-                    // បូកស្តុកពីគ្រប់ឃ្លាំង
-                    $allStockData = $stockQuery->get();
-                    $stock = $allStockData->sum(function ($item) {
-                        return (int) ($item->qte ?? 0);
-                    });
-                }
+                $stock = (int) ($product->mobile_stock ?? 0);
 
                 return [
                     'id' => (string) $product->id,

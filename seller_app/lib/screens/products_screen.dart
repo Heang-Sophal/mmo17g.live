@@ -101,38 +101,24 @@ class _ProductsScreenState extends State<ProductsScreen> {
     }
   }
 
-  Future<void> _loadProducts() async {
+  Future<void> _loadProducts({bool forceRefresh = false}) async {
     final productProvider = context.read<ProductProvider>();
 
-    await productProvider.fetchProducts(warehouseId: _selectedWarehouseId);
+    await productProvider.fetchProducts(
+      warehouseId: _selectedWarehouseId,
+      forceRefresh: forceRefresh,
+    );
 
-    // ទាញទិន្នន័យ categories ពី API
-    try {
-      final apiService = ApiService();
-      final categoriesList = await apiService.getCategoriesList();
+    if (mounted) {
+      final products = productProvider.products;
+      final categorySet = products.map((p) => p.categoryName).toSet();
 
-      if (mounted) {
-        final categoryNames = {
-          'All',
-          ...categoriesList
-              .map((c) => c['name'] as String)
-              .where((name) => name.isNotEmpty),
-        }.toList();
-
-        setState(() {
-          _categories = categoryNames;
-        });
-      }
-    } catch (e) {
-      // Fallback to extracting from products
-      if (mounted) {
-        final products = productProvider.products;
-        final categorySet = products.map((p) => p.categoryName).toSet();
-
-        setState(() {
-          _categories = ['All', ...categorySet.where((c) => c.isNotEmpty)];
-        });
-      }
+      setState(() {
+        _categories = ['All', ...categorySet.where((c) => c.isNotEmpty)];
+        if (!_categories.contains(_selectedCategory)) {
+          _selectedCategory = 'All';
+        }
+      });
     }
   }
 
@@ -188,7 +174,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : Icon(Icons.refresh, color: textColor),
-                onPressed: productProvider.isLoading ? null : _loadProducts,
+                onPressed: productProvider.isLoading
+                    ? null
+                    : () => _loadProducts(forceRefresh: true),
                 tooltip: languageProvider.t('loading'),
               ),
               IconButton(
@@ -327,7 +315,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                             dropdownColor: cardColor,
                             value: _categories.contains(_selectedCategory)
                                 ? _selectedCategory
-                                : allCategoryLabel,
+                                : 'All',
                             isExpanded: true,
                             icon: Icon(
                               Icons.category,
@@ -361,10 +349,16 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              if (productProvider.isLoading && products.isNotEmpty)
+                LinearProgressIndicator(
+                  minHeight: 2,
+                  color: theme.colorScheme.primary,
+                  backgroundColor: Colors.transparent,
+                ),
 
               // Products Grid
               Expanded(
-                child: productProvider.isLoading
+                child: productProvider.isLoading && products.isEmpty
                     ? Center(
                         child: CircularProgressIndicator(
                           color: theme.colorScheme.primary,

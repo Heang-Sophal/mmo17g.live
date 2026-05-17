@@ -9,8 +9,16 @@ class ProductRepository {
     : _apiService = apiService ?? ApiService();
 
   // ទាញទិន្នន័យផលិតផលទាំងអស់ពី API
-  Future<List<Product>> getAllProducts({String? warehouseId}) async {
-    return await _apiService.getProducts(warehouseId: warehouseId);
+  Future<List<Product>> getAllProducts({
+    String? warehouseId,
+    bool forceRefresh = false,
+    void Function(List<Product> fresh)? onRefresh,
+  }) async {
+    return await _apiService.getProducts(
+      warehouseId: warehouseId,
+      forceRefresh: forceRefresh,
+      onRefresh: onRefresh,
+    );
   }
 
   // ទាញទិន្នន័យផលិតផលតាមប្រភេទ

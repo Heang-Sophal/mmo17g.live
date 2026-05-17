@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
+import '../core/api_cache.dart';
 import '../models/product.dart';
 import '../models/order.dart';
 
@@ -30,35 +31,125 @@ class ApiService {
 
   /// ទាញទិន្នន័យផលិតផលទាំងអស់
   /// GET /api/seller/products?warehouse_id={warehouseId}
-  Future<List<Product>> getProducts({String? warehouseId}) async {
-    try {
-      // បង្កើត URL ជាមួយ query parameter
-      Uri uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.products}');
-      if (warehouseId != null && warehouseId.isNotEmpty) {
-        uri = uri.replace(queryParameters: {'warehouse_id': warehouseId});
-      }
+  Future<List<Product>> getProducts({
+    String? warehouseId,
+    bool forceRefresh = false,
+    void Function(List<Product> fresh)? onRefresh,
+  }) async {
+    final cacheKey = 'seller_products_${_cacheSegment(warehouseId)}';
+
+    Future<Map<String, dynamic>> fetcher() async {
+      final uri = _uriWithOptionalWarehouse(
+        '${ApiConfig.baseUrl}${ApiConfig.products}',
+        warehouseId,
+      );
 
       final response = await _client
           .get(uri)
           .timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          final List<dynamic> products = data['data'];
-          return products.map((item) => Product.fromMap(item)).toList();
-        } else {
-          throw ApiException(
-            data['message'] ?? 'Failed to load products',
-            response.statusCode,
-          );
-        }
-      } else {
-        throw ApiException(
-          'Failed to load products: ${response.statusCode}',
-          response.statusCode,
-        );
+      return _decodeSuccessResponse(response, 'Failed to load products');
+    }
+
+    try {
+      if (forceRefresh) {
+        final fresh = await fetcher();
+        await ApiCache.set(cacheKey, fresh);
+
+        return _productsFromResponse(fresh);
       }
+
+      final data = await ApiCache.getOrFetch(
+        cacheKey,
+        fetcher,
+        onRefresh: onRefresh == null
+            ? null
+            : (fresh) => onRefresh(_productsFromResponse(fresh)),
+      );
+
+      return _productsFromResponse(data ?? <String, dynamic>{});
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException('Network error: ${e.toString()}', 0);
+    }
+  }
+
+  Uri _uriWithOptionalWarehouse(String url, String? warehouseId) {
+    var uri = Uri.parse(url);
+    if (warehouseId != null && warehouseId.isNotEmpty) {
+      uri = uri.replace(queryParameters: {'warehouse_id': warehouseId});
+    }
+
+    return uri;
+  }
+
+  List<Product> _productsFromResponse(Map<String, dynamic> data) {
+    final products = data['data'];
+    if (products is! List) return const [];
+
+    return products
+        .whereType<Map>()
+        .map((item) => Product.fromMap(Map<String, dynamic>.from(item)))
+        .toList(growable: false);
+  }
+
+  String _cacheSegment(String? value) {
+    final normalized = value?.trim();
+    return normalized == null || normalized.isEmpty || normalized == 'all'
+        ? 'all'
+        : normalized;
+  }
+
+  Map<String, dynamic> _decodeSuccessResponse(
+    http.Response response,
+    String fallbackMessage,
+  ) {
+    final data = response.body.isEmpty
+        ? <String, dynamic>{}
+        : json.decode(response.body) as Map<String, dynamic>;
+
+    if (response.statusCode >= 200 &&
+        response.statusCode < 300 &&
+        data['success'] == true) {
+      return data;
+    }
+
+    throw ApiException(
+      data['message']?.toString() ?? '$fallbackMessage: ${response.statusCode}',
+      response.statusCode,
+    );
+  }
+
+  List<Map<String, dynamic>> _listOfMapsFromResponse(
+    Map<String, dynamic> data,
+  ) {
+    final items = data['data'];
+    if (items is! List) return const [];
+
+    return items
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList(growable: false);
+  }
+
+  Future<List<Map<String, dynamic>>> _getCachedList({
+    required String cacheKey,
+    required Uri uri,
+    required String fallbackMessage,
+    required Map<String, dynamic> Function(Map<String, dynamic> item) mapper,
+  }) async {
+    try {
+      final data = await ApiCache.getOrFetch(cacheKey, () async {
+        final response = await _client
+            .get(uri)
+            .timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
+
+        return _decodeSuccessResponse(response, fallbackMessage);
+      });
+
+      return _listOfMapsFromResponse(
+        data ?? <String, dynamic>{},
+      ).map(mapper).toList(growable: false);
     } catch (e) {
       if (e is ApiException) rethrow;
       throw ApiException('Network error: ${e.toString()}', 0);
@@ -275,77 +366,29 @@ class ApiService {
   /// ទាញទិន្នន័យប្រភេទផលិតផល
   /// GET /api/seller/categories
   Future<List<Map<String, dynamic>>> getCategoriesList() async {
-    try {
-      final response = await _client
-          .get(Uri.parse('${ApiConfig.baseUrl}${ApiConfig.categories}'))
-          .timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          final List<dynamic> categories = data['data'];
-          return categories
-              .map(
-                (item) => {
-                  'id': item['id']?.toString() ?? '',
-                  'name': item['name'] ?? 'Unknown',
-                },
-              )
-              .toList();
-        } else {
-          throw ApiException(
-            data['message'] ?? 'Failed to load categories',
-            response.statusCode,
-          );
-        }
-      } else {
-        throw ApiException(
-          'Failed to load categories: ${response.statusCode}',
-          response.statusCode,
-        );
-      }
-    } catch (e) {
-      if (e is ApiException) rethrow;
-      throw ApiException('Network error: ${e.toString()}', 0);
-    }
+    return _getCachedList(
+      cacheKey: 'seller_categories',
+      uri: Uri.parse('${ApiConfig.baseUrl}${ApiConfig.categories}'),
+      fallbackMessage: 'Failed to load categories',
+      mapper: (item) => {
+        'id': item['id']?.toString() ?? '',
+        'name': item['name'] ?? 'Unknown',
+      },
+    );
   }
 
   /// ទាញទិន្នន័យឃ្លាំង
   /// GET /api/seller/warehouses
   Future<List<Map<String, dynamic>>> getWarehouses() async {
-    try {
-      final response = await _client
-          .get(Uri.parse('${ApiConfig.baseUrl}${ApiConfig.warehouses}'))
-          .timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          final List<dynamic> warehouses = data['data'];
-          return warehouses
-              .map(
-                (item) => {
-                  'id': item['id']?.toString() ?? '',
-                  'name': item['name'] ?? 'Unknown',
-                },
-              )
-              .toList();
-        } else {
-          throw ApiException(
-            data['message'] ?? 'Failed to load warehouses',
-            response.statusCode,
-          );
-        }
-      } else {
-        throw ApiException(
-          'Failed to load warehouses: ${response.statusCode}',
-          response.statusCode,
-        );
-      }
-    } catch (e) {
-      if (e is ApiException) rethrow;
-      throw ApiException('Network error: ${e.toString()}', 0);
-    }
+    return _getCachedList(
+      cacheKey: 'seller_warehouses',
+      uri: Uri.parse('${ApiConfig.baseUrl}${ApiConfig.warehouses}'),
+      fallbackMessage: 'Failed to load warehouses',
+      mapper: (item) => {
+        'id': item['id']?.toString() ?? '',
+        'name': item['name'] ?? 'Unknown',
+      },
+    );
   }
 
   /// ទាញទិន្នន័យ Profile
@@ -535,9 +578,9 @@ class ApiService {
   /// GET /api/customers?search={phone}  — returns exact-match customer or null
   Future<Map<String, dynamic>?> lookupCustomerByPhone(String phone) async {
     try {
-      final uri = Uri.parse('${ApiConfig.baseUrl}/customers').replace(
-        queryParameters: {'search': phone},
-      );
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}/customers',
+      ).replace(queryParameters: {'search': phone});
       final response = await _client
           .get(uri, headers: _getHeaders())
           .timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
@@ -548,9 +591,10 @@ class ApiService {
         if (items is! List) return null;
         final cleaned = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '');
         for (final item in items) {
-          final itemPhone = (item['phone'] ?? '')
-              .toString()
-              .replaceAll(RegExp(r'[\s\-\(\)]'), '');
+          final itemPhone = (item['phone'] ?? '').toString().replaceAll(
+            RegExp(r'[\s\-\(\)]'),
+            '',
+          );
           if (itemPhone == cleaned) {
             return {
               'id': item['id'],

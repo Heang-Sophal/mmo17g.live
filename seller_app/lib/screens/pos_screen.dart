@@ -85,13 +85,10 @@ class _POSScreenState extends State<POSScreen> {
   }
 
   Future<void> _initScreen() async {
-    // Load warehouses first
-    await _loadWarehouses();
-    // Then load products
-    await _loadData();
+    await Future.wait([_loadWarehouses(), _loadData()]);
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({bool forceRefresh = false}) async {
     final productProvider = context.read<ProductProvider>();
 
     // Get selected warehouse ID
@@ -106,7 +103,10 @@ class _POSScreenState extends State<POSScreen> {
           : selectedWarehouse['id'];
     }
 
-    await productProvider.fetchProducts(warehouseId: warehouseId);
+    await productProvider.fetchProducts(
+      warehouseId: warehouseId,
+      forceRefresh: forceRefresh,
+    );
 
     // ទាញទិន្ននយ categories
     final products = productProvider.products;
@@ -214,7 +214,9 @@ class _POSScreenState extends State<POSScreen> {
               _buildAppBarAction(
                 icon: productProvider.isLoading ? null : Icons.refresh,
                 busy: productProvider.isLoading,
-                onTap: productProvider.isLoading ? null : _loadData,
+                onTap: productProvider.isLoading
+                    ? null
+                    : () => _loadData(forceRefresh: true),
                 tooltip: languageProvider.t('nav_home'),
               ),
               const SizedBox(width: 8),
