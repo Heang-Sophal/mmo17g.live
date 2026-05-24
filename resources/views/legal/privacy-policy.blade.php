@@ -47,6 +47,7 @@
 
     <h2>Contact</h2>
     <p>Email: <a href="mailto:support@mmo17g.store">support@mmo17g.store</a></p>
+    <p>Seller App Access: <a href="/seller-app-access">https://mmo17g.store/seller-app-access</a></p>
     <p>Support: <a href="/support">https://mmo17g.store/support</a></p>
   </article>
 </main>

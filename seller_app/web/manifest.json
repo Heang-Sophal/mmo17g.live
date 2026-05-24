@@ -1,11 +1,11 @@
 {
-    "name": "seller_app",
-    "short_name": "seller_app",
+    "name": "17G Seller",
+    "short_name": "17G Seller",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#ffffff",
-    "theme_color": "#6C63FF",
-    "description": "A new Flutter project.",
+    "theme_color": "#D6A735",
+    "description": "Seller app for verified 17G staff and merchants managing physical product sales.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

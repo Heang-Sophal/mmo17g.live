@@ -54,6 +54,7 @@ $installed = file_exists(storage_path('app/public/installed'));
 
 Route::view('/privacy-policy', 'legal.privacy-policy')->name('legal.privacy-policy');
 Route::view('/support', 'legal.support')->name('legal.support');
+Route::view('/seller-app-access', 'legal.seller-app-access')->name('legal.seller-app-access');
 
 // ------------------------------------------------------------------\\
 // ONLINE STORE ROUTES (Only if installed)

@@ -1,17 +1,16 @@
-# seller_app
+# 17G Seller
 
-A new Flutter project.
+17G Seller is the mobile seller companion for verified 17G staff and merchant sellers. The app is used for physical product sales, inventory, orders, delivery coordination, profile management, and seller reports.
 
-## Getting Started
+## Access
 
-This project is a starting point for a Flutter application.
+Accounts are issued by MMO 17G support after business verification. The app does not sell digital goods, subscriptions, virtual currency, loans, fundraising, advertising impressions, app ratings, app reviews, rankings, or other store-related activity.
 
-A few resources to get you started if this is your first Flutter project:
+## App Review
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Use `APP_STORE_REVIEW_3_2_RESPONSE.md` from the repository root for the current App Store Connect review notes and demo-account checklist.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Public support pages:
+- Seller App Access: https://mmo17g.store/seller-app-access
+- Privacy Policy: https://mmo17g.store/privacy-policy
+- Support: https://mmo17g.store/support

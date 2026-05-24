@@ -20,6 +20,11 @@ const Map<String, String> _en = {
   'app_name': '17G Seller',
   'welcome_back': 'Welcome back!',
   'sign_in_to_continue': 'Sign in to continue',
+  'seller_access_title': 'Seller app access',
+  'seller_access_body':
+      'This app is for verified staff and merchant sellers managing physical product sales, inventory, orders, delivery, and reports. Accounts are issued by support after business verification.',
+  'seller_business_note':
+      'No digital goods, subscriptions, loans, fundraising, ads, or app ranking activity are sold here.',
 
   // Auth
   'email': 'Email',
@@ -359,6 +364,11 @@ const Map<String, String> _km = {
   'app_name': '17G Seller',
   'welcome_back': 'សូមស្វាគមន៍!',
   'sign_in_to_continue': 'ចូលគណនីដើម្បីបន្ត',
+  'seller_access_title': 'ការចូលប្រើកម្មវិធីអ្នកលក់',
+  'seller_access_body':
+      'កម្មវិធីនេះសម្រាប់បុគ្គលិក និងអ្នកលក់ដែលបានផ្ទៀងផ្ទាត់ ដើម្បីគ្រប់គ្រងការលក់ផលិតផលជាក់ស្តែង ស្តុក ការបញ្ជាទិញ ការដឹកជញ្ជូន និងរបាយការណ៍។ គណនីត្រូវបានផ្តល់ដោយក្រុមជំនួយបន្ទាប់ពីផ្ទៀងផ្ទាត់អាជីវកម្ម។',
+  'seller_business_note':
+      'កម្មវិធីនេះមិនលក់ទំនិញឌីជីថល ការជាវ កម្ចី ការរៃអង្គាសប្រាក់ ការផ្សាយពាណិជ្ជកម្ម ឬសកម្មភាពបង្កើនចំណាត់ថ្នាក់កម្មវិធីទេ។',
 
   // Auth
   'email': 'អ៊ីមែល',

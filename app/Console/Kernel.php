@@ -19,6 +19,7 @@ class Kernel extends ConsoleKernel
         'App\Console\Commands\MigrateProductImagesToR2',
         'App\Console\Commands\WooCommerceSync',
         'App\\Console\\Commands\\WooCommercePushProducts',
+        'App\Console\Commands\EnsureAppReviewSeller',
     ];
 
     /**

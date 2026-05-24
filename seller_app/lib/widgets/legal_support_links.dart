@@ -9,13 +9,16 @@ class LegalSupportLinks extends StatelessWidget {
   });
 
   static final Uri supportUrl = Uri.parse('https://mmo17g.store/support');
+  static final Uri accessUrl = Uri.parse(
+    'https://mmo17g.store/seller-app-access',
+  );
   static final Uri privacyUrl = Uri.parse(
     'https://mmo17g.store/privacy-policy',
   );
   static final Uri contactEmail = Uri(
     scheme: 'mailto',
     path: 'support@mmo17g.store',
-    query: 'subject=17G%20Seller%20Support',
+    queryParameters: {'subject': '17G Seller Support'},
   );
 
   final bool compact;
@@ -32,6 +35,13 @@ class LegalSupportLinks extends StatelessWidget {
       spacing: spacing,
       runSpacing: 0,
       children: [
+        _LinkButton(
+          icon: Icons.verified_user_outlined,
+          label: 'Access',
+          uri: accessUrl,
+          color: color,
+          compact: compact,
+        ),
         _LinkButton(
           icon: Icons.privacy_tip_outlined,
           label: 'Privacy Policy',
@@ -65,6 +75,13 @@ class LegalSupportTileGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
+        _SupportTile(
+          icon: Icons.verified_user_outlined,
+          title: 'Seller App Access',
+          subtitle: 'Business model, account eligibility, and reviewer access',
+          uri: LegalSupportLinks.accessUrl,
+        ),
+        const Divider(height: 1),
         _SupportTile(
           icon: Icons.privacy_tip_outlined,
           title: 'Privacy Policy',

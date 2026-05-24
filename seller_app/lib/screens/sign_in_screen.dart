@@ -408,6 +408,14 @@ class _SignInScreenState extends State<SignInScreen> {
           ),
         ),
         const SizedBox(height: 14),
+        _buildAccessDisclosure(
+          languageProvider: languageProvider,
+          isDark: isDark,
+          primaryGold: primaryGold,
+          deepGold: deepGold,
+          mutedText: mutedText,
+        ),
+        const SizedBox(height: 10),
         LegalSupportLinks(compact: true, foregroundColor: deepGold),
         const SizedBox(height: 8),
         _buildAttemptWarning(
@@ -416,6 +424,78 @@ class _SignInScreenState extends State<SignInScreen> {
           deepGold: deepGold,
         ),
       ],
+    );
+  }
+
+  Widget _buildAccessDisclosure({
+    required LanguageProvider languageProvider,
+    required bool isDark,
+    required Color primaryGold,
+    required Color deepGold,
+    required Color mutedText,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.055)
+            : const Color(0xFFFFFAEA),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark
+              ? primaryGold.withValues(alpha: 0.22)
+              : const Color(0xFFEBD9A6),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(
+              Icons.verified_user_outlined,
+              color: deepGold,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  languageProvider.t('seller_access_title'),
+                  style: TextStyle(
+                    color: deepGold,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  languageProvider.t('seller_access_body'),
+                  style: TextStyle(
+                    color: mutedText,
+                    fontSize: 12.5,
+                    height: 1.42,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  languageProvider.t('seller_business_note'),
+                  style: TextStyle(
+                    color: mutedText,
+                    fontSize: 12.5,
+                    height: 1.42,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

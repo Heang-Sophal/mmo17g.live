@@ -19,6 +19,7 @@
     <p>For account access, app review, delivery, seller, or store management support, contact our team.</p>
     <p><strong>Email:</strong> <a href="mailto:support@mmo17g.store">support@mmo17g.store</a></p>
     <p><strong>Website:</strong> <a href="https://mmo17g.store">https://mmo17g.store</a></p>
+    <p><strong>Seller App Access:</strong> <a href="/seller-app-access">https://mmo17g.store/seller-app-access</a></p>
     <p><strong>Privacy Policy:</strong> <a href="/privacy-policy">https://mmo17g.store/privacy-policy</a></p>
     <p>We normally respond to support requests within two business days.</p>
   </section>
