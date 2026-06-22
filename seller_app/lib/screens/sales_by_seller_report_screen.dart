@@ -664,18 +664,17 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
     final loading = _showLoading('Exporting PDF...');
 
     try {
-      // NotoSans covers Latin/ASCII; NotoSansKhmer is the fallback for Khmer glyphs.
+      final kantumruyData = await rootBundle.load(
+        'assets/fonts/KantumruyPro.ttf',
+      );
       final notoRegularData = await rootBundle.load(
         'assets/fonts/NotoSans-Regular.ttf',
-      );
-      final notoBoldData = await rootBundle.load(
-        'assets/fonts/NotoSans-Bold.ttf',
       );
       final khmerData = await rootBundle.load(
         'assets/fonts/NotoSansKhmer-Regular.ttf',
       );
+      final kantumruyFont = pw.Font.ttf(kantumruyData);
       final notoRegular = pw.Font.ttf(notoRegularData);
-      final notoBold = pw.Font.ttf(notoBoldData);
       final khmerFont = pw.Font.ttf(khmerData);
 
       pw.TextStyle style({
@@ -683,8 +682,8 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
         pw.FontWeight fontWeight = pw.FontWeight.normal,
         PdfColor? color,
       }) => pw.TextStyle(
-        font: fontWeight == pw.FontWeight.bold ? notoBold : notoRegular,
-        fontFallback: [khmerFont],
+        font: kantumruyFont,
+        fontFallback: [notoRegular, khmerFont],
         fontSize: fontSize,
         fontWeight: fontWeight,
         color: color,
@@ -696,9 +695,9 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4.landscape,
           theme: pw.ThemeData.withFont(
-            base: notoRegular,
-            bold: notoBold,
-            fontFallback: [khmerFont],
+            base: kantumruyFont,
+            bold: kantumruyFont,
+            fontFallback: [notoRegular, khmerFont],
           ),
           header: (context) => pw.Container(
             alignment: pw.Alignment.centerRight,

@@ -3,6 +3,7 @@ import 'package:delivery_app/providers/auth_provider.dart';
 import 'package:delivery_app/providers/language_provider.dart';
 import 'package:delivery_app/services/delivery_api_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -34,6 +35,11 @@ class ReportScreenState extends State<ReportScreen> {
   double _totalShipping = 0;
   double _totalAmount = 0;
   int _totalOrders = 0;
+
+  double get _companyPayableAmount {
+    final amount = _totalAmount - _totalShipping;
+    return amount < 0 ? 0 : amount;
+  }
 
   @override
   void initState() {
@@ -258,34 +264,54 @@ class ReportScreenState extends State<ReportScreen> {
     }
 
     try {
+      final kantumruyData = await rootBundle.load(
+        'assets/fonts/KantumruyPro.ttf',
+      );
+      final kantumruyFont = pw.Font.ttf(kantumruyData);
+
+      pw.TextStyle style({
+        double fontSize = 9,
+        pw.FontWeight fontWeight = pw.FontWeight.normal,
+        PdfColor? color,
+      }) => pw.TextStyle(
+        font: kantumruyFont,
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        color: color,
+      );
+
       final pdf = pw.Document();
 
       pdf.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4.landscape,
+          theme: pw.ThemeData.withFont(
+            base: kantumruyFont,
+            bold: kantumruyFont,
+          ),
           header: (context) => pw.Container(
             alignment: pw.Alignment.centerRight,
             child: pw.Text(
               '${_pdfReportTitle()}: ${_formatDateForApi(_startDate)} - ${_formatDateForApi(_endDate)}',
-              style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+              style: style(fontSize: 10, color: PdfColors.grey700),
             ),
           ),
           footer: (context) => pw.Container(
             alignment: pw.Alignment.centerRight,
             child: pw.Text(
               'Page ${context.pageNumber} of ${context.pagesCount}',
-              style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+              style: style(fontSize: 10, color: PdfColors.grey700),
             ),
           ),
           build: (context) => [
             pw.TableHelper.fromTextArray(
               border: pw.TableBorder.all(),
-              headerStyle: pw.TextStyle(
+              headerStyle: style(
                 fontWeight: pw.FontWeight.bold,
                 color: PdfColors.white,
                 fontSize: 10,
               ),
-              cellStyle: const pw.TextStyle(fontSize: 9),
+              cellStyle: style(fontSize: 9),
               headerDecoration: const pw.BoxDecoration(color: PdfColors.amber),
               cellHeight: 25,
               cellAlignments: {
@@ -339,15 +365,15 @@ class ReportScreenState extends State<ReportScreen> {
                 children: [
                   pw.Text(
                     'Total ${widget.recordMode ? 'Records' : 'Orders'}: $_totalOrders',
-                    style: pw.TextStyle(
+                    style: style(
                       fontSize: 12,
                       fontWeight: pw.FontWeight.bold,
                       color: PdfColors.blue,
                     ),
                   ),
                   pw.Text(
-                    'Shipping: \$${_formatCurrency(_totalShipping)}',
-                    style: pw.TextStyle(
+                    'Total Shipping: \$${_formatCurrency(_totalShipping)}',
+                    style: style(
                       fontSize: 12,
                       fontWeight: pw.FontWeight.bold,
                       color: PdfColors.amber,
@@ -355,10 +381,18 @@ class ReportScreenState extends State<ReportScreen> {
                   ),
                   pw.Text(
                     'Grand Total: \$${_formatCurrency(_totalAmount)}',
-                    style: pw.TextStyle(
+                    style: style(
                       fontSize: 12,
                       fontWeight: pw.FontWeight.bold,
                       color: PdfColors.amber,
+                    ),
+                  ),
+                  pw.Text(
+                    'Payable to Company: \$${_formatCurrency(_companyPayableAmount)}',
+                    style: style(
+                      fontSize: 12,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.green,
                     ),
                   ),
                 ],
@@ -451,12 +485,32 @@ class ReportScreenState extends State<ReportScreen> {
                     tooltip: languageProvider.t('custom_range'),
                     onSelected: _applyDateShortcut,
                     itemBuilder: (context) => [
-                      _shortcutItem('today', Icons.today, languageProvider.t('today')),
-                      _shortcutItem('yesterday', Icons.history, languageProvider.t('yesterday')),
-                      _shortcutItem('this_week', Icons.view_week, languageProvider.t('this_week')),
-                      _shortcutItem('this_month', Icons.calendar_month, languageProvider.t('this_month')),
+                      _shortcutItem(
+                        'today',
+                        Icons.today,
+                        languageProvider.t('today'),
+                      ),
+                      _shortcutItem(
+                        'yesterday',
+                        Icons.history,
+                        languageProvider.t('yesterday'),
+                      ),
+                      _shortcutItem(
+                        'this_week',
+                        Icons.view_week,
+                        languageProvider.t('this_week'),
+                      ),
+                      _shortcutItem(
+                        'this_month',
+                        Icons.calendar_month,
+                        languageProvider.t('this_month'),
+                      ),
                       const PopupMenuDivider(),
-                      _shortcutItem('custom', Icons.date_range, languageProvider.t('custom_range')),
+                      _shortcutItem(
+                        'custom',
+                        Icons.date_range,
+                        languageProvider.t('custom_range'),
+                      ),
                     ],
                   ),
                   IconButton(
@@ -724,26 +778,54 @@ class ReportScreenState extends State<ReportScreen> {
           ),
           child: SafeArea(
             top: false,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildSummaryItem(
-                  _reportCountLabel(languageProvider),
-                  _totalOrders.toDouble(),
-                  Colors.blue,
-                  isCount: true,
-                ),
-                _buildSummaryItem(
-                  languageProvider.t('shipping_fee'),
-                  _totalShipping,
-                  Colors.amber,
-                ),
-                _buildSummaryItem(
-                  languageProvider.t('grand_total'),
-                  _totalAmount,
-                  const Color(0xFFD6A735),
-                ),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isCompact = constraints.maxWidth < 560;
+                final itemWidth = isCompact
+                    ? (constraints.maxWidth - 12) / 2
+                    : (constraints.maxWidth - 36) / 4;
+
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 14,
+                  alignment: WrapAlignment.spaceBetween,
+                  children: [
+                    SizedBox(
+                      width: itemWidth,
+                      child: _buildSummaryItem(
+                        _reportCountLabel(languageProvider),
+                        _totalOrders.toDouble(),
+                        Colors.blue,
+                        isCount: true,
+                      ),
+                    ),
+                    SizedBox(
+                      width: itemWidth,
+                      child: _buildSummaryItem(
+                        languageProvider.t('total_shipping_fee'),
+                        _totalShipping,
+                        Colors.amber,
+                      ),
+                    ),
+                    SizedBox(
+                      width: itemWidth,
+                      child: _buildSummaryItem(
+                        languageProvider.t('grand_total'),
+                        _totalAmount,
+                        const Color(0xFFD6A735),
+                      ),
+                    ),
+                    SizedBox(
+                      width: itemWidth,
+                      child: _buildSummaryItem(
+                        languageProvider.t('company_payable'),
+                        _companyPayableAmount,
+                        Colors.green,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ),
@@ -751,7 +833,11 @@ class ReportScreenState extends State<ReportScreen> {
     );
   }
 
-  PopupMenuItem<String> _shortcutItem(String value, IconData icon, String label) {
+  PopupMenuItem<String> _shortcutItem(
+    String value,
+    IconData icon,
+    String label,
+  ) {
     return PopupMenuItem(
       value: value,
       child: Row(
@@ -775,6 +861,9 @@ class ReportScreenState extends State<ReportScreen> {
       children: [
         Text(
           label,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: 12,
             color: Colors.grey[600],

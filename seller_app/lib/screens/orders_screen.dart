@@ -920,6 +920,10 @@ class _OrdersScreenState extends State<OrdersScreen>
         color = const Color(0xFFDC2626);
         label = languageProvider.t('cancelled');
         break;
+      case 'returned':
+        color = const Color(0xFFDC2626);
+        label = languageProvider.t('returned');
+        break;
       default:
         color = Colors.grey;
         label = status;
@@ -1549,6 +1553,12 @@ class _OrdersScreenState extends State<OrdersScreen>
         value?.toString().toLowerCase() == 'true';
   }
 
+  bool _hasReturn(Map<String, dynamic> order) {
+    final returnedProducts =
+        order['returned_products']?.toString().trim() ?? '';
+    return _asBool(order['has_return']) || returnedProducts.isNotEmpty;
+  }
+
   String _shippingLabel(
     Map<String, dynamic> order,
     LanguageProvider languageProvider,
@@ -1564,6 +1574,10 @@ class _OrdersScreenState extends State<OrdersScreen>
   }
 
   String _orderStatus(Map<String, dynamic> order) {
+    if (_hasReturn(order)) {
+      return 'returned';
+    }
+
     final shippingStatus = order['shipping_status']?.toString().trim() ?? '';
     return _normalizeShippingStatus(shippingStatus);
   }
@@ -1591,6 +1605,8 @@ class _OrdersScreenState extends State<OrdersScreen>
         return languageProvider.t('delivered');
       case 'cancelled':
         return languageProvider.t('cancelled');
+      case 'returned':
+        return languageProvider.t('returned');
       default:
         return status;
     }

@@ -1058,8 +1058,18 @@ Route::get('/orders', function (\Illuminate\Http\Request $request) {
             $query->where('payment_statut', $request->payment_status);
         }
 
-        $orders = $query->get()->map(function ($order) use ($normalizeShippingStatus) {
+        $sales = $query->get();
+        $returnedSaleIds = \App\Models\SaleReturn::query()
+            ->whereNull('deleted_at')
+            ->whereIn('sale_id', $sales->pluck('id')->filter()->values())
+            ->pluck('sale_id')
+            ->mapWithKeys(function ($saleId) {
+                return [(int) $saleId => true];
+            });
+
+        $orders = $sales->map(function ($order) use ($normalizeShippingStatus, $returnedSaleIds) {
             $shippingStatus = $normalizeShippingStatus($order->shipping_status);
+            $hasReturn = (bool) ($returnedSaleIds[(int) $order->id] ?? false);
 
             return [
                 'id' => (string) $order->id,
@@ -1079,6 +1089,7 @@ Route::get('/orders', function (\Illuminate\Http\Request $request) {
                 'payment_status' => $order->payment_statut ?? 'unpaid',
                 'status' => $order->statut ?? 'completed',
                 'shipping_status' => $shippingStatus,
+                'has_return' => $hasReturn,
                 'notes' => $order->notes ?? '',
                 'created_at' => $order->created_at?->toIso8601String(),
                 'updated_at' => $order->updated_at?->toIso8601String(),

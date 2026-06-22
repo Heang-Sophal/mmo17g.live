@@ -881,6 +881,8 @@ class ReportController extends BaseController
 
         $returnedProductsBySale = [];
         $returnedQuantitiesBySaleProduct = [];
+        $returnedTotalsBySaleProduct = [];
+        $hasReturnBySale = [];
         $saleIds = $sales->pluck('id')->filter()->values()->all();
 
         if (! empty($saleIds)) {
@@ -900,19 +902,25 @@ class ReportController extends BaseController
             $returnedProductNamesBySale = [];
 
             foreach ($saleReturns as $saleReturn) {
+                $hasReturnBySale[(int) $saleReturn->sale_id] = true;
+
                 foreach ($saleReturn->details as $returnDetail) {
                     $saleId = (int) $saleReturn->sale_id;
                     $productId = (int) $returnDetail->product_id;
                     $quantity = (float) ($returnDetail->quantity ?? 0);
+                    $returnTotal = (float) ($returnDetail->total ?? 0);
                     $productName = $returnDetail->product ? $returnDetail->product->name : 'N/A';
 
                     if (! isset($returnedQuantitiesBySaleProduct[$saleId])) {
                         $returnedQuantitiesBySaleProduct[$saleId] = [];
+                        $returnedTotalsBySaleProduct[$saleId] = [];
                         $returnedProductNamesBySale[$saleId] = [];
                     }
 
                     $returnedQuantitiesBySaleProduct[$saleId][$productId] =
                         ($returnedQuantitiesBySaleProduct[$saleId][$productId] ?? 0) + $quantity;
+                    $returnedTotalsBySaleProduct[$saleId][$productId] =
+                        ($returnedTotalsBySaleProduct[$saleId][$productId] ?? 0) + $returnTotal;
                     $returnedProductNamesBySale[$saleId][$productId] = $productName;
                 }
             }
@@ -943,28 +951,16 @@ class ReportController extends BaseController
             $saleTotalAmount = (float) ($sale->GrandTotal ?? 0);
             $paymentMethod   = strtolower($sale->payment_method ?? '');
             $shippingIsFree  = (bool) ($sale->shipping_is_free ?? false);
-            $productRevenue  = $shippingIsFree
-                ? $salePaidAmount
-                : ($salePaidAmount - $saleShipping);
-
-            // Accumulate shipping once per sale for grand totals
-            $grandTotalShipping += $saleShipping;
-
-            // Total Paid Amount = paid_amount (which includes shipping) MINUS shipping
-            // so that Total Paid Amount shows only the product revenue portion.
-            $grandTotalPaid += $productRevenue;
-
-            // Sale-by-payment-method: subtract shipping so it shows product revenue only
-            // (paid_amount in DB includes shipping, so we exclude it for consistency).
-            if ($paymentMethod === 'cash') {
-                $grandSaleByCash += $productRevenue;
-            } elseif ($paymentMethod === 'khqr') {
-                $grandSaleByKhqr += $productRevenue;
-            }
+            $saleHasReturn   = ! empty($hasReturnBySale[(int) $sale->id] ?? false);
+            $displayShipping = $saleHasReturn ? round($saleShipping * 2, 2) : $saleShipping;
+            $hasAssignedShipping = false;
 
             if ($sale->details && $sale->details->count() > 0) {
-                $isFirstDetail = true;
+                $detailIndex = 0;
+                $detailCount = $sale->details->count();
+
                 foreach ($sale->details as $detail) {
+                    $detailIndex++;
                     $product  = $detail->product;
                     $unit     = $product && $product->unit ? $product->unit->ShortName : 'N/A';
                     $qty      = (float) ($detail->quantity ?? 1);
@@ -979,9 +975,6 @@ class ReportController extends BaseController
                     // FIX #2: product_cost = unit_cost × quantity
                     $productCostTotal = round($productUnitCost * $qty, 2);
 
-                    // Accumulate cost for grand totals
-                    $grandTotalCost += $productCostTotal;
-
                     $lineTotal = $detailTotal > 0 ? $detailTotal : ($productPrice * $qty);
 
                     // Proportional paid amount for this product line
@@ -989,10 +982,41 @@ class ReportController extends BaseController
                         ? round(($lineTotal / $saleTotalAmount) * $salePaidAmount, 2)
                         : 0;
 
-                    // FIX #1: Shipping only on the first detail row per sale; 0 for subsequent rows
-                    $rowShipping = $isFirstDetail ? $saleShipping : 0;
-                    $isFirstDetail = false;
                     $returnedQty = $returnedQuantitiesBySaleProduct[$sale->id][$detail->product_id] ?? 0;
+                    $returnedTotal = $returnedTotalsBySaleProduct[$sale->id][$detail->product_id] ?? 0;
+                    $isReturnedLine = $returnedQty > 0;
+
+                    // Shipping is shown once per sale. For returned sales, attach the doubled
+                    // shipping to the first returned product line so the return row is clear.
+                    $rowShipping = 0;
+                    if (! $hasAssignedShipping && (! $saleHasReturn || $isReturnedLine || $detailIndex === $detailCount)) {
+                        $rowShipping = $displayShipping;
+                        $hasAssignedShipping = true;
+                    }
+
+                    $adjustedProductCost = $productCostTotal;
+                    $adjustedPaidAmount = $paidAmount;
+
+                    if ($isReturnedLine) {
+                        if ($paymentMethod === 'cash') {
+                            $adjustedProductCost = 0;
+                            $adjustedPaidAmount = 0;
+                        } elseif ($paymentMethod === 'khqr') {
+                            $priceToDeduct = $productCostTotal > 0 ? $productCostTotal : $returnedTotal;
+                            $adjustedPaidAmount = round($paidAmount - $priceToDeduct - $rowShipping, 2);
+                        }
+                    }
+
+                    $grandTotalCost += $adjustedProductCost;
+                    $grandTotalShipping += $rowShipping;
+                    $grandTotalPaid += $adjustedPaidAmount;
+
+                    if ($paymentMethod === 'cash') {
+                        $grandSaleByCash += $adjustedPaidAmount;
+                    } elseif ($paymentMethod === 'khqr') {
+                        $grandSaleByKhqr += $adjustedPaidAmount;
+                    }
+
                     $returnedProduct = $returnedQty > 0
                         ? ($product ? $product->name : 'N/A').' x'.$formatReturnQty($returnedQty)
                         : '';
@@ -1009,10 +1033,13 @@ class ReportController extends BaseController
                     $item['product_name']     = $product ? $product->name : 'N/A';
                     $item['product_qty']      = $qty;
                     $item['product_unit']     = $unit;
-                    $item['product_cost']     = $productCostTotal;   // FIX #2: cost × qty
+                    $item['product_cost']     = $adjustedProductCost;
+                    $item['original_product_cost'] = $productCostTotal;
                     $item['product_price']    = $productPrice;
-                    $item['paid_amount']      = $paidAmount;
-                    $item['shipping']         = $rowShipping;         // FIX #1: no duplication
+                    $item['paid_amount']      = $adjustedPaidAmount;
+                    $item['original_paid_amount'] = $paidAmount;
+                    $item['shipping']         = $rowShipping;
+                    $item['original_shipping'] = $saleShipping;
                     $item['shipping_is_free'] = $shippingIsFree;
                     $item['payment_method']   = $sale->payment_method ?? 'N/A';
                     $item['seller_name']      = $sale->user ? $sale->user->username : 'N/A';
@@ -1020,13 +1047,31 @@ class ReportController extends BaseController
                     $item['returned_product'] = $returnedProduct;
                     $item['returned_products'] = $returnedProductsBySale[$sale->id] ?? '';
                     $item['returned_quantity'] = $returnedQty;
-                    $item['has_return']       = $returnedQty > 0;
+                    $item['returned_total']   = $returnedTotal;
+                    $item['has_return']       = $isReturnedLine;
+                    $item['sale_has_return']  = $saleHasReturn;
 
                     $data[] = $item;
                 }
             } else {
                 // Sale without details (fallback) — shipping only once, cost = 0
-                $grandTotalCost += 0;
+                $adjustedPaidAmount = $salePaidAmount;
+                if ($saleHasReturn) {
+                    if ($paymentMethod === 'cash') {
+                        $adjustedPaidAmount = 0;
+                    } elseif ($paymentMethod === 'khqr') {
+                        $adjustedPaidAmount = round($salePaidAmount - $displayShipping, 2);
+                    }
+                }
+
+                $grandTotalShipping += $displayShipping;
+                $grandTotalPaid += $adjustedPaidAmount;
+
+                if ($paymentMethod === 'cash') {
+                    $grandSaleByCash += $adjustedPaidAmount;
+                } elseif ($paymentMethod === 'khqr') {
+                    $grandSaleByKhqr += $adjustedPaidAmount;
+                }
 
                 $item['id']               = $sale->id;
                 $item['datetime']         = $sale->created_at ? $sale->created_at->format('Y-m-d H:i:s') : $sale->date;
@@ -1042,8 +1087,9 @@ class ReportController extends BaseController
                 $item['product_unit']     = 'N/A';
                 $item['product_cost']     = 0;
                 $item['product_price']    = 0;
-                $item['paid_amount']      = $salePaidAmount;
-                $item['shipping']         = $saleShipping;
+                $item['paid_amount']      = $adjustedPaidAmount;
+                $item['shipping']         = $displayShipping;
+                $item['original_shipping'] = $saleShipping;
                 $item['shipping_is_free'] = $shippingIsFree;
                 $item['payment_method']   = $sale->payment_method ?? 'N/A';
                 $item['seller_name']      = $sale->user ? $sale->user->username : 'N/A';
@@ -1051,7 +1097,9 @@ class ReportController extends BaseController
                 $item['returned_product'] = $returnedProductsBySale[$sale->id] ?? '';
                 $item['returned_products'] = $returnedProductsBySale[$sale->id] ?? '';
                 $item['returned_quantity'] = 0;
+                $item['returned_total']   = 0;
                 $item['has_return']       = ! empty($item['returned_product']);
+                $item['sale_has_return']  = $saleHasReturn;
 
                 $data[] = $item;
             }
