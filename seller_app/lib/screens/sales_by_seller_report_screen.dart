@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:provider/provider.dart';
 import 'package:seller_app/config/api_config.dart';
 import 'package:seller_app/providers/auth_provider.dart';
@@ -7,6 +7,8 @@ import 'package:seller_app/providers/language_provider.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
@@ -690,6 +692,134 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
       );
 
       final pdf = pw.Document();
+      final imageTextCache = <String, _PdfTextImage>{};
+      final columns = const <_PdfColumnSpec>[
+        _PdfColumnSpec(
+          label: 'Date',
+          width: 48,
+          alignment: pw.Alignment.centerLeft,
+          textAlign: pw.TextAlign.left,
+        ),
+        _PdfColumnSpec(
+          label: 'Ref',
+          width: 42,
+          alignment: pw.Alignment.center,
+          textAlign: pw.TextAlign.center,
+        ),
+        _PdfColumnSpec(
+          label: 'Customer',
+          width: 78,
+          alignment: pw.Alignment.centerLeft,
+          textAlign: pw.TextAlign.left,
+        ),
+        _PdfColumnSpec(
+          label: 'Phone',
+          width: 55,
+          alignment: pw.Alignment.centerLeft,
+          textAlign: pw.TextAlign.left,
+        ),
+        _PdfColumnSpec(
+          label: 'Location',
+          width: 95,
+          alignment: pw.Alignment.centerLeft,
+          textAlign: pw.TextAlign.left,
+        ),
+        _PdfColumnSpec(
+          label: 'Product',
+          width: 85,
+          alignment: pw.Alignment.centerLeft,
+          textAlign: pw.TextAlign.left,
+        ),
+        _PdfColumnSpec(
+          label: 'Returned',
+          width: 65,
+          alignment: pw.Alignment.centerLeft,
+          textAlign: pw.TextAlign.left,
+        ),
+        _PdfColumnSpec(
+          label: 'QTY',
+          width: 28,
+          alignment: pw.Alignment.center,
+          textAlign: pw.TextAlign.center,
+        ),
+        _PdfColumnSpec(
+          label: 'Cost',
+          width: 42,
+          alignment: pw.Alignment.centerRight,
+          textAlign: pw.TextAlign.right,
+        ),
+        _PdfColumnSpec(
+          label: 'Paid',
+          width: 42,
+          alignment: pw.Alignment.centerRight,
+          textAlign: pw.TextAlign.right,
+        ),
+        _PdfColumnSpec(
+          label: 'Ship',
+          width: 35,
+          alignment: pw.Alignment.centerRight,
+          textAlign: pw.TextAlign.right,
+        ),
+        _PdfColumnSpec(
+          label: 'Pay',
+          width: 36,
+          alignment: pw.Alignment.center,
+          textAlign: pw.TextAlign.center,
+        ),
+        _PdfColumnSpec(
+          label: 'Seller',
+          width: 60,
+          alignment: pw.Alignment.centerLeft,
+          textAlign: pw.TextAlign.left,
+        ),
+      ];
+      final tableRows = <pw.TableRow>[
+        pw.TableRow(
+          repeat: true,
+          decoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
+          children: await _pdfTableCells(
+            columns.map((column) => column.label).toList(),
+            columns,
+            imageTextCache,
+            textStyle: style(
+              fontSize: 7,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.white,
+            ),
+            fontSize: 7,
+            flutterFontWeight: FontWeight.w700,
+            flutterColor: Colors.white,
+          ),
+        ),
+      ];
+
+      for (final row in _reportData) {
+        tableRows.add(
+          pw.TableRow(
+            children: await _pdfTableCells(
+              [
+                _formatDate(row['datetime'] ?? row['date']),
+                (row['Ref'] ?? '').toString(),
+                _customerName(row),
+                _customerPhone(row),
+                _customerLocation(row),
+                _textValue(row['product_name']),
+                _returnedProductText(row),
+                (row['product_qty'] ?? '0').toString(),
+                '\$${_formatMoney(row['product_cost'])}',
+                '\$${_formatMoney(row['paid_amount'])}',
+                '\$${_formatMoney(row['shipping'])}',
+                (row['payment_method'] ?? 'N/A').toString(),
+                (row['seller_name'] ?? 'N/A').toString(),
+              ],
+              columns,
+              imageTextCache,
+              textStyle: style(fontSize: 7),
+              fontSize: 7,
+            ),
+          ),
+        );
+      }
 
       pdf.addPage(
         pw.MultiPage(
@@ -714,65 +844,13 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
             ),
           ),
           build: (context) => [
-            pw.TableHelper.fromTextArray(
+            pw.Table(
               border: pw.TableBorder.all(),
-              headerStyle: style(
-                fontSize: 7,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.white,
-              ),
-              cellStyle: style(fontSize: 7),
-              headerDecoration: const pw.BoxDecoration(
-                color: PdfColors.blueGrey800,
-              ),
-              cellHeight: 24,
-              cellAlignments: {
-                0: pw.Alignment.centerLeft,
-                1: pw.Alignment.center,
-                2: pw.Alignment.centerLeft,
-                3: pw.Alignment.centerLeft,
-                4: pw.Alignment.centerLeft,
-                5: pw.Alignment.centerLeft,
-                6: pw.Alignment.centerLeft,
-                7: pw.Alignment.center,
-                8: pw.Alignment.centerRight,
-                9: pw.Alignment.centerRight,
-                10: pw.Alignment.centerRight,
-                11: pw.Alignment.center,
-                12: pw.Alignment.centerLeft,
+              columnWidths: {
+                for (var i = 0; i < columns.length; i++)
+                  i: pw.FixedColumnWidth(columns[i].width),
               },
-              headers: [
-                'Date',
-                'Ref',
-                'Customer',
-                'Phone',
-                'Location',
-                'Product',
-                'Returned',
-                'QTY',
-                'Cost',
-                'Paid',
-                'Ship',
-                'Pay',
-                'Seller',
-              ],
-              data: _reportData.map((row) {
-                return [
-                  _formatDate(row['datetime'] ?? row['date']),
-                  row['Ref'] ?? '',
-                  _customerName(row),
-                  _customerPhone(row),
-                  _customerLocation(row),
-                  _textValue(row['product_name']),
-                  _returnedProductText(row),
-                  row['product_qty']?.toString() ?? '0',
-                  '\$${_formatMoney(row['product_cost'])}',
-                  '\$${_formatMoney(row['paid_amount'])}',
-                  '\$${_formatMoney(row['shipping'])}',
-                  row['payment_method'] ?? 'N/A',
-                  row['seller_name'] ?? 'N/A',
-                ];
-              }).toList(),
+              children: tableRows,
             ),
             pw.SizedBox(height: 20),
             pw.Container(
@@ -889,6 +967,147 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
       loading.remove();
       _showError('Failed to export PDF: $e');
     }
+  }
+
+  Future<List<pw.Widget>> _pdfTableCells(
+    List<String> values,
+    List<_PdfColumnSpec> columns,
+    Map<String, _PdfTextImage> imageTextCache, {
+    required pw.TextStyle textStyle,
+    required double fontSize,
+    FontWeight flutterFontWeight = FontWeight.normal,
+    Color flutterColor = Colors.black,
+  }) async {
+    final cells = <pw.Widget>[];
+    for (var i = 0; i < columns.length; i++) {
+      cells.add(
+        await _pdfTableCell(
+          i < values.length ? values[i] : '',
+          columns[i],
+          imageTextCache,
+          textStyle: textStyle,
+          fontSize: fontSize,
+          flutterFontWeight: flutterFontWeight,
+          flutterColor: flutterColor,
+        ),
+      );
+    }
+    return cells;
+  }
+
+  Future<pw.Widget> _pdfTableCell(
+    String text,
+    _PdfColumnSpec column,
+    Map<String, _PdfTextImage> imageTextCache, {
+    required pw.TextStyle textStyle,
+    required double fontSize,
+    required FontWeight flutterFontWeight,
+    required Color flutterColor,
+  }) async {
+    const horizontalPadding = 2.5;
+    const verticalPadding = 3.0;
+    final contentWidth = column.width - (horizontalPadding * 2);
+    final safeText = text.trim().isEmpty ? '-' : text;
+
+    pw.Widget child;
+    if (_usesKhmer(safeText)) {
+      final rendered = await _renderPdfTextImage(
+        safeText,
+        maxWidth: contentWidth > 1 ? contentWidth : 1,
+        fontSize: fontSize,
+        fontWeight: flutterFontWeight,
+        color: flutterColor,
+        textAlign: _flutterTextAlign(column.textAlign),
+        cache: imageTextCache,
+      );
+      child = pw.Image(
+        pw.MemoryImage(rendered.bytes),
+        width: rendered.width,
+        height: rendered.height,
+      );
+    } else {
+      child = pw.Text(safeText, style: textStyle, textAlign: column.textAlign);
+    }
+
+    return pw.Container(
+      width: column.width,
+      padding: const pw.EdgeInsets.symmetric(
+        horizontal: horizontalPadding,
+        vertical: verticalPadding,
+      ),
+      alignment: column.alignment,
+      child: child,
+    );
+  }
+
+  Future<_PdfTextImage> _renderPdfTextImage(
+    String text, {
+    required double maxWidth,
+    required double fontSize,
+    required FontWeight fontWeight,
+    required Color color,
+    required TextAlign textAlign,
+    required Map<String, _PdfTextImage> cache,
+  }) async {
+    final cacheKey =
+        '$text|$maxWidth|$fontSize|${fontWeight.value}|${color.toARGB32()}|${textAlign.name}';
+    final cached = cache[cacheKey];
+    if (cached != null) return cached;
+
+    const scale = 3.0;
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          fontFamily: 'KantumruyPro',
+          fontSize: fontSize,
+          fontWeight: fontWeight,
+          color: color,
+          height: 1.25,
+        ),
+      ),
+      textAlign: textAlign,
+      textDirection: ui.TextDirection.ltr,
+    )..layout(maxWidth: maxWidth);
+
+    final imageWidth = maxWidth <= 0 ? 1.0 : maxWidth;
+    final imageHeight = textPainter.height + 2;
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+
+    canvas.scale(scale, scale);
+    textPainter.paint(canvas, const Offset(0, 1));
+
+    final picture = recorder.endRecording();
+    final image = await picture.toImage(
+      (imageWidth * scale).ceil(),
+      (imageHeight * scale).ceil(),
+    );
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    picture.dispose();
+
+    if (byteData == null) {
+      throw StateError('Unable to render Khmer text for PDF.');
+    }
+
+    final rendered = _PdfTextImage(
+      byteData.buffer.asUint8List(),
+      imageWidth,
+      imageHeight,
+    );
+    cache[cacheKey] = rendered;
+    return rendered;
+  }
+
+  bool _usesKhmer(String text) {
+    return RegExp(r'[\u1780-\u17FF\u19E0-\u19FF]').hasMatch(text);
+  }
+
+  TextAlign _flutterTextAlign(pw.TextAlign textAlign) {
+    if (textAlign == pw.TextAlign.center) return TextAlign.center;
+    if (textAlign == pw.TextAlign.right) return TextAlign.right;
+    return TextAlign.left;
   }
 
   pw.Widget _pdfSummaryItem(
@@ -1094,4 +1313,26 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
       SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
+}
+
+class _PdfColumnSpec {
+  const _PdfColumnSpec({
+    required this.label,
+    required this.width,
+    required this.alignment,
+    required this.textAlign,
+  });
+
+  final String label;
+  final double width;
+  final pw.Alignment alignment;
+  final pw.TextAlign textAlign;
+}
+
+class _PdfTextImage {
+  const _PdfTextImage(this.bytes, this.width, this.height);
+
+  final Uint8List bytes;
+  final double width;
+  final double height;
 }

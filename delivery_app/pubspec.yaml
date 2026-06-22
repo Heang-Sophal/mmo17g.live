@@ -39,6 +39,10 @@ flutter:
   uses-material-design: true
   assets:
     - assets/fonts/KantumruyPro.ttf
+  fonts:
+    - family: KantumruyPro
+      fonts:
+        - asset: assets/fonts/KantumruyPro.ttf
 
 flutter_launcher_icons:
   android: "ic_launcher"

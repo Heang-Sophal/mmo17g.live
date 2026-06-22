@@ -83,6 +83,11 @@ flutter:
     - assets/fonts/NotoSansKhmer-Regular.ttf
     - assets/fonts/KantumruyPro.ttf
 
+  fonts:
+    - family: KantumruyPro
+      fonts:
+        - asset: assets/fonts/KantumruyPro.ttf
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
