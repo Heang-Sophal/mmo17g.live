@@ -455,7 +455,15 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
                       columns: [
                         DataColumn(label: Text(languageProvider.t('date'))),
                         DataColumn(label: Text('Ref')),
+                        DataColumn(
+                          label: Text(languageProvider.t('customer_name')),
+                        ),
+                        DataColumn(label: Text(languageProvider.t('phone'))),
+                        DataColumn(label: Text(languageProvider.t('location'))),
                         DataColumn(label: Text(languageProvider.t('products'))),
+                        DataColumn(
+                          label: Text(languageProvider.t('returned_product')),
+                        ),
                         DataColumn(label: Text('QTY')),
                         DataColumn(label: Text(languageProvider.t('price'))),
                         DataColumn(label: Text(languageProvider.t('paid'))),
@@ -470,7 +478,11 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
                               Text(_formatDate(row['datetime'] ?? row['date'])),
                             ),
                             DataCell(Text(row['Ref'] ?? '')),
-                            DataCell(Text(row['product_name'] ?? 'N/A')),
+                            DataCell(Text(_customerName(row))),
+                            DataCell(Text(_customerPhone(row))),
+                            DataCell(Text(_customerLocation(row))),
+                            DataCell(Text(_textValue(row['product_name']))),
+                            DataCell(Text(_returnedProductText(row))),
                             DataCell(
                               Text(row['product_qty']?.toString() ?? '0'),
                             ),
@@ -616,6 +628,36 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
     return num.toStringAsFixed(2);
   }
 
+  String _textValue(dynamic value, {String fallback = 'N/A'}) {
+    final text = value?.toString().trim() ?? '';
+    return text.isEmpty ? fallback : text;
+  }
+
+  String _customerName(Map<String, dynamic> row) {
+    return _textValue(row['customer_name'] ?? row['client_name']);
+  }
+
+  String _customerPhone(Map<String, dynamic> row) {
+    return _textValue(
+      row['customer_phone'] ?? row['client_phone'],
+      fallback: '-',
+    );
+  }
+
+  String _customerLocation(Map<String, dynamic> row) {
+    return _textValue(
+      row['customer_address'] ?? row['client_address'],
+      fallback: '-',
+    );
+  }
+
+  String _returnedProductText(Map<String, dynamic> row) {
+    return _textValue(
+      row['returned_product'] ?? row['returned_products'],
+      fallback: '-',
+    );
+  }
+
   Future<void> _exportPDF() async {
     if (_reportData.isEmpty) return;
 
@@ -676,29 +718,38 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
             pw.TableHelper.fromTextArray(
               border: pw.TableBorder.all(),
               headerStyle: style(
+                fontSize: 7,
                 fontWeight: pw.FontWeight.bold,
                 color: PdfColors.white,
               ),
-              cellStyle: style(),
+              cellStyle: style(fontSize: 7),
               headerDecoration: const pw.BoxDecoration(
                 color: PdfColors.blueGrey800,
               ),
-              cellHeight: 20,
+              cellHeight: 24,
               cellAlignments: {
                 0: pw.Alignment.centerLeft,
                 1: pw.Alignment.center,
                 2: pw.Alignment.centerLeft,
-                3: pw.Alignment.center,
-                4: pw.Alignment.centerRight,
-                5: pw.Alignment.centerRight,
-                6: pw.Alignment.centerRight,
+                3: pw.Alignment.centerLeft,
+                4: pw.Alignment.centerLeft,
+                5: pw.Alignment.centerLeft,
+                6: pw.Alignment.centerLeft,
                 7: pw.Alignment.center,
-                8: pw.Alignment.centerLeft,
+                8: pw.Alignment.centerRight,
+                9: pw.Alignment.centerRight,
+                10: pw.Alignment.centerRight,
+                11: pw.Alignment.center,
+                12: pw.Alignment.centerLeft,
               },
               headers: [
                 'Date',
                 'Ref',
+                'Customer',
+                'Phone',
+                'Location',
                 'Product',
+                'Returned',
                 'QTY',
                 'Cost',
                 'Paid',
@@ -710,7 +761,11 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
                 return [
                   _formatDate(row['datetime'] ?? row['date']),
                   row['Ref'] ?? '',
-                  row['product_name'] ?? 'N/A',
+                  _customerName(row),
+                  _customerPhone(row),
+                  _customerLocation(row),
+                  _textValue(row['product_name']),
+                  _returnedProductText(row),
                   row['product_qty']?.toString() ?? '0',
                   '\$${_formatMoney(row['product_cost'])}',
                   '\$${_formatMoney(row['paid_amount'])}',
@@ -878,7 +933,11 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
       sheet.appendRow([
         excel_lib.TextCellValue('Date'),
         excel_lib.TextCellValue('Ref'),
+        excel_lib.TextCellValue('Customer'),
+        excel_lib.TextCellValue('Phone'),
+        excel_lib.TextCellValue('Location'),
         excel_lib.TextCellValue('Product'),
+        excel_lib.TextCellValue('Returned Product'),
         excel_lib.TextCellValue('QTY'),
         excel_lib.TextCellValue('Cost'),
         excel_lib.TextCellValue('Paid'),
@@ -892,7 +951,11 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
         sheet.appendRow([
           excel_lib.TextCellValue(_formatDate(row['datetime'] ?? row['date'])),
           excel_lib.TextCellValue(row['Ref'] ?? ''),
-          excel_lib.TextCellValue(row['product_name'] ?? 'N/A'),
+          excel_lib.TextCellValue(_customerName(row)),
+          excel_lib.TextCellValue(_customerPhone(row)),
+          excel_lib.TextCellValue(_customerLocation(row)),
+          excel_lib.TextCellValue(_textValue(row['product_name'])),
+          excel_lib.TextCellValue(_returnedProductText(row)),
           excel_lib.TextCellValue(row['product_qty']?.toString() ?? '0'),
           excel_lib.TextCellValue(_formatMoney(row['product_cost'])),
           excel_lib.TextCellValue(_formatMoney(row['paid_amount'])),
@@ -904,9 +967,13 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
 
       sheet.appendRow([]);
       // Summary row 1: labels + values aligned to correct columns
-      // Columns: Date | Ref | Product | QTY | Cost | Paid | Ship | Pay Method | Seller
+      // Columns: Date | Ref | Customer | Phone | Location | Product | Returned | QTY | Cost | Paid | Ship | Pay Method | Seller
       sheet.appendRow([
         excel_lib.TextCellValue('SUMMARY'),
+        excel_lib.TextCellValue(''),
+        excel_lib.TextCellValue(''),
+        excel_lib.TextCellValue(''),
+        excel_lib.TextCellValue(''),
         excel_lib.TextCellValue('Total Cost'),
         excel_lib.TextCellValue('Total Paid'),
         excel_lib.TextCellValue('Total Shipping'),
@@ -918,6 +985,10 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
       ]);
       // Summary row 2: Sale By Cash / Sale By KHQR
       sheet.appendRow([
+        excel_lib.TextCellValue(''),
+        excel_lib.TextCellValue(''),
+        excel_lib.TextCellValue(''),
+        excel_lib.TextCellValue(''),
         excel_lib.TextCellValue(''),
         excel_lib.TextCellValue('Sale By Cash'),
         excel_lib.TextCellValue('Sale By KHQR'),
@@ -933,6 +1004,10 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
           ? 'Cash From Boss'
           : 'Cash To Boss';
       sheet.appendRow([
+        excel_lib.TextCellValue(''),
+        excel_lib.TextCellValue(''),
+        excel_lib.TextCellValue(''),
+        excel_lib.TextCellValue(''),
         excel_lib.TextCellValue(''),
         excel_lib.TextCellValue(cashLabel),
         excel_lib.TextCellValue(''),

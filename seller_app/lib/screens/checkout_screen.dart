@@ -25,7 +25,6 @@ class CheckoutScreen extends StatefulWidget {
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
   String _selectedPaymentMethod = 'cash';
-  final TextEditingController _cashReceivedController = TextEditingController();
   final TextEditingController _customerNameController = TextEditingController();
   final TextEditingController _customerPhoneController =
       TextEditingController();
@@ -49,7 +48,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         .toString()
         .substring(8);
     _customerNameController.text = 'Customer-$timestamp';
-    _cashReceivedController.addListener(_onCashReceivedChanged);
     _customerPhoneController.addListener(_onPhoneChanged);
   }
 
@@ -109,23 +107,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   void dispose() {
     _debounceTimer?.cancel();
     _apiService.dispose();
-    _cashReceivedController.dispose();
     _customerNameController.dispose();
     _customerPhoneController.dispose();
     _customerAddressController.dispose();
     super.dispose();
   }
 
-  void _onCashReceivedChanged() {
-    // Auto-sync is handled in the UI, no action needed here
-  }
-
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
     final languageProvider = context.watch<LanguageProvider>();
-    final cashReceived = double.tryParse(_cashReceivedController.text) ?? 0;
-    final change = cashReceived - cart.total;
 
     return Scaffold(
       appBar: AppBar(title: Text(languageProvider.t('checkout'))),
@@ -229,6 +220,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           _buildSummaryRow(
                             '${languageProvider.t('tax')} (${cart.taxRate.toStringAsFixed(0)}%)',
                             '\$${cart.tax.toStringAsFixed(2)}',
+                            languageProvider: languageProvider,
+                          ),
+                          const SizedBox(height: 6),
+                          _buildSummaryRow(
+                            languageProvider.t('shipping'),
+                            cart.isFreeShipping
+                                ? '\$${cart.shipping.toStringAsFixed(2)} (${languageProvider.t('free_delivery')})'
+                                : '\$${cart.shipping.toStringAsFixed(2)}',
                             languageProvider: languageProvider,
                           ),
                           const Divider(),
@@ -422,65 +421,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Cash Input (if cash payment)
-                  if (_selectedPaymentMethod == 'cash') ...[
-                    TextField(
-                      controller: _cashReceivedController,
-                      decoration: InputDecoration(
-                        labelText: languageProvider.t('cash_received'),
-                        prefixText: '\$ ',
-                        prefixIcon: const Icon(Icons.money),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.sync, size: 18),
-                          tooltip: languageProvider.t('sync_with_total'),
-                          onPressed: () {
-                            setState(() {
-                              _cashReceivedController.text = cart.total
-                                  .toStringAsFixed(2);
-                            });
-                          },
-                        ),
-                      ),
-                      keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 12),
-                    // Change Display
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: change >= 0
-                            ? Colors.green.withValues(alpha: 0.1)
-                            : Colors.red.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: change >= 0 ? Colors.green : Colors.red,
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            change >= 0
-                                ? languageProvider.t('change')
-                                : languageProvider.t('insufficient'),
-                            style: TextStyle(
-                              color: change >= 0 ? Colors.green : Colors.red,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '\$${change.abs().toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: change >= 0 ? Colors.green : Colors.red,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
                   const SizedBox(height: 20),
                 ],
               ),
@@ -504,11 +444,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton.icon(
-                onPressed:
-                    (_isSubmitting ||
-                        (_selectedPaymentMethod == 'cash' && change < 0))
-                    ? null
-                    : () => _completeOrder(cart),
+                onPressed: _isSubmitting ? null : () => _completeOrder(cart),
                 icon: _isSubmitting
                     ? const SizedBox(
                         width: 20,
@@ -672,24 +608,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           .toList(),
       'payment_method': _selectedPaymentMethod,
       'payment_status': paymentStatus,
-      'paid_amount': _selectedPaymentMethod == 'khqr'
-          ? cart.total
-          : (_selectedPaymentMethod == 'cash'
-                ? (double.tryParse(_cashReceivedController.text) ?? cart.total)
-                : cart.total),
+      'paid_amount': cart.total,
       'warehouse_id': widget.warehouseId,
       if (userId != null) 'user_id': int.tryParse(userId) ?? 1,
       // Add shipping information
       'shipping': cart.shipping,
+      'shipping_is_free': cart.isFreeShipping,
+      'subtotal': cart.subtotal,
+      'subtotal_after_discount': cart.subtotalAfterDiscount,
+      'tax_amount': cart.tax,
+      'grand_total': cart.total,
       // Add discount information
       if (cart.hasDiscount) ...{
         'discount_type': cart.discountType,
         'discount_value': cart.discount,
         'discount_amount': cart.discountAmount,
-        'subtotal': cart.subtotal,
-        'subtotal_after_discount': cart.subtotalAfterDiscount,
-        'tax_amount': cart.tax,
-        'grand_total': cart.total,
       },
     };
 

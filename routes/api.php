@@ -1073,6 +1073,8 @@ Route::get('/orders', function (\Illuminate\Http\Request $request) {
                 'user_name' => $order->user?->name ?? '',
                 'GrandTotal' => (float) $order->GrandTotal,
                 'paid_amount' => (float) ($order->paid_amount ?? 0),
+                'shipping' => (float) ($order->shipping ?? 0),
+                'shipping_is_free' => (bool) ($order->shipping_is_free ?? false),
                 'payment_method' => $order->payment_method ?? 'cash',
                 'payment_status' => $order->payment_statut ?? 'unpaid',
                 'status' => $order->statut ?? 'completed',
@@ -1157,6 +1159,58 @@ Route::put('/orders/{id}/payment-status', function (\Illuminate\Http\Request $re
         return response()->json([
             'success' => false,
             'message' => 'Failed to update payment status: '.$e->getMessage(),
+        ], 500);
+    }
+});
+
+// Update Order Shipping
+Route::put('/orders/{id}/shipping', function (\Illuminate\Http\Request $request, $id) {
+    try {
+        $validated = $request->validate([
+            'shipping' => 'required|numeric|min:0',
+            'shipping_is_free' => 'nullable|boolean',
+        ]);
+
+        $sale = \App\Models\Sale::findOrFail($id);
+        $oldGrandTotal = (float) ($sale->GrandTotal ?? 0);
+        $oldPaidAmount = (float) ($sale->paid_amount ?? 0);
+        $oldShipping = (float) ($sale->shipping ?? 0);
+        $oldShippingIsFree = (bool) ($sale->shipping_is_free ?? false);
+        $newShipping = (float) $validated['shipping'];
+        $newShippingIsFree = (bool) ($validated['shipping_is_free'] ?? false);
+
+        $baseTotal = $oldGrandTotal - ($oldShippingIsFree ? 0 : $oldShipping);
+        $newGrandTotal = max(0, $baseTotal + ($newShippingIsFree ? 0 : $newShipping));
+
+        $sale->shipping = $newShipping;
+        $sale->shipping_is_free = $newShippingIsFree;
+        $sale->GrandTotal = $newGrandTotal;
+        if (abs($oldPaidAmount - $oldGrandTotal) < 0.01 || $sale->payment_statut === 'paid') {
+            $sale->paid_amount = $newGrandTotal;
+        }
+        $sale->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Shipping updated successfully',
+            'data' => [
+                'id' => (string) $sale->id,
+                'GrandTotal' => (float) $sale->GrandTotal,
+                'paid_amount' => (float) $sale->paid_amount,
+                'shipping' => (float) $sale->shipping,
+                'shipping_is_free' => (bool) $sale->shipping_is_free,
+            ],
+        ], 200);
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Validation error',
+            'errors' => $e->errors(),
+        ], 422);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to update shipping: '.$e->getMessage(),
         ], 500);
     }
 });
@@ -1356,6 +1410,7 @@ Route::post('/orders', function (\Illuminate\Http\Request $request) {
             'grand_total' => 'nullable|numeric|min:0',
             // Shipping field (optional)
             'shipping' => 'nullable|numeric|min:0',
+            'shipping_is_free' => 'nullable|boolean',
         ]);
 
         // Calculate totals
@@ -1372,6 +1427,7 @@ Route::post('/orders', function (\Illuminate\Http\Request $request) {
         $taxAmount = $validated['tax_amount'] ?? 0;
         $grandTotalFromApp = $validated['grand_total'] ?? null;
         $shipping = $validated['shipping'] ?? 0;
+        $shippingIsFree = (bool) ($validated['shipping_is_free'] ?? false);
 
         // Calculate tax based on discounted subtotal
         $settings = \DB::table('settings')->first();
@@ -1436,11 +1492,12 @@ Route::post('/orders', function (\Illuminate\Http\Request $request) {
             'discount' => $discountAmount,
             'discount_Method' => $discountMethodCode,
             'shipping' => $shipping,
+            'shipping_is_free' => $shippingIsFree,
             'statut' => 'completed',
             'payment_statut' => $validated['payment_status'],
             'payment_method' => $validated['payment_method'],
             'paid_amount' => $validated['paid_amount'],
-            'notes' => 'Mobile POS Order - '.$customerName.($discountAmount > 0 ? ' (Discount: '.$discountAmount.')' : '').($shipping > 0 ? ' (Shipping: '.$shipping.')' : ''),
+            'notes' => 'Mobile POS Order - '.$customerName.($discountAmount > 0 ? ' (Discount: '.$discountAmount.')' : '').($shipping > 0 ? ' (Shipping: '.$shipping.($shippingIsFree ? ' Free' : '').')' : ''),
             'is_pos' => 1,
         ]);
 

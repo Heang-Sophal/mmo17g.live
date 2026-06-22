@@ -1112,6 +1112,11 @@ class _OrdersScreenState extends State<OrdersScreen>
                       _statusLabel(_orderStatus(order), languageProvider),
                     ),
                     _buildInfoRow(
+                      Icons.local_shipping,
+                      languageProvider.t('shipping'),
+                      _shippingLabel(order, languageProvider),
+                    ),
+                    _buildInfoRow(
                       Icons.account_balance_wallet,
                       languageProvider.t('paid'),
                       '\$${_asDouble(order['paid_amount']).toStringAsFixed(2)}',
@@ -1152,6 +1157,18 @@ class _OrdersScreenState extends State<OrdersScreen>
                   ),
                 ],
                 if (!isDelivery) ...[
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showEditShippingDialog(order),
+                      icon: const Icon(Icons.local_shipping_outlined),
+                      label: Text(languageProvider.t('edit_shipping')),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 18),
                   _buildDetailsSection(
                     title: languageProvider.t('update_payment_status'),
@@ -1328,6 +1345,155 @@ class _OrdersScreenState extends State<OrdersScreen>
     }
   }
 
+  Future<void> _showEditShippingDialog(Map<String, dynamic> order) async {
+    final languageProvider = context.read<LanguageProvider>();
+    final controller = TextEditingController(
+      text: _asDouble(order['shipping']).toStringAsFixed(2),
+    );
+    var isFreeShipping = _asBool(order['shipping_is_free']);
+    String? errorText;
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Text(languageProvider.t('edit_shipping')),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: controller,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: languageProvider.t('shipping'),
+                    prefixText: '\$ ',
+                    errorText: errorText,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: isFreeShipping,
+                  title: Text(languageProvider.t('free_delivery')),
+                  subtitle: Text(
+                    isFreeShipping
+                        ? languageProvider.t('free_delivery')
+                        : languageProvider.t('none'),
+                  ),
+                  onChanged: (value) {
+                    setDialogState(() {
+                      isFreeShipping = value;
+                    });
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(languageProvider.t('cancel')),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final shipping = double.tryParse(controller.text.trim());
+                  if (shipping == null || shipping < 0) {
+                    setDialogState(() {
+                      errorText = languageProvider.t('validation_error');
+                    });
+                    return;
+                  }
+
+                  Navigator.pop(context, {
+                    'shipping': shipping,
+                    'shipping_is_free': isFreeShipping,
+                  });
+                },
+                child: Text(languageProvider.t('confirm')),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    controller.dispose();
+    if (result == null || !mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                Text(languageProvider.t('loading')),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final orderId = order['id'];
+      final endpoint = '${ApiConfig.baseUrl}/orders/$orderId/shipping';
+      final response = await http
+          .put(
+            Uri.parse(endpoint),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode(result),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      final data = json.decode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        if (!mounted) return;
+        showTopNotification(
+          context,
+          languageProvider.t('shipping_updated'),
+          type: TopNotificationType.success,
+        );
+        refreshData();
+        return;
+      }
+
+      if (!mounted) return;
+      showTopNotification(
+        context,
+        data['message']?.toString() ?? languageProvider.t('error'),
+        type: TopNotificationType.error,
+      );
+    } catch (_) {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      if (mounted) {
+        Navigator.pop(context);
+      }
+      if (!mounted) return;
+      showTopNotification(
+        context,
+        languageProvider.t('error'),
+        type: TopNotificationType.error,
+      );
+    }
+  }
+
   Widget _buildInfoRow(IconData icon, String label, String value) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -1374,6 +1540,27 @@ class _OrdersScreenState extends State<OrdersScreen>
   double _asDouble(dynamic value) {
     if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  bool _asBool(dynamic value) {
+    return value == true ||
+        value == 1 ||
+        value?.toString().toLowerCase() == '1' ||
+        value?.toString().toLowerCase() == 'true';
+  }
+
+  String _shippingLabel(
+    Map<String, dynamic> order,
+    LanguageProvider languageProvider,
+  ) {
+    final shipping = _asDouble(order['shipping']);
+    final label = '\$${shipping.toStringAsFixed(2)}';
+
+    if (_asBool(order['shipping_is_free'])) {
+      return '$label (${languageProvider.t('free_delivery')})';
+    }
+
+    return '$label (${languageProvider.t('none')})';
   }
 
   String _orderStatus(Map<String, dynamic> order) {
@@ -1431,12 +1618,14 @@ class _PulsingDotState extends State<_PulsingDot>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
-    _opacity = Tween<double>(begin: 0.35, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-    _scale = Tween<double>(begin: 0.7, end: 1.15).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _opacity = Tween<double>(
+      begin: 0.35,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _scale = Tween<double>(
+      begin: 0.7,
+      end: 1.15,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override

@@ -11,7 +11,7 @@ class Sale extends Model
     protected $fillable = [
         'date', 'Ref', 'is_pos', 'client_id', 'GrandTotal', 'qte_retturn', 'TaxNet', 'tax_rate', 'notes',
         'total_retturn', 'warehouse_id', 'user_id', 'statut', 'discount', 'discount_Method', 'shipping', 'time', 'used_points', 'earned_points', 'discount_from_points',
-        'paid_amount', 'payment_statut', 'payment_method', 'created_at', 'updated_at', 'deleted_at', 'shipping_status', 'subscription_id',
+        'paid_amount', 'payment_statut', 'payment_method', 'created_at', 'updated_at', 'deleted_at', 'shipping_status', 'shipping_is_free', 'subscription_id',
         // Idempotency key for POS sales; nullable for legacy rows and non-POS flows
         'sale_uuid',
         'woocommerce_order_id',
@@ -34,6 +34,7 @@ class Sale extends Model
         'subscription_id' => 'integer',
         'discount' => 'double',
         'shipping' => 'double',
+        'shipping_is_free' => 'boolean',
         'TaxNet' => 'double',
         'tax_rate' => 'double',
         'paid_amount' => 'double',

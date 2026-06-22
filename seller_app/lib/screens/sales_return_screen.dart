@@ -660,233 +660,268 @@ class _SalesReturnScreenState extends State<SalesReturnScreen>
       builder: (context) {
         final theme = Theme.of(context);
         final isDark = theme.brightness == Brightness.dark;
+        final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
 
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final selectedTotal = _selectedReturnTotal(
-              details,
-              selectedQuantities,
-            );
-            final selectedQty = selectedQuantities.values.fold<double>(
-              0,
-              (sum, quantity) => sum + quantity,
-            );
+        return AnimatedPadding(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          padding: EdgeInsets.only(bottom: keyboardInset),
+          child: StatefulBuilder(
+            builder: (context, setModalState) {
+              final selectedTotal = _selectedReturnTotal(
+                details,
+                selectedQuantities,
+              );
+              final selectedQty = selectedQuantities.values.fold<double>(
+                0,
+                (sum, quantity) => sum + quantity,
+              );
 
-            return DraggableScrollableSheet(
-              initialChildSize: 0.86,
-              minChildSize: 0.56,
-              maxChildSize: 0.96,
-              expand: false,
-              builder: (context, scrollController) {
-                return Container(
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF0F172A)
-                        : const Color(0xFFF8FAFF),
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(32),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: SingleChildScrollView(
-                          controller: scrollController,
-                          padding: const EdgeInsets.fromLTRB(24, 16, 24, 18),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildSheetHandle(isDark),
-                              const SizedBox(height: 22),
-                              Text(
-                                languageProvider.t('create_sales_return'),
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w800,
-                                  color: isDark
-                                      ? Colors.white
-                                      : const Color(0xFF111827),
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                '${sale['Ref'] ?? ''} - ${sale['client_name'] ?? ''}',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: isDark
-                                      ? Colors.white.withValues(alpha: 0.66)
-                                      : const Color(0xFF667085),
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              TextField(
-                                controller: notesController,
-                                minLines: 2,
-                                maxLines: 4,
-                                decoration: InputDecoration(
-                                  labelText: languageProvider.t('notes'),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(18),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              Text(
-                                languageProvider.t('return_items'),
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w800,
-                                  color: isDark
-                                      ? Colors.white
-                                      : const Color(0xFF111827),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              ...details.map((detail) {
-                                final detailId = _asInt(
-                                  detail['sale_detail_id'],
-                                );
-                                final maxQuantity = _asDouble(
-                                  detail['remaining_quantity'],
-                                );
-                                final currentQuantity =
-                                    selectedQuantities[detailId] ?? 0;
-
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: _buildReturnItemSelector(
-                                    detail: detail,
-                                    quantity: currentQuantity,
-                                    maxQuantity: maxQuantity,
-                                    onDecrease: currentQuantity <= 0
-                                        ? null
-                                        : () {
-                                            setModalState(() {
-                                              final next = currentQuantity - 1;
-                                              if (next <= 0) {
-                                                selectedQuantities.remove(
-                                                  detailId,
-                                                );
-                                              } else {
-                                                selectedQuantities[detailId] =
-                                                    next;
-                                              }
-                                            });
-                                          },
-                                    onIncrease: currentQuantity >= maxQuantity
-                                        ? null
-                                        : () {
-                                            setModalState(() {
-                                              final step = maxQuantity < 1
-                                                  ? maxQuantity
-                                                  : 1.0;
-                                              selectedQuantities[detailId] =
-                                                  (currentQuantity + step)
-                                                      .clamp(0, maxQuantity)
-                                                      .toDouble();
-                                            });
-                                          },
-                                  ),
-                                );
-                              }),
-                            ],
-                          ),
+              return DraggableScrollableSheet(
+                initialChildSize: 0.86,
+                minChildSize: 0.56,
+                maxChildSize: 0.96,
+                expand: false,
+                builder: (context, scrollController) {
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => FocusScope.of(context).unfocus(),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF0F172A)
+                            : const Color(0xFFF8FAFF),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(32),
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? const Color(0xFF10192E)
-                              : Colors.white,
-                          border: Border(
-                            top: BorderSide(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.08)
-                                  : const Color(0xFFE3E7F4),
-                            ),
-                          ),
-                        ),
-                        child: SafeArea(
-                          top: false,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Row(
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: SingleChildScrollView(
+                              controller: scrollController,
+                              keyboardDismissBehavior:
+                                  ScrollViewKeyboardDismissBehavior.onDrag,
+                              padding: const EdgeInsets.fromLTRB(
+                                24,
+                                16,
+                                24,
+                                18,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Expanded(
-                                    child: _buildSummaryTile(
-                                      label: languageProvider.t(
-                                        'return_quantity',
-                                      ),
-                                      value: _formatQuantity(selectedQty),
+                                  _buildSheetHandle(isDark),
+                                  const SizedBox(height: 22),
+                                  Text(
+                                    languageProvider.t('create_sales_return'),
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w800,
+                                      color: isDark
+                                          ? Colors.white
+                                          : const Color(0xFF111827),
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: _buildSummaryTile(
-                                      label: languageProvider.t('return_total'),
-                                      value: _money(selectedTotal),
-                                      color: const Color(0xFFDC2626),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    '${sale['Ref'] ?? ''} - ${sale['client_name'] ?? ''}',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark
+                                          ? Colors.white.withValues(alpha: 0.66)
+                                          : const Color(0xFF667085),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 18),
+                                  TextField(
+                                    controller: notesController,
+                                    minLines: 2,
+                                    maxLines: 4,
+                                    textInputAction: TextInputAction.done,
+                                    onSubmitted: (_) =>
+                                        FocusScope.of(context).unfocus(),
+                                    decoration: InputDecoration(
+                                      labelText: languageProvider.t('notes'),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(18),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  Text(
+                                    languageProvider.t('return_items'),
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: isDark
+                                          ? Colors.white
+                                          : const Color(0xFF111827),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  ...details.map((detail) {
+                                    final detailId = _asInt(
+                                      detail['sale_detail_id'],
+                                    );
+                                    final maxQuantity = _asDouble(
+                                      detail['remaining_quantity'],
+                                    );
+                                    final currentQuantity =
+                                        selectedQuantities[detailId] ?? 0;
+
+                                    return Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 12,
+                                      ),
+                                      child: _buildReturnItemSelector(
+                                        detail: detail,
+                                        quantity: currentQuantity,
+                                        maxQuantity: maxQuantity,
+                                        onDecrease: currentQuantity <= 0
+                                            ? null
+                                            : () {
+                                                setModalState(() {
+                                                  final next =
+                                                      currentQuantity - 1;
+                                                  if (next <= 0) {
+                                                    selectedQuantities.remove(
+                                                      detailId,
+                                                    );
+                                                  } else {
+                                                    selectedQuantities[detailId] =
+                                                        next;
+                                                  }
+                                                });
+                                              },
+                                        onIncrease:
+                                            currentQuantity >= maxQuantity
+                                            ? null
+                                            : () {
+                                                setModalState(() {
+                                                  final step = maxQuantity < 1
+                                                      ? maxQuantity
+                                                      : 1.0;
+                                                  selectedQuantities[detailId] =
+                                                      (currentQuantity + step)
+                                                          .clamp(0, maxQuantity)
+                                                          .toDouble();
+                                                });
+                                              },
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF10192E)
+                                  : Colors.white,
+                              border: Border(
+                                top: BorderSide(
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.08)
+                                      : const Color(0xFFE3E7F4),
+                                ),
+                              ),
+                            ),
+                            child: SafeArea(
+                              top: false,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildSummaryTile(
+                                          label: languageProvider.t(
+                                            'return_quantity',
+                                          ),
+                                          value: _formatQuantity(selectedQty),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: _buildSummaryTile(
+                                          label: languageProvider.t(
+                                            'return_total',
+                                          ),
+                                          value: _money(selectedTotal),
+                                          color: const Color(0xFFDC2626),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 14),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton.icon(
+                                      onPressed:
+                                          selectedQty <= 0 || isSubmitting
+                                          ? null
+                                          : () async {
+                                              FocusScope.of(context).unfocus();
+                                              setModalState(() {
+                                                isSubmitting = true;
+                                              });
+                                              final success =
+                                                  await _submitReturn(
+                                                    sale: sale,
+                                                    quantities:
+                                                        selectedQuantities,
+                                                    notes: notesController.text
+                                                        .trim(),
+                                                  );
+                                              if (!context.mounted) return;
+                                              setModalState(() {
+                                                isSubmitting = false;
+                                              });
+                                              if (success) {
+                                                Navigator.pop(context);
+                                              }
+                                            },
+                                      icon: isSubmitting
+                                          ? const SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
+                                            )
+                                          : const Icon(Icons.check_rounded),
+                                      label: Text(
+                                        isSubmitting
+                                            ? languageProvider.t(
+                                                'processing_order',
+                                              )
+                                            : languageProvider.t(
+                                                'create_return',
+                                              ),
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 15,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 14),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  onPressed: selectedQty <= 0 || isSubmitting
-                                      ? null
-                                      : () async {
-                                          setModalState(() {
-                                            isSubmitting = true;
-                                          });
-                                          final success = await _submitReturn(
-                                            sale: sale,
-                                            quantities: selectedQuantities,
-                                            notes: notesController.text.trim(),
-                                          );
-                                          if (!context.mounted) return;
-                                          setModalState(() {
-                                            isSubmitting = false;
-                                          });
-                                          if (success) {
-                                            Navigator.pop(context);
-                                          }
-                                        },
-                                  icon: isSubmitting
-                                      ? const SizedBox(
-                                          width: 18,
-                                          height: 18,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                          ),
-                                        )
-                                      : const Icon(Icons.check_rounded),
-                                  label: Text(
-                                    isSubmitting
-                                        ? languageProvider.t('processing_order')
-                                        : languageProvider.t('create_return'),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 15,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
-                );
-              },
-            );
-          },
+                    ),
+                  );
+                },
+              );
+            },
+          ),
         );
       },
     );

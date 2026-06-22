@@ -5,6 +5,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class CartProvider extends ChangeNotifier {
+  static const double defaultShipping = 2.0;
+
   final List<CartItem> _items = [];
   double _taxRate = 0.0; // Default tax rate from database
   bool _isLoadingTax = false;
@@ -14,7 +16,9 @@ class CartProvider extends ChangeNotifier {
   String _discountType = 'fixed'; // 'fixed' or 'percentage'
 
   // Shipping field
-  double _shipping = 0.0; // Default shipping fee (empty)
+  double _shipping = defaultShipping;
+  bool _hasSelectedShipping = true;
+  bool _isFreeShipping = false;
 
   List<CartItem> get items => List.unmodifiable(_items);
 
@@ -30,15 +34,29 @@ class CartProvider extends ChangeNotifier {
 
   // Shipping getter and setter
   double get shipping => _shipping;
-  bool get hasShipping => _shipping > 0;
+  bool get hasShipping => _hasSelectedShipping;
+  bool get isFreeShipping => _isFreeShipping;
+  double get chargedShipping => _isFreeShipping ? 0.0 : _shipping;
 
   void setShipping(double amount) {
     _shipping = amount < 0 ? 0.0 : amount;
+    _hasSelectedShipping = true;
     notifyListeners();
   }
 
+  void setFreeShipping(bool isFree) {
+    _isFreeShipping = isFree;
+    notifyListeners();
+  }
+
+  void toggleFreeShipping() {
+    setFreeShipping(!_isFreeShipping);
+  }
+
   void clearShipping() {
-    _shipping = 0.0;
+    _shipping = defaultShipping;
+    _hasSelectedShipping = true;
+    _isFreeShipping = false;
     notifyListeners();
   }
 
@@ -57,7 +75,7 @@ class CartProvider extends ChangeNotifier {
 
   double get tax => subtotalAfterDiscount * (_taxRate / 100);
 
-  double get total => subtotalAfterDiscount + tax + _shipping;
+  double get total => subtotalAfterDiscount + tax + chargedShipping;
 
   bool get isEmpty => _items.isEmpty;
 
@@ -132,7 +150,9 @@ class CartProvider extends ChangeNotifier {
     _items.clear();
     _discount = 0.0;
     _discountType = 'fixed';
-    _shipping = 0.0;
+    _shipping = defaultShipping;
+    _hasSelectedShipping = true;
+    _isFreeShipping = false;
     notifyListeners();
   }
 

@@ -1009,6 +1009,7 @@ class _POSScreenState extends State<POSScreen> {
 
   Widget _buildCartSummary(CartProvider cart) {
     final theme = Theme.of(context);
+    final languageProvider = context.watch<LanguageProvider>();
     final isDark = theme.brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black87;
     final subtitleColor = isDark
@@ -1239,77 +1240,66 @@ class _POSScreenState extends State<POSScreen> {
                         color: theme.colorScheme.primary,
                       ),
                       const SizedBox(width: 4),
-                      Consumer<LanguageProvider>(
-                        builder: (context, languageProvider, child) {
-                          return Text(
-                            'Shipping',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: textColor,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          );
-                        },
+                      Text(
+                        languageProvider.t('shipping'),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: textColor,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       const SizedBox(width: 4),
                       Expanded(
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<double>(
-                            value:
-                                cart.shipping > 0 &&
-                                    [1.0, 2.0, 3.0].contains(cart.shipping)
-                                ? cart.shipping
-                                : null,
-                            isExpanded: true,
-                            icon: Icon(
-                              Icons.arrow_drop_down,
-                              color: theme.colorScheme.primary,
-                              size: 18,
-                            ),
-                            hint: Text(
-                              '\$${cart.shipping.toStringAsFixed(0)}',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: textColor,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            dropdownColor: isDark
-                                ? const Color(0xFF16213E)
-                                : Colors.white,
-                            items: [1.0, 2.0, 3.0].map((value) {
-                              return DropdownMenuItem<double>(
-                                value: value,
-                                child: Text(
-                                  '\$$value',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: textColor,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              if (value != null) {
-                                cart.setShipping(value);
-                              }
-                            },
+                        child: Text(
+                          '\$${cart.shipping.toStringAsFixed(0)}',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: textColor,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                      if (cart.hasShipping) ...[
-                        const SizedBox(width: 2),
-                        InkWell(
-                          onTap: () {
-                            cart.clearShipping();
-                          },
-                          child: Icon(
-                            Icons.cancel,
-                            color: Colors.red,
-                            size: 14,
+                      const SizedBox(width: 4),
+                      InkWell(
+                        onTap: cart.toggleFreeShipping,
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: cart.isFreeShipping
+                                ? const Color(
+                                    0xFF16A34A,
+                                  ).withValues(alpha: isDark ? 0.28 : 0.14)
+                                : Colors.grey.withValues(
+                                    alpha: isDark ? 0.22 : 0.14,
+                                  ),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: cart.isFreeShipping
+                                  ? const Color(0xFF16A34A)
+                                  : Colors.grey.withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: Text(
+                            cart.isFreeShipping
+                                ? languageProvider.t('free_delivery')
+                                : languageProvider.t('none'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              color: cart.isFreeShipping
+                                  ? const Color(0xFF16A34A)
+                                  : textColor,
+                            ),
                           ),
                         ),
-                      ],
+                      ),
                     ],
                   ),
                 ),
@@ -1319,10 +1309,7 @@ class _POSScreenState extends State<POSScreen> {
           const SizedBox(height: 4),
           // Checkout Button
           InkWell(
-            onTap:
-                (cart.isEmpty ||
-                    _selectedWarehouseId == null ||
-                    !cart.hasShipping)
+            onTap: (cart.isEmpty || _selectedWarehouseId == null)
                 ? null
                 : () {
                     int warehouseId = 1;
@@ -1351,9 +1338,7 @@ class _POSScreenState extends State<POSScreen> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
               decoration: BoxDecoration(
-                color:
-                    (_selectedWarehouseId == null && cart.isNotEmpty) ||
-                        (!cart.hasShipping && cart.isNotEmpty)
+                color: (_selectedWarehouseId == null && cart.isNotEmpty)
                     ? Colors.grey[400]
                     : theme.colorScheme.primary,
                 borderRadius: BorderRadius.circular(8),
@@ -1368,9 +1353,7 @@ class _POSScreenState extends State<POSScreen> {
                       return Text(
                         _selectedWarehouseId == null && cart.isNotEmpty
                             ? 'សូមជ្រើសរើសឃ្លាំង'
-                            : (!cart.hasShipping && cart.isNotEmpty
-                                  ? 'សូមបញ្ចូល Shipping'
-                                  : languageProvider.t('checkout')),
+                            : languageProvider.t('checkout'),
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
