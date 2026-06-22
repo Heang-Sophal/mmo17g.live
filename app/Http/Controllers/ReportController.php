@@ -1004,6 +1004,7 @@ class ReportController extends BaseController
                         } elseif ($paymentMethod === 'khqr') {
                             $priceToDeduct = $productCostTotal > 0 ? $productCostTotal : $returnedTotal;
                             $adjustedPaidAmount = round($paidAmount - $priceToDeduct - $rowShipping, 2);
+                            $adjustedProductCost = 0;
                         }
                     }
 
