@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -5,6 +6,7 @@ import '../config/api_config.dart';
 import '../core/api_cache.dart';
 import '../models/product.dart';
 import '../models/order.dart';
+import 'offline_order_queue.dart';
 
 class ApiService {
   final http.Client _client;
@@ -15,6 +17,7 @@ class ApiService {
   /// Set authentication token
   void setToken(String? token) {
     _token = token;
+    unawaited(OfflineOrderQueue.syncPending(token: token, client: _client));
   }
 
   /// Get headers with authorization token
@@ -156,6 +159,29 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> _getNetworkFirst({
+    required String cacheKey,
+    required Uri uri,
+    required String fallbackMessage,
+    Map<String, String>? headers,
+  }) async {
+    try {
+      final response = await _client
+          .get(uri, headers: headers)
+          .timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
+      final data = _decodeSuccessResponse(response, fallbackMessage);
+      await ApiCache.set(cacheKey, data);
+      return data;
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      final cached = await ApiCache.getAny(cacheKey);
+      if (cached != null) {
+        return cached;
+      }
+      throw ApiException('Network error: ${e.toString()}', 0);
+    }
+  }
+
   /// ទាញទិន្នន័យផលិតផលតាម ID
   /// GET /api/products/{id}
   Future<Product> getProduct(String id) async {
@@ -241,27 +267,19 @@ class ApiService {
         uri = uri.replace(queryParameters: params);
       }
 
-      final response = await _client
-          .get(uri)
-          .timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          final List<dynamic> orders = data['data'];
-          return orders.map((item) => Order.fromMap(item)).toList();
-        } else {
-          throw ApiException(
-            data['message'] ?? 'Failed to load orders',
-            response.statusCode,
-          );
-        }
-      } else {
-        throw ApiException(
-          'Failed to load orders: ${response.statusCode}',
-          response.statusCode,
-        );
-      }
+      final data = await _getNetworkFirst(
+        cacheKey:
+            'seller_orders_${_cacheSegment(status)}_${clientId ?? 'all'}_${_cacheSegment(date)}',
+        uri: uri,
+        fallbackMessage: 'Failed to load orders',
+        headers: _getHeaders(),
+      );
+      final orders = data['data'];
+      if (orders is! List) return const [];
+      return orders
+          .whereType<Map>()
+          .map((item) => Order.fromMap(Map<String, dynamic>.from(item)))
+          .toList();
     } catch (e) {
       if (e is ApiException) rethrow;
       throw ApiException('Network error: ${e.toString()}', 0);
@@ -275,7 +293,7 @@ class ApiService {
       final response = await _client
           .post(
             Uri.parse('${ApiConfig.baseUrl}${ApiConfig.orders}'),
-            headers: {'Content-Type': 'application/json'},
+            headers: _getHeaders(),
             body: json.encode(orderData),
           )
           .timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
@@ -283,7 +301,12 @@ class ApiService {
       if (response.statusCode == 201) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
-          return Order.fromMap(data['data']);
+          unawaited(
+            OfflineOrderQueue.syncPending(token: _token, client: _client),
+          );
+          await ApiCache.invalidate('seller_dashboard');
+          await ApiCache.invalidate('seller_sales_stats');
+          return Order.fromMap(Map<String, dynamic>.from(data['data'] as Map));
         } else {
           throw ApiException(
             data['message'] ?? 'Failed to create order',
@@ -299,6 +322,9 @@ class ApiService {
       }
     } catch (e) {
       if (e is ApiException) rethrow;
+      if (_isNetworkFailure(e)) {
+        return OfflineOrderQueue.queue(orderData);
+      }
       throw ApiException('Network error: ${e.toString()}', 0);
     }
   }
@@ -307,26 +333,13 @@ class ApiService {
   /// GET /api/sales/stats
   Future<Map<String, dynamic>> getSalesStats() async {
     try {
-      final response = await _client
-          .get(Uri.parse('${ApiConfig.baseUrl}${ApiConfig.salesStats}'))
-          .timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          return data['data'];
-        } else {
-          throw ApiException(
-            data['message'] ?? 'Failed to load sales stats',
-            response.statusCode,
-          );
-        }
-      } else {
-        throw ApiException(
-          'Failed to load sales stats: ${response.statusCode}',
-          response.statusCode,
-        );
-      }
+      final data = await _getNetworkFirst(
+        cacheKey: 'seller_sales_stats',
+        uri: Uri.parse('${ApiConfig.baseUrl}${ApiConfig.salesStats}'),
+        fallbackMessage: 'Failed to load sales stats',
+        headers: _getHeaders(),
+      );
+      return (data['data'] as Map?)?.cast<String, dynamic>() ?? {};
     } catch (e) {
       if (e is ApiException) rethrow;
       throw ApiException('Network error: ${e.toString()}', 0);
@@ -337,26 +350,13 @@ class ApiService {
   /// GET /api/dashboard/seller
   Future<Map<String, dynamic>> getDashboardData() async {
     try {
-      final response = await _client
-          .get(Uri.parse('${ApiConfig.baseUrl}${ApiConfig.dashboard}'))
-          .timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          return data['data'];
-        } else {
-          throw ApiException(
-            data['message'] ?? 'Failed to load dashboard data',
-            response.statusCode,
-          );
-        }
-      } else {
-        throw ApiException(
-          'Failed to load dashboard data: ${response.statusCode}',
-          response.statusCode,
-        );
-      }
+      final data = await _getNetworkFirst(
+        cacheKey: 'seller_dashboard',
+        uri: Uri.parse('${ApiConfig.baseUrl}${ApiConfig.dashboard}'),
+        fallbackMessage: 'Failed to load dashboard data',
+        headers: _getHeaders(),
+      );
+      return (data['data'] as Map?)?.cast<String, dynamic>() ?? {};
     } catch (e) {
       if (e is ApiException) rethrow;
       throw ApiException('Network error: ${e.toString()}', 0);
@@ -400,26 +400,13 @@ class ApiService {
         headers['Authorization'] = 'Bearer $token';
       }
 
-      final response = await _client
-          .get(Uri.parse('${ApiConfig.baseUrl}/profile'), headers: headers)
-          .timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          return data['data'];
-        } else {
-          throw ApiException(
-            data['message'] ?? 'Failed to load profile',
-            response.statusCode,
-          );
-        }
-      } else {
-        throw ApiException(
-          'Failed to load profile: ${response.statusCode}',
-          response.statusCode,
-        );
-      }
+      final data = await _getNetworkFirst(
+        cacheKey: 'seller_profile',
+        uri: Uri.parse('${ApiConfig.baseUrl}/profile'),
+        fallbackMessage: 'Failed to load profile',
+        headers: headers,
+      );
+      return (data['data'] as Map?)?.cast<String, dynamic>() ?? {};
     } catch (e) {
       if (e is ApiException) rethrow;
       throw ApiException('Network error: ${e.toString()}', 0);
@@ -587,6 +574,7 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        await ApiCache.set('seller_customer_${_cacheSegment(phone)}', data);
         final items = data['data'];
         if (items is! List) return null;
         final cleaned = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '');
@@ -607,8 +595,28 @@ class ApiService {
       }
       return null;
     } catch (_) {
+      final cached = await ApiCache.getAny(
+        'seller_customer_${_cacheSegment(phone)}',
+      );
+      final items = cached?['data'];
+      if (items is List && items.isNotEmpty && items.first is Map) {
+        final item = Map<String, dynamic>.from(items.first as Map);
+        return {
+          'id': item['id'],
+          'name': (item['name'] ?? '').toString(),
+          'phone': (item['phone'] ?? '').toString(),
+          'address': (item['address'] ?? item['adresse'] ?? '').toString(),
+        };
+      }
       return null;
     }
+  }
+
+  bool _isNetworkFailure(Object error) {
+    return error is SocketException ||
+        error is TimeoutException ||
+        error is http.ClientException ||
+        error is HandshakeException;
   }
 
   void dispose() {

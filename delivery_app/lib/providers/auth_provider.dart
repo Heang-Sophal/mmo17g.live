@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:delivery_app/services/auth_service.dart';
 import 'package:delivery_app/services/notification_service.dart';
+import 'package:delivery_app/services/realtime_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -181,17 +182,22 @@ class AuthProvider extends ChangeNotifier {
             Map<String, dynamic>.from(result['user'] as Map),
           );
           await _persistSession();
-          unawaited(
-            NotificationService.syncDeviceToken(
-              authToken: _token,
-              userId: _user?.id,
-            ),
-          );
+          _startAuthenticatedServices();
+        } else {
+          await _clearSession();
+        }
+      } on AuthException catch (e) {
+        if (_user != null && e.isNetworkError) {
+          _startAuthenticatedServices();
         } else {
           await _clearSession();
         }
       } catch (_) {
-        await _clearSession();
+        if (_user != null) {
+          _startAuthenticatedServices();
+        } else {
+          await _clearSession();
+        }
       }
     }
 
@@ -232,12 +238,7 @@ class AuthProvider extends ChangeNotifier {
       _isLoading = false;
       _isInitialized = true;
       await _persistSession();
-      unawaited(
-        NotificationService.syncDeviceToken(
-          authToken: _token,
-          userId: _user?.id,
-        ),
-      );
+      _startAuthenticatedServices();
       notifyListeners();
 
       return {'success': true};
@@ -275,6 +276,7 @@ class AuthProvider extends ChangeNotifier {
 
     await _clearSession();
     NotificationService.clearAuth();
+    RealtimeService.clearAuth();
     _isInitialized = true;
     notifyListeners();
   }
@@ -341,5 +343,13 @@ class AuthProvider extends ChangeNotifier {
     await prefs.remove(_tokenKey);
     await prefs.remove(_userKey);
     NotificationService.clearAuth();
+    RealtimeService.clearAuth();
+  }
+
+  void _startAuthenticatedServices() {
+    unawaited(
+      NotificationService.syncDeviceToken(authToken: _token, userId: _user?.id),
+    );
+    unawaited(RealtimeService.connect(authToken: _token, appType: 'delivery'));
   }
 }

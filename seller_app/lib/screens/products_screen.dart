@@ -50,6 +50,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
     super.dispose();
   }
 
+  Future<void> refreshData() => _loadProducts(forceRefresh: true);
+
   void _onScroll() {
     final currentOffset = _scrollController.offset;
     final difference = currentOffset - _lastScrollOffset;

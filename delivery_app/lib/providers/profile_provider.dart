@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:delivery_app/services/delivery_api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -75,6 +77,45 @@ class ProfileProvider extends ChangeNotifier {
         'success': result['success'] == true,
         'message':
             result['message']?.toString() ?? 'Profile updated successfully',
+      };
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      _notifyListenersSafely();
+      return {
+        'success': false,
+        'message': _cleanErrorMessage(e),
+        'error': e.toString(),
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> uploadProfilePhoto(File photo) async {
+    _isLoading = true;
+    _error = null;
+    _notifyListenersSafely();
+
+    try {
+      final result = await _apiService.uploadProfilePhoto(photo);
+      final data = (result['data'] as Map?)?.cast<String, dynamic>();
+      if (data != null) {
+        _profile = {
+          ...?_profile,
+          'avatar': data['avatar'],
+          'avatar_url': data['avatar_url'],
+          'edit_count': data['edit_count'],
+          'edit_count_this_year': data['edit_count'],
+          'edits_remaining': data['edits_remaining'],
+          'can_edit': _toInt(data['edits_remaining']) > 0,
+        };
+      }
+
+      _isLoading = false;
+      _notifyListenersSafely();
+      return {
+        'success': result['success'] == true,
+        'message': result['message']?.toString() ?? 'Profile photo updated',
+        'data': data,
       };
     } catch (e) {
       _error = e.toString();

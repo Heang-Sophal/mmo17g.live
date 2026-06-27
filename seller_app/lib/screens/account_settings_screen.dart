@@ -588,11 +588,27 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   Future<void> _pickImage(ImageSource source) async {
     final languageProvider = context.read<LanguageProvider>();
     try {
+      if (!_picker.supportsImageSource(source)) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              source == ImageSource.camera
+                  ? languageProvider.t('camera_not_available')
+                  : languageProvider.t('photo_library_not_available'),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
       final XFile? pickedFile = await _picker.pickImage(
         source: source,
         maxWidth: 800,
         maxHeight: 800,
         imageQuality: 85,
+        requestFullMetadata: false,
       );
 
       if (pickedFile != null) {

@@ -54,17 +54,26 @@ class Order {
   factory Order.fromMap(Map<String, dynamic> map) {
     // គាំទ្រទម្រង់ API ពី Laravel (snake_case) និង JSON ធម្មតា (camelCase)
     return Order(
-      id: map['id'] ?? map['_id'] ?? '',
-      customerName: map['customer_name'] ?? map['customerName'] ?? '',
-      customerPhone: map['customer_phone'] ?? map['customerPhone'] ?? '',
-      customerAddress: map['customer_address'] ?? map['customerAddress'] ?? '',
+      id: (map['id'] ?? map['_id'] ?? '').toString(),
+      customerName: (map['customer_name'] ?? map['customerName'] ?? '')
+          .toString(),
+      customerPhone: (map['customer_phone'] ?? map['customerPhone'] ?? '')
+          .toString(),
+      customerAddress: (map['customer_address'] ?? map['customerAddress'] ?? '')
+          .toString(),
       items:
           (map['items'] as List<dynamic>?)
-              ?.map((item) => OrderItem.fromMap(item))
+              ?.whereType<Map>()
+              .map((item) => OrderItem.fromMap(Map<String, dynamic>.from(item)))
               .toList() ??
           [],
-      totalAmount: (map['total_amount'] ?? map['totalAmount'] ?? 0).toDouble(),
-      status: _statusFromString(map['status'] ?? 'pending'),
+      totalAmount: _toDouble(
+        map['total_amount'] ??
+            map['totalAmount'] ??
+            map['grand_total'] ??
+            map['GrandTotal'],
+      ),
+      status: _statusFromString((map['status'] ?? 'pending').toString()),
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'])
           : map['createdAt'] != null
@@ -138,10 +147,10 @@ class OrderItem {
 
   factory OrderItem.fromMap(Map<String, dynamic> map) {
     return OrderItem(
-      productId: map['product_id'] ?? map['productId'] ?? '',
-      productName: map['product_name'] ?? map['productName'] ?? '',
-      quantity: map['quantity'] ?? map['qty'] ?? 0,
-      price: (map['price'] ?? map['unit_price'] ?? 0).toDouble(),
+      productId: (map['product_id'] ?? map['productId'] ?? '').toString(),
+      productName: (map['product_name'] ?? map['productName'] ?? '').toString(),
+      quantity: _toInt(map['quantity'] ?? map['qty']),
+      price: _toDouble(map['price'] ?? map['unit_price']),
     );
   }
 
@@ -149,4 +158,16 @@ class OrderItem {
 
   factory OrderItem.fromJson(String source) =>
       OrderItem.fromMap(json.decode(source));
+}
+
+int _toInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+double _toDouble(dynamic value) {
+  if (value is double) return value;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value?.toString() ?? '') ?? 0;
 }

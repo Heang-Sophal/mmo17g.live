@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:seller_app/services/auth_service.dart';
 import 'package:seller_app/services/notification_service.dart';
+import 'package:seller_app/services/offline_order_queue.dart';
+import 'package:seller_app/services/realtime_service.dart';
 
 class UserModel {
   final String id;
@@ -158,17 +160,22 @@ class AuthProvider extends ChangeNotifier {
               Map<String, dynamic>.from(result['user'] as Map),
             );
             await _persistSession();
-            unawaited(
-              NotificationService.syncDeviceToken(
-                authToken: _token,
-                userId: _user?.id,
-              ),
-            );
+            _startAuthenticatedServices();
+          } else {
+            await _clearSession();
+          }
+        } on AuthException catch (e) {
+          if (_user != null && _isRecoverableAuthCheckError(e)) {
+            _startAuthenticatedServices();
           } else {
             await _clearSession();
           }
         } catch (_) {
-          await _clearSession();
+          if (_user != null) {
+            _startAuthenticatedServices();
+          } else {
+            await _clearSession();
+          }
         }
       }
     } catch (_) {
@@ -198,12 +205,7 @@ class AuthProvider extends ChangeNotifier {
       _isLoading = false;
       _isInitialized = true;
       await _persistSession();
-      unawaited(
-        NotificationService.syncDeviceToken(
-          authToken: _token,
-          userId: _user?.id,
-        ),
-      );
+      _startAuthenticatedServices();
       notifyListeners();
 
       return {
@@ -257,6 +259,7 @@ class AuthProvider extends ChangeNotifier {
 
     await _clearSession();
     NotificationService.clearAuth();
+    RealtimeService.clearAuth();
     _isInitialized = true;
     notifyListeners();
   }
@@ -280,6 +283,7 @@ class AuthProvider extends ChangeNotifier {
     await prefs.remove(_tokenKey);
     await prefs.remove(_userKey);
     NotificationService.clearAuth();
+    RealtimeService.clearAuth();
   }
 
   /// ចូលប្រើប្រាស់ឡើងវិញ (Re-authenticate)
@@ -298,11 +302,38 @@ class AuthProvider extends ChangeNotifier {
       }
       await _clearSession();
       notifyListeners();
+    } on AuthException catch (e) {
+      if (_user != null && _isRecoverableAuthCheckError(e)) {
+        _startAuthenticatedServices();
+        notifyListeners();
+        return true;
+      }
+      await _clearSession();
+      notifyListeners();
     } catch (_) {
+      if (_user != null) {
+        _startAuthenticatedServices();
+        notifyListeners();
+        return true;
+      }
       await _clearSession();
       notifyListeners();
     }
 
     return false;
+  }
+
+  bool _isRecoverableAuthCheckError(AuthException error) {
+    return error.isNetworkError ||
+        error.statusCode == 0 ||
+        error.statusCode >= 500;
+  }
+
+  void _startAuthenticatedServices() {
+    unawaited(
+      NotificationService.syncDeviceToken(authToken: _token, userId: _user?.id),
+    );
+    unawaited(RealtimeService.connect(authToken: _token, appType: 'seller'));
+    unawaited(OfflineOrderQueue.syncPending(token: _token));
   }
 }

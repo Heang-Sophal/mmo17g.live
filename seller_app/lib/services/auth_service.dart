@@ -95,15 +95,30 @@ class AuthService {
           )
           .timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
 
-      final data = json.decode(response.body);
+      final data = response.body.isEmpty
+          ? <String, dynamic>{}
+          : json.decode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
         return {'authenticated': true, 'user': data['data']['user']};
-      } else {
-        return {'authenticated': false};
       }
+
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        return {
+          'authenticated': false,
+          'status_code': response.statusCode,
+          'error_type': data['error_type']?.toString() ?? 'unauthenticated',
+        };
+      }
+
+      throw AuthException(
+        data['message']?.toString() ?? 'Unable to verify session',
+        'network_error',
+        response.statusCode,
+      );
     } catch (e) {
-      return {'authenticated': false};
+      if (e is AuthException) rethrow;
+      throw AuthException('Network error: ${e.toString()}', 'network_error', 0);
     }
   }
 

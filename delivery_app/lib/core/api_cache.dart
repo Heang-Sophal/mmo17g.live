@@ -26,6 +26,18 @@ class ApiCache {
     }
   }
 
+  /// Return cached value for [key] even when it is stale.
+  static Future<Map<String, dynamic>?> getAny(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('$_valuePrefix$key');
+    if (raw == null) return null;
+    try {
+      return jsonDecode(raw) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Write [data] to the cache under [key].
   static Future<void> set(String key, Map<String, dynamic> data) async {
     final prefs = await SharedPreferences.getInstance();
@@ -54,10 +66,12 @@ class ApiCache {
       final cached = jsonDecode(raw) as Map<String, dynamic>;
       if (isStale && onRefresh != null) {
         // Return stale data now, refresh behind the scenes
-        fetcher().then((fresh) async {
-          await set(key, fresh);
-          onRefresh(fresh);
-        }).catchError((_) {});
+        fetcher()
+            .then((fresh) async {
+              await set(key, fresh);
+              onRefresh(fresh);
+            })
+            .catchError((_) {});
       }
       return cached;
     }
@@ -78,7 +92,8 @@ class ApiCache {
   /// Remove all cache entries created by this class.
   static Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
-    final keys = prefs.getKeys()
+    final keys = prefs
+        .getKeys()
         .where((k) => k.startsWith(_valuePrefix) || k.startsWith(_tsPrefix))
         .toList();
     for (final k in keys) {

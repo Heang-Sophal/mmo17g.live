@@ -12,6 +12,7 @@ use App\Models\SaleReturn;
 use App\Models\SaleReturnDetails;
 use App\Models\Setting;
 use App\Models\Unit;
+use App\Services\MobileRealtimeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -599,6 +600,8 @@ class SalesApiController extends Controller
 
                 return $saleReturn->fresh(['sale', 'client', 'warehouse', 'user', 'details.product']);
             }, 10);
+
+            app(MobileRealtimeService::class)->saleReturned($return);
 
             return response()->json([
                 'success' => true,

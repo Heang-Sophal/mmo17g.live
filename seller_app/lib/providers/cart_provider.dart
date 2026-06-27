@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/api_cache.dart';
 import '../models/cart_item.dart';
 import '../config/api_config.dart';
 import 'dart:convert';
@@ -91,15 +92,20 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await http
-          .get(Uri.parse('${ApiConfig.baseUrl}${ApiConfig.settings}'))
-          .timeout(const Duration(seconds: 10));
+      final data = await ApiCache.getOrFetch('seller_settings', () async {
+        final response = await http
+            .get(Uri.parse('${ApiConfig.baseUrl}${ApiConfig.settings}'))
+            .timeout(const Duration(seconds: 10));
+        return response.body.isEmpty
+            ? <String, dynamic>{}
+            : json.decode(response.body) as Map<String, dynamic>;
+      });
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          _taxRate = (data['data']['default_tax'] ?? 0).toDouble();
-        }
+      if (data?['success'] == true) {
+        final value = data?['data']?['default_tax'];
+        _taxRate = value is num
+            ? value.toDouble()
+            : double.tryParse(value?.toString() ?? '') ?? 0.0;
       }
     } catch (e) {
       debugPrint('Error loading tax rate: $e');

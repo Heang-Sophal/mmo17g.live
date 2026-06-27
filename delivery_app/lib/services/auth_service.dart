@@ -38,20 +38,37 @@ class AuthService {
   }
 
   Future<Map<String, dynamic>> checkAuth(String token) async {
-    final response = await _client
-        .get(
-          Uri.parse(ApiConfig.deliveryCheck),
-          headers: ApiConfig.jsonHeaders(token: token),
-        )
-        .timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
+    try {
+      final response = await _client
+          .get(
+            Uri.parse(ApiConfig.deliveryCheck),
+            headers: ApiConfig.jsonHeaders(token: token),
+          )
+          .timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
 
-    final data = _decodeResponse(response);
+      final data = _decodeResponse(response);
 
-    if (response.statusCode == 200 && data['success'] == true) {
-      return {'authenticated': true, 'user': data['data']['user']};
+      if (response.statusCode == 200 && data['success'] == true) {
+        return {'authenticated': true, 'user': data['data']['user']};
+      }
+
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        return {
+          'authenticated': false,
+          'status_code': response.statusCode,
+          'error_type': data['error_type']?.toString() ?? 'unauthenticated',
+        };
+      }
+
+      throw AuthException(
+        data['message']?.toString() ?? 'Unable to verify session',
+        'network_error',
+        response.statusCode,
+      );
+    } catch (e) {
+      if (e is AuthException) rethrow;
+      throw AuthException('Network error: ${e.toString()}', 'network_error', 0);
     }
-
-    return {'authenticated': false};
   }
 
   Future<void> logout(String token) async {
@@ -105,4 +122,7 @@ class AuthException implements Exception {
 
   @override
   String toString() => 'AuthException($statusCode, $errorType, $message)';
+
+  bool get isNetworkError =>
+      errorType == 'network_error' || statusCode == 0 || statusCode >= 500;
 }

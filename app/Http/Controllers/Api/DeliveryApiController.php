@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DeliveryAlert;
 use App\Models\Sale;
 use App\Services\DeliveryAlertService;
+use App\Services\MobileRealtimeService;
 use App\Services\TelegramService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -244,6 +245,9 @@ class DeliveryApiController extends Controller
         $sale->refresh();
         $actionMode = $this->deliveryActionMode($request, $user);
         app(DeliveryAlertService::class)->createSellerAcceptedAlert($sale, $user, $actionMode);
+        app(MobileRealtimeService::class)->saleUpdated($sale, 'delivery.accepted', 'all', [
+            'mode' => $actionMode,
+        ]);
 
         return response()->json([
             'success' => true,
@@ -317,6 +321,9 @@ class DeliveryApiController extends Controller
 
         $actionMode = $this->deliveryActionMode($request, $user);
         app(DeliveryAlertService::class)->createSellerCompletedAlert($sale, $user, $actionMode);
+        app(MobileRealtimeService::class)->saleUpdated($sale, 'delivery.completed', 'all', [
+            'mode' => $actionMode,
+        ]);
         $this->sendDeliveryCompletedTelegram($sale, $user, $actionMode);
 
         return response()->json([
@@ -398,6 +405,10 @@ class DeliveryApiController extends Controller
                 $oldShipping,
                 $newShipping
             );
+            app(MobileRealtimeService::class)->saleUpdated($sale, 'delivery.shipping_updated', 'all', [
+                'old_shipping' => $oldShipping,
+                'new_shipping' => $newShipping,
+            ]);
         }
 
         return response()->json([

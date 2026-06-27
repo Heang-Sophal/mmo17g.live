@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:delivery_app/config/api_config.dart';
+import 'package:delivery_app/core/api_cache.dart';
 import 'package:http/http.dart' as http;
 
 class DeliveryApiService {
@@ -15,7 +16,10 @@ class DeliveryApiService {
   }
 
   Future<Map<String, dynamic>> getDashboard() async {
-    final data = await _get(ApiConfig.dashboard);
+    final data = await _get(
+      ApiConfig.dashboard,
+      cacheKey: 'delivery_dashboard',
+    );
     return (data['data'] as Map?)?.cast<String, dynamic>() ?? {};
   }
 
@@ -31,26 +35,32 @@ class DeliveryApiService {
       },
     );
 
-    final data = await _getUri(uri);
+    final data = await _getUri(
+      uri,
+      cacheKey:
+          'delivery_orders_${_cacheSegment(status)}_${_cacheSegment(search)}',
+    );
     final list = (data['data'] as List?) ?? const [];
     return list.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
   Future<List<Map<String, dynamic>>> getAlerts() async {
-    final data = await _get(ApiConfig.alerts);
+    final data = await _get(ApiConfig.alerts, cacheKey: 'delivery_alerts');
     final list = (data['data'] as List?) ?? const [];
     return list.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
   Future<Map<String, dynamic>> getProfile() async {
-    final data = await _get(ApiConfig.profile);
+    final data = await _get(ApiConfig.profile, cacheKey: 'delivery_profile');
     return (data['data'] as Map?)?.cast<String, dynamic>() ?? {};
   }
 
   Future<Map<String, dynamic>> updateProfile(
     Map<String, dynamic> profileData,
   ) async {
-    return _put(ApiConfig.profile, body: profileData);
+    final data = await _put(ApiConfig.profile, body: profileData);
+    await ApiCache.clearAll();
+    return data;
   }
 
   Future<Map<String, dynamic>> uploadProfilePhoto(File photo) async {
@@ -72,7 +82,9 @@ class DeliveryApiService {
       );
 
       final response = await http.Response.fromStream(streamedResponse);
-      return _decodeAndValidate(response);
+      final data = _decodeAndValidate(response);
+      await ApiCache.clearAll();
+      return data;
     } catch (e) {
       if (e is ApiException) rethrow;
       throw ApiException('Upload error: ${e.toString()}', 0);
@@ -96,10 +108,12 @@ class DeliveryApiService {
 
   Future<void> markAlertAsRead(String alertId) async {
     await _post('${ApiConfig.alerts}/$alertId/read');
+    await ApiCache.clearAll();
   }
 
   Future<void> markAllAlertsAsRead() async {
     await _post('${ApiConfig.alerts}/read-all');
+    await ApiCache.clearAll();
   }
 
   Future<Map<String, dynamic>> acceptOrder(
@@ -110,6 +124,7 @@ class DeliveryApiService {
       ApiConfig.acceptOrder(orderId),
       body: recordMode ? {'mode': 'record', 'record_mode': true} : null,
     );
+    await ApiCache.clearAll();
     return (data['data'] as Map?)?.cast<String, dynamic>() ?? {};
   }
 
@@ -121,6 +136,7 @@ class DeliveryApiService {
       ApiConfig.completeOrder(orderId),
       body: recordMode ? {'mode': 'record', 'record_mode': true} : null,
     );
+    await ApiCache.clearAll();
     return (data['data'] as Map?)?.cast<String, dynamic>() ?? {};
   }
 
@@ -144,19 +160,33 @@ class DeliveryApiService {
       ApiConfig.updateShipping(orderId),
       body: {'shipping': shipping},
     );
+    await ApiCache.clearAll();
     return (data['data'] as Map?)?.cast<String, dynamic>() ?? {};
   }
 
-  Future<Map<String, dynamic>> _get(String url) async {
-    return _getUri(Uri.parse(url));
+  Future<Map<String, dynamic>> _get(String url, {String? cacheKey}) async {
+    return _getUri(Uri.parse(url), cacheKey: cacheKey);
   }
 
-  Future<Map<String, dynamic>> _getUri(Uri uri) async {
-    final response = await _client
-        .get(uri, headers: ApiConfig.jsonHeaders(token: _token))
-        .timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
+  Future<Map<String, dynamic>> _getUri(Uri uri, {String? cacheKey}) async {
+    try {
+      final response = await _client
+          .get(uri, headers: ApiConfig.jsonHeaders(token: _token))
+          .timeout(const Duration(seconds: ApiConfig.timeoutSeconds));
 
-    return _decodeAndValidate(response);
+      final data = _decodeAndValidate(response);
+      if (cacheKey != null) {
+        await ApiCache.set(cacheKey, data);
+      }
+      return data;
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      if (cacheKey != null) {
+        final cached = await ApiCache.getAny(cacheKey);
+        if (cached != null) return cached;
+      }
+      throw ApiException('Network error: ${e.toString()}', 0);
+    }
   }
 
   Future<Map<String, dynamic>> _post(
@@ -204,6 +234,12 @@ class DeliveryApiService {
       data['message']?.toString() ?? 'Request failed',
       response.statusCode,
     );
+  }
+
+  String _cacheSegment(String? value) {
+    final normalized = value?.trim();
+    if (normalized == null || normalized.isEmpty) return 'all';
+    return base64Url.encode(utf8.encode(normalized));
   }
 }
 

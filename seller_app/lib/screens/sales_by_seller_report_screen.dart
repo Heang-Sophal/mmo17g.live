@@ -47,6 +47,8 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
     _loadReport();
   }
 
+  Future<void> refreshData() => _loadReport();
+
   Future<void> _loadReport() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final token = authProvider.token;

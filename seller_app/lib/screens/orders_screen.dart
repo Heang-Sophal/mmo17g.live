@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:seller_app/config/api_config.dart';
 import 'package:seller_app/controllers/navigation_bar_controller.dart';
+import 'package:seller_app/core/api_cache.dart';
 import 'package:seller_app/providers/auth_provider.dart';
 import 'package:seller_app/providers/language_provider.dart';
 import 'package:seller_app/utils/top_notification.dart';
@@ -124,6 +125,9 @@ class _OrdersScreenState extends State<OrdersScreen>
 
       final data = json.decode(response.body);
       if (response.statusCode == 200 && data['success'] == true) {
+        final cacheKey =
+            'seller_orders_${base64Url.encode(utf8.encode(endpoint))}';
+        await ApiCache.set(cacheKey, Map<String, dynamic>.from(data));
         final orders = List<Map<String, dynamic>>.from(data['data'] ?? []);
         if (!mounted) return;
 
@@ -141,12 +145,53 @@ class _OrdersScreenState extends State<OrdersScreen>
         _isLoading = false;
       });
     } catch (_) {
+      final endpoint = _currentOrdersEndpoint(
+        isDelivery: isDelivery,
+        userId: userId,
+      );
+      final cacheKey =
+          'seller_orders_${base64Url.encode(utf8.encode(endpoint))}';
+      final cached = await ApiCache.getAny(cacheKey);
+      if (cached?['success'] == true) {
+        final orders = List<Map<String, dynamic>>.from(cached?['data'] ?? []);
+        if (!mounted) return;
+        setState(() {
+          _orders = orders;
+          _isLoading = false;
+          _error = null;
+        });
+        _openInitialOrderIfNeeded(orders);
+        return;
+      }
       if (!mounted) return;
       setState(() {
         _error = languageProvider.t('failed_to_load_orders');
         _isLoading = false;
       });
     }
+  }
+
+  String _currentOrdersEndpoint({
+    required bool isDelivery,
+    required String userId,
+  }) {
+    var endpoint = isDelivery
+        ? '${ApiConfig.baseUrl}/delivery/orders'
+        : '${ApiConfig.baseUrl}/orders?user_id=$userId';
+
+    switch (_tabController.index) {
+      case 1:
+        endpoint += '${endpoint.contains('?') ? '&' : '?'}status=pending';
+        break;
+      case 2:
+        endpoint += '${endpoint.contains('?') ? '&' : '?'}status=shipped';
+        break;
+      case 3:
+        endpoint += '${endpoint.contains('?') ? '&' : '?'}status=delivered';
+        break;
+    }
+
+    return endpoint;
   }
 
   void _openInitialOrderIfNeeded([List<Map<String, dynamic>>? orders]) {

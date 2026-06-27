@@ -601,6 +601,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           .map(
             (item) => {
               'product_id': int.tryParse(item.productId) ?? item.productId,
+              'product_name': item.name,
               'quantity': item.quantity,
               'price': item.price,
             },
@@ -632,14 +633,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     try {
       // ផ្ញើ Order ទៅ API
-      await orderProvider.createOrder(orderData);
+      final order = await orderProvider.createOrder(orderData);
+      final isOfflineOrder = order.id.startsWith('offline-');
 
       setState(() {
         _isSubmitting = false;
       });
 
       // បង្ហាញ Success Dialog
-      _showSuccessDialog(cart);
+      _showSuccessDialog(cart, isOfflineOrder: isOfflineOrder);
     } catch (e) {
       setState(() {
         _isSubmitting = false;
@@ -740,7 +742,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  void _showSuccessDialog(CartProvider cart) {
+  void _showSuccessDialog(CartProvider cart, {bool isOfflineOrder = false}) {
     final languageProvider = context.read<LanguageProvider>();
     // Show success dialog
     showDialog(
@@ -758,8 +760,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 color: Colors.green.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.check_circle,
+              child: Icon(
+                isOfflineOrder ? Icons.cloud_done_rounded : Icons.check_circle,
                 size: 64,
                 color: Colors.green,
               ),
@@ -770,6 +772,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
+            if (isOfflineOrder) ...[
+              Text(
+                'បានរក្សាទុក Offline។ App នឹង sync ពេលមាន Internet វិញ។',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.orange[800]),
+              ),
+              const SizedBox(height: 8),
+            ],
             Text(
               '${languageProvider.t('total')}: \$${cart.total.toStringAsFixed(2)}',
               style: TextStyle(fontSize: 18, color: Colors.grey[600]),

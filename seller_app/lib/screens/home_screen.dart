@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:seller_app/core/api_cache.dart';
 import 'package:seller_app/providers/auth_provider.dart';
 import 'package:seller_app/providers/language_provider.dart';
 import 'package:seller_app/providers/profile_provider.dart';
@@ -61,6 +62,8 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  Future<void> refreshData() => _loadDashboardData();
+
   void _onScroll() {
     final currentOffset = _scrollController.offset;
     final difference = currentOffset - _lastScrollOffset;
@@ -100,6 +103,9 @@ class _HomeScreenState extends State<HomeScreen> {
       final endpoint = authProvider.isDeliveryUser
           ? '${ApiConfig.baseUrl}/delivery/dashboard'
           : '${ApiConfig.baseUrl}/dashboard/seller?user_id=$userId';
+      final cacheKey = authProvider.isDeliveryUser
+          ? 'seller_home_delivery_dashboard_$userId'
+          : 'seller_home_dashboard_$userId';
 
       final headers = <String, String>{'Accept': 'application/json'};
       if (token != null && token.isNotEmpty) {
@@ -113,6 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
+          await ApiCache.set(cacheKey, Map<String, dynamic>.from(data));
           setState(() {
             _dashboardData = data['data'] ?? {};
             _recentOrders = List<Map<String, dynamic>>.from(
@@ -133,6 +140,22 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     } catch (e) {
+      final cacheKey = authProvider.isDeliveryUser
+          ? 'seller_home_delivery_dashboard_$userId'
+          : 'seller_home_dashboard_$userId';
+      final cached = await ApiCache.getAny(cacheKey);
+      if (cached?['success'] == true) {
+        final data = cached?['data'] ?? {};
+        setState(() {
+          _dashboardData = Map<String, dynamic>.from(data as Map);
+          _recentOrders = List<Map<String, dynamic>>.from(
+            _dashboardData['recent_orders'] ?? [],
+          );
+          _isLoading = false;
+          _error = null;
+        });
+        return;
+      }
       setState(() {
         _error = 'Error: $e';
         _isLoading = false;

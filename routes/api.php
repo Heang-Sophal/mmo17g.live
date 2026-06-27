@@ -74,6 +74,31 @@ Route::get('/get-mobile-app-name', function (Request $request) {
     ]);
 });
 
+Route::get('/realtime/config', function (Request $request) {
+    $reverbApp = config('reverb.apps.apps.0', []);
+    $reverbOptions = $reverbApp['options'] ?? [];
+    $scheme = config('mobile_realtime.reverb_public_scheme')
+        ?: ($reverbOptions['scheme'] ?? 'http');
+    $host = config('mobile_realtime.reverb_public_host')
+        ?: ($reverbOptions['host'] ?? null);
+    $host = $host ?: $request->getHost();
+    $port = (int) (config('mobile_realtime.reverb_public_port')
+        ?: ($reverbOptions['port'] ?? ($scheme === 'https' ? 443 : 8080)));
+    $appKey = $reverbApp['key'] ?? env('REVERB_APP_KEY');
+
+    return response()->json([
+        'success' => true,
+        'data' => [
+            'enabled' => config('broadcasting.default') === 'reverb' && filled($appKey),
+            'app_key' => $appKey,
+            'host' => $host,
+            'port' => $port,
+            'scheme' => $scheme,
+            'channels' => ['mobile.all', 'mobile.seller', 'mobile.delivery'],
+        ],
+    ]);
+});
+
 Route::get('/translations/{locale}', function ($locale) {
     $translations = \DB::table('translations')
         ->where('locale', $locale)
@@ -1151,6 +1176,9 @@ Route::put('/orders/{id}/payment-status', function (\Illuminate\Http\Request $re
 
         $sale->save();
 
+        app(\App\Services\MobileRealtimeService::class)
+            ->saleUpdated($sale, 'order.payment_updated', 'all');
+
         return response()->json([
             'success' => true,
             'message' => 'Payment status updated successfully',
@@ -1200,6 +1228,9 @@ Route::put('/orders/{id}/shipping', function (\Illuminate\Http\Request $request,
             $sale->paid_amount = $newGrandTotal;
         }
         $sale->save();
+
+        app(\App\Services\MobileRealtimeService::class)
+            ->saleUpdated($sale, 'order.shipping_updated', 'all');
 
         return response()->json([
             'success' => true,
@@ -1603,6 +1634,8 @@ Route::post('/orders', function (\Illuminate\Http\Request $request) {
                 \Log::error('Telegram exception trace: '.$e->getTraceAsString());
             }
         });
+
+        app(\App\Services\MobileRealtimeService::class)->saleCreated($sale);
 
         return response()->json([
             'success' => true,

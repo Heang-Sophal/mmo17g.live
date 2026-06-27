@@ -1,7 +1,7 @@
 name: delivery_app
 description: "17G Delivery - Standalone mobile app for delivery staff"
 publish_to: 'none'
-version: 1.0.5+11
+version: 1.0.6+1
 
 environment:
   sdk: ^3.11.4
@@ -28,6 +28,7 @@ dependencies:
   flutter_local_notifications: ^21.0.0
   image_picker: ^1.2.2
   url_launcher: ^6.3.2
+  pusher_reverb_flutter: ^0.0.8
 
 dev_dependencies:
   flutter_test:

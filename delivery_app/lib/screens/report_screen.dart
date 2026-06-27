@@ -249,10 +249,6 @@ class ReportScreenState extends State<ReportScreen> {
         : languageProvider.t('orders');
   }
 
-  String _pdfReportTitle() {
-    return widget.recordMode ? 'Recorded Report' : 'Delivered Report';
-  }
-
   String _pdfFilePrefix() {
     return widget.recordMode ? 'record_report' : 'delivery_report';
   }
@@ -284,6 +280,19 @@ class ReportScreenState extends State<ReportScreen> {
 
       final pdf = pw.Document();
       final imageTextCache = <String, _PdfTextImage>{};
+      final reportTitle =
+          '${_reportTitle(languageProvider)}: ${_formatDateForApi(_startDate)} - ${_formatDateForApi(_endDate)}';
+      final renderedReportTitle = _usesKhmer(reportTitle)
+          ? await _renderPdfTextImage(
+              reportTitle,
+              maxWidth: 420,
+              fontSize: 10,
+              fontWeight: FontWeight.normal,
+              color: const Color(0xFF616161),
+              textAlign: TextAlign.right,
+              cache: imageTextCache,
+            )
+          : null;
       final columns = const <_PdfColumnSpec>[
         _PdfColumnSpec(
           label: 'Date',
@@ -400,10 +409,16 @@ class ReportScreenState extends State<ReportScreen> {
           ),
           header: (context) => pw.Container(
             alignment: pw.Alignment.centerRight,
-            child: pw.Text(
-              '${_pdfReportTitle()}: ${_formatDateForApi(_startDate)} - ${_formatDateForApi(_endDate)}',
-              style: style(fontSize: 10, color: PdfColors.grey700),
-            ),
+            child: renderedReportTitle != null
+                ? pw.Image(
+                    pw.MemoryImage(renderedReportTitle.bytes),
+                    width: renderedReportTitle.width,
+                    height: renderedReportTitle.height,
+                  )
+                : pw.Text(
+                    reportTitle,
+                    style: style(fontSize: 10, color: PdfColors.grey700),
+                  ),
           ),
           footer: (context) => pw.Container(
             alignment: pw.Alignment.centerRight,

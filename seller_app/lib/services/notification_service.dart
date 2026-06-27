@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -74,6 +75,10 @@ class NotificationService {
   static Future<void>? _initializing;
   static String? _authToken;
   static String? _userId;
+  static final StreamController<Map<String, dynamic>> _messageController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
+  static Stream<Map<String, dynamic>> get messages => _messageController.stream;
 
   static Future<void> initialize() {
     if (_initialized) return Future.value();
@@ -134,8 +139,12 @@ class NotificationService {
             sound: true,
           );
 
-      FirebaseMessaging.onMessage.listen(_showForegroundNotification);
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        _publishMessage(message.data);
+        _showForegroundNotification(message);
+      });
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        _publishMessage(message.data);
         _handleNotificationClick(message.data);
       });
 
@@ -143,6 +152,7 @@ class NotificationService {
           .getInitialMessage();
       if (initialMessage != null) {
         Future.delayed(const Duration(milliseconds: 500), () {
+          _publishMessage(initialMessage.data);
           _handleNotificationClick(initialMessage.data);
         });
       }
@@ -185,6 +195,11 @@ class NotificationService {
   static void clearAuth() {
     _authToken = null;
     _userId = null;
+  }
+
+  static void _publishMessage(Map<String, dynamic> data) {
+    if (_messageController.isClosed) return;
+    _messageController.add(Map<String, dynamic>.from(data));
   }
 
   static Future<void> _sendToken(String? fcmToken) async {

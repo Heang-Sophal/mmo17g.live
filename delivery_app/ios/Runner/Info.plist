@@ -26,6 +26,12 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>17G Delivery uses the camera to let staff take and upload a profile photo.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>17G Delivery uses the photo library to let staff choose and upload a profile photo.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>17G Delivery may save selected profile photos to your photo library.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

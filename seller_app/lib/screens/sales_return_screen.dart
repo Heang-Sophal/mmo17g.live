@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:seller_app/config/api_config.dart';
+import 'package:seller_app/core/api_cache.dart';
 import 'package:seller_app/providers/auth_provider.dart';
 import 'package:seller_app/providers/language_provider.dart';
 import 'package:seller_app/utils/top_notification.dart';
@@ -49,6 +50,8 @@ class _SalesReturnScreenState extends State<SalesReturnScreen>
     super.dispose();
   }
 
+  Future<void> refreshData() => _loadAll();
+
   Future<void> _loadAll() async {
     await Future.wait([_loadReturnableSales(), _loadSalesReturns()]);
   }
@@ -81,6 +84,10 @@ class _SalesReturnScreenState extends State<SalesReturnScreen>
       final data = json.decode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
+        await ApiCache.set(
+          'seller_returnable_sales_$userId',
+          Map<String, dynamic>.from(data),
+        );
         if (!mounted) return;
         setState(() {
           _returnableSales = List<Map<String, dynamic>>.from(
@@ -99,6 +106,18 @@ class _SalesReturnScreenState extends State<SalesReturnScreen>
         _isLoadingSales = false;
       });
     } catch (_) {
+      final cached = await ApiCache.getAny('seller_returnable_sales_$userId');
+      if (cached?['success'] == true) {
+        if (!mounted) return;
+        setState(() {
+          _returnableSales = List<Map<String, dynamic>>.from(
+            cached?['data'] ?? [],
+          );
+          _isLoadingSales = false;
+          _salesError = null;
+        });
+        return;
+      }
       if (!mounted) return;
       setState(() {
         _salesError = languageProvider.t('failed_to_load_returnable_sales');
@@ -135,6 +154,10 @@ class _SalesReturnScreenState extends State<SalesReturnScreen>
       final data = json.decode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
+        await ApiCache.set(
+          'seller_sales_returns_$userId',
+          Map<String, dynamic>.from(data),
+        );
         if (!mounted) return;
         setState(() {
           _salesReturns = List<Map<String, dynamic>>.from(data['data'] ?? []);
@@ -151,6 +174,18 @@ class _SalesReturnScreenState extends State<SalesReturnScreen>
         _isLoadingReturns = false;
       });
     } catch (_) {
+      final cached = await ApiCache.getAny('seller_sales_returns_$userId');
+      if (cached?['success'] == true) {
+        if (!mounted) return;
+        setState(() {
+          _salesReturns = List<Map<String, dynamic>>.from(
+            cached?['data'] ?? [],
+          );
+          _isLoadingReturns = false;
+          _returnsError = null;
+        });
+        return;
+      }
       if (!mounted) return;
       setState(() {
         _returnsError = languageProvider.t('failed_to_load_sales_returns');

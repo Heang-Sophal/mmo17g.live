@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:delivery_app/providers/auth_provider.dart';
 import 'package:delivery_app/providers/language_provider.dart';
 import 'package:delivery_app/providers/profile_provider.dart';
+import 'package:delivery_app/widgets/cached_image.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 class AccountSettingsScreen extends StatefulWidget {
@@ -20,6 +24,10 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   late final TextEditingController _usernameController;
 
   bool _isSaving = false;
+  bool _isUploadingPhoto = false;
+  File? _selectedPhoto;
+  final ImagePicker _picker = ImagePicker();
+  String? _avatarUrl;
 
   @override
   void initState() {
@@ -41,6 +49,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     _usernameController = TextEditingController(
       text: profile['username']?.toString() ?? '',
     );
+    _avatarUrl = profile['avatar_url']?.toString();
   }
 
   @override
@@ -124,6 +133,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
+                Center(child: _buildPhotoPicker(languageProvider)),
+                const SizedBox(height: 28),
                 _buildField(
                   controller: _firstnameController,
                   label: languageProvider.t('first_name'),
@@ -209,6 +220,99 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       keyboardType: keyboardType,
       validator: validator,
       decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)),
+    );
+  }
+
+  Widget _buildPhotoPicker(LanguageProvider languageProvider) {
+    return Column(
+      children: [
+        Stack(
+          children: [
+            Container(
+              width: 116,
+              height: 116,
+              decoration: BoxDecoration(
+                color: const Color(0xFFD6A735).withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFD6A735), width: 3),
+              ),
+              child: _selectedPhoto != null
+                  ? ClipOval(
+                      child: Image.file(
+                        _selectedPhoto!,
+                        fit: BoxFit.cover,
+                        width: 116,
+                        height: 116,
+                      ),
+                    )
+                  : _avatarUrl != null && _avatarUrl!.isNotEmpty
+                  ? ClipOval(
+                      child: CachedImage(
+                        url: _avatarUrl!,
+                        width: 116,
+                        height: 116,
+                        fit: BoxFit.cover,
+                        errorWidget: const Icon(
+                          Icons.person_rounded,
+                          size: 58,
+                          color: Color(0xFFD6A735),
+                        ),
+                      ),
+                    )
+                  : const Icon(
+                      Icons.person_rounded,
+                      size: 58,
+                      color: Color(0xFFD6A735),
+                    ),
+            ),
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: InkWell(
+                onTap: _isUploadingPhoto ? null : _showPhotoOptions,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.all(9),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD6A735),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: _isUploadingPhoto
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                      : const Icon(
+                          Icons.camera_alt_rounded,
+                          size: 17,
+                          color: Colors.white,
+                        ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        TextButton(
+          onPressed: _isUploadingPhoto ? null : _showPhotoOptions,
+          child: Text(
+            _isUploadingPhoto
+                ? languageProvider.t('loading')
+                : languageProvider.t('change_profile_photo'),
+          ),
+        ),
+        Text(
+          languageProvider.t('tap_to_upload_photo'),
+          style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
+        ),
+      ],
     );
   }
 
@@ -301,6 +405,151 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       }
       if (!mounted) return;
       Navigator.pop(context, true);
+    }
+  }
+
+  void _showPhotoOptions() {
+    final languageProvider = context.read<LanguageProvider>();
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(
+                Icons.photo_library_rounded,
+                color: Color(0xFFD6A735),
+              ),
+              title: Text(languageProvider.t('choose_from_gallery')),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.camera_alt_rounded,
+                color: Color(0xFFD6A735),
+              ),
+              title: Text(languageProvider.t('take_photo')),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    final languageProvider = context.read<LanguageProvider>();
+    try {
+      if (!_picker.supportsImageSource(source)) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              source == ImageSource.camera
+                  ? languageProvider.t('camera_not_available')
+                  : languageProvider.t('photo_library_not_available'),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final pickedFile = await _picker.pickImage(
+        source: source,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+        requestFullMetadata: false,
+      );
+
+      if (pickedFile == null) return;
+
+      final photo = File(pickedFile.path);
+      setState(() {
+        _selectedPhoto = photo;
+      });
+
+      await _uploadPhoto(photo);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            languageProvider
+                .t('error_picking_image')
+                .replaceAll('{error}', e.toString()),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _uploadPhoto(File photo) async {
+    final languageProvider = context.read<LanguageProvider>();
+    final profileProvider = context.read<ProfileProvider>();
+    final authProvider = context.read<AuthProvider>();
+
+    setState(() {
+      _isUploadingPhoto = true;
+    });
+
+    final result = await profileProvider.uploadProfilePhoto(photo);
+
+    if (!mounted) return;
+
+    setState(() {
+      _isUploadingPhoto = false;
+    });
+
+    if (result['success'] == true) {
+      final data = (result['data'] as Map?)?.cast<String, dynamic>();
+      final avatarUrl = data?['avatar_url']?.toString();
+      setState(() {
+        _avatarUrl = avatarUrl ?? _avatarUrl;
+        _selectedPhoto = null;
+      });
+
+      final updatedProfile = profileProvider.profile;
+      if (updatedProfile != null) {
+        await authProvider.syncUserFromProfile(updatedProfile);
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            languageProvider
+                .t('profile_photo_updated')
+                .replaceAll(
+                  '{edits}',
+                  (data?['edits_remaining'] ?? profileProvider.editsRemaining)
+                      .toString(),
+                ),
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      setState(() {
+        _selectedPhoto = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result['message']?.toString() ??
+                languageProvider.t('failed_to_upload_photo'),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 }

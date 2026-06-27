@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 
@@ -17,6 +18,8 @@ import 'package:seller_app/screens/delivery_alerts_screen.dart';
 import 'package:seller_app/controllers/navigation_bar_controller.dart';
 import 'package:seller_app/providers/language_provider.dart';
 import 'package:seller_app/providers/profile_provider.dart';
+import 'package:seller_app/services/notification_service.dart';
+import 'package:seller_app/services/realtime_service.dart';
 import 'package:seller_app/widgets/cached_image.dart';
 
 const Color _goldPrimary = Color(0xFFD6A735);
@@ -36,8 +39,12 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen>
     with TickerProviderStateMixin {
+  final GlobalKey _homeKey = GlobalKey();
   final GlobalKey _ordersKey = GlobalKey();
   final GlobalKey _alertsKey = GlobalKey();
+  final GlobalKey _productsKey = GlobalKey();
+  final GlobalKey _salesReturnKey = GlobalKey();
+  final GlobalKey _reportsKey = GlobalKey();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   int _selectedIndex = 0;
@@ -49,6 +56,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
   late final NavigationBarController _navController;
   late AnimationController _navAnimationController;
   late Animation<double> _navAnimation;
+  StreamSubscription<Map<String, dynamic>>? _notificationSubscription;
+  StreamSubscription<Map<String, dynamic>>? _realtimeSubscription;
+  bool _isRealtimeRefreshQueued = false;
 
   @override
   void initState() {
@@ -63,6 +73,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       curve: Curves.easeInOut,
     );
     _navController.addListener(_onNavVisibilityChanged);
+    _notificationSubscription = NotificationService.messages.listen(
+      _handleRealtimeNotification,
+    );
+    _realtimeSubscription = RealtimeService.events.listen(
+      _handleRealtimeNotification,
+    );
     _navAnimationController.forward(); // Show initially
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -74,6 +90,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
   @override
   void dispose() {
     _navController.removeListener(_onNavVisibilityChanged);
+    _notificationSubscription?.cancel();
+    _realtimeSubscription?.cancel();
     _navAnimationController.dispose();
     super.dispose();
   }
@@ -237,6 +255,27 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
 
   bool _isAlertRead(dynamic value) {
     return value == true || value == 1 || value == '1' || value == 'true';
+  }
+
+  void _handleRealtimeNotification(Map<String, dynamic> data) {
+    if (_isRealtimeRefreshQueued) return;
+    _isRealtimeRefreshQueued = true;
+
+    Future.delayed(const Duration(milliseconds: 350), () {
+      _isRealtimeRefreshQueued = false;
+      if (!mounted) return;
+
+      final token = context.read<AuthProvider>().token;
+      if (token == null || token.isEmpty) return;
+
+      _refreshUnreadAlertCount(token);
+      (_homeKey.currentState as dynamic)?.refreshData();
+      (_ordersKey.currentState as dynamic)?.refreshData();
+      (_alertsKey.currentState as dynamic)?.refreshData();
+      (_productsKey.currentState as dynamic)?.refreshData();
+      (_salesReturnKey.currentState as dynamic)?.refreshData();
+      (_reportsKey.currentState as dynamic)?.refreshData();
+    });
   }
 
   Widget _buildBadgeIcon(Widget icon, int count) {
@@ -732,7 +771,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
 
     // Build screens map dynamically
     final screensList = <Widget>[
-      const HomeScreen(), // 0
+      HomeScreen(key: _homeKey), // 0
     ];
     int productsIndex = -1,
         salesReturnIndex = -1,
@@ -790,6 +829,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       if (canViewProducts) {
         screensList.add(
           ProductsScreen(
+            key: _productsKey,
             menuButton: _buildDashboardMenuButton(languageProvider),
           ),
         );
@@ -798,6 +838,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       if (canViewSaleReturns) {
         screensList.add(
           SalesReturnScreen(
+            key: _salesReturnKey,
             menuButton: _buildDashboardMenuButton(languageProvider),
           ),
         );
@@ -806,6 +847,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       if (canViewReports) {
         screensList.add(
           SalesBySellerReportScreen(
+            key: _reportsKey,
             menuButton: _buildDashboardMenuButton(languageProvider),
           ),
         );
@@ -1056,6 +1098,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       if (selectedNavIndex == -1) selectedNavIndex = 0;
     }
 
+    final shouldShowBottomNavigation =
+        reportsIndex == -1 || _selectedIndex != reportsIndex;
+
     return Consumer<NavigationBarController>(
       builder: (context, navController, child) {
         return Scaffold(
@@ -1087,57 +1132,71 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
               child: screensList[_selectedIndex],
             ),
           ),
-          bottomNavigationBar: SizeTransition(
-            sizeFactor: _navAnimation,
-            axisAlignment: -1.0,
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white.withValues(alpha: 0.08)
-                          : _goldSoft.withValues(alpha: 0.72),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.black.withValues(alpha: 0.26)
-                            : _goldDeep.withValues(alpha: 0.16),
-                        blurRadius: 28,
-                        offset: const Offset(0, 16),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(28),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 25.0, sigmaY: 25.0),
+          bottomNavigationBar: shouldShowBottomNavigation
+              ? SizeTransition(
+                  sizeFactor: _navAnimation,
+                  axisAlignment: -1.0,
+                  child: SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
                       child: Container(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? _darkSurface.withValues(alpha: 0.5)
-                            : _warmSurface.withValues(alpha: 0.5),
-                        child: NavigationBar(
-                          backgroundColor: Colors.transparent,
-                          elevation: 0,
-                          indicatorColor: Colors.transparent,
-                          labelBehavior:
-                              NavigationDestinationLabelBehavior.alwaysShow,
-                          selectedIndex: selectedNavIndex,
-                          onDestinationSelected: (index) =>
-                              _handleDestinationSelected(index, menuConfig),
-                          destinations: destinations,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : _goldSoft.withValues(alpha: 0.72),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.black.withValues(alpha: 0.26)
+                                  : _goldDeep.withValues(alpha: 0.16),
+                              blurRadius: 28,
+                              offset: const Offset(0, 16),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(28),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(
+                              sigmaX: 25.0,
+                              sigmaY: 25.0,
+                            ),
+                            child: Container(
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? _darkSurface.withValues(alpha: 0.5)
+                                  : _warmSurface.withValues(alpha: 0.5),
+                              child: NavigationBar(
+                                backgroundColor: Colors.transparent,
+                                elevation: 0,
+                                indicatorColor: Colors.transparent,
+                                labelBehavior:
+                                    NavigationDestinationLabelBehavior
+                                        .alwaysShow,
+                                selectedIndex: selectedNavIndex,
+                                onDestinationSelected: (index) =>
+                                    _handleDestinationSelected(
+                                      index,
+                                      menuConfig,
+                                    ),
+                                destinations: destinations,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ),
-            ),
-          ),
+                )
+              : null,
         );
       },
     );

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:delivery_app/controllers/navigation_bar_controller.dart';
@@ -10,6 +11,8 @@ import 'package:delivery_app/screens/orders_screen.dart';
 import 'package:delivery_app/screens/profile_screen.dart';
 import 'package:delivery_app/screens/report_screen.dart';
 import 'package:delivery_app/services/delivery_api_service.dart';
+import 'package:delivery_app/services/notification_service.dart';
+import 'package:delivery_app/services/realtime_service.dart';
 import 'package:delivery_app/widgets/cached_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -61,6 +64,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
   late final NavigationBarController _navController;
   late AnimationController _navAnimationController;
   late Animation<double> _navAnimation;
+  StreamSubscription<Map<String, dynamic>>? _notificationSubscription;
+  StreamSubscription<Map<String, dynamic>>? _realtimeSubscription;
+  bool _isRealtimeRefreshQueued = false;
 
   @override
   void initState() {
@@ -75,12 +81,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       curve: Curves.easeInOut,
     );
     _navController.addListener(_onNavVisibilityChanged);
+    _notificationSubscription = NotificationService.messages.listen(
+      _handleRealtimeNotification,
+    );
+    _realtimeSubscription = RealtimeService.events.listen(
+      _handleRealtimeNotification,
+    );
     _navAnimationController.forward();
   }
 
   @override
   void dispose() {
     _navController.removeListener(_onNavVisibilityChanged);
+    _notificationSubscription?.cancel();
+    _realtimeSubscription?.cancel();
     _navAnimationController.dispose();
     super.dispose();
   }
@@ -195,6 +209,27 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     if (value is int) return value;
     if (value is num) return value.toInt();
     return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  void _handleRealtimeNotification(Map<String, dynamic> data) {
+    if (_isRealtimeRefreshQueued) return;
+    _isRealtimeRefreshQueued = true;
+
+    Future.delayed(const Duration(milliseconds: 350), () {
+      _isRealtimeRefreshQueued = false;
+      if (!mounted) return;
+
+      final token = context.read<AuthProvider>().token;
+      if (token == null || token.isEmpty) return;
+
+      _refreshBadgeCounts(token);
+      _homeKey.currentState?.refreshData();
+      _recordsKey.currentState?.refreshData();
+      _ordersKey.currentState?.refreshData();
+      _alertsKey.currentState?.refreshData();
+      _recordReportKey.currentState?.refreshData();
+      _deliveryReportKey.currentState?.refreshData();
+    });
   }
 
   bool _hasPermission(
