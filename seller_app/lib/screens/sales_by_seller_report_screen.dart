@@ -77,7 +77,8 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
           '?from=$startDateStr'
           '&to=$endDateStr'
           '&page=1'
-          '&limit=1000';
+          '&limit=1000'
+          '&completed_delivery_only=1';
 
       debugPrint('📡 Sales Report URL: $url');
       debugPrint('🔑 Token: ${token.substring(0, 20)}...');
@@ -135,7 +136,9 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
       final sales = data['sales'];
 
       if (response.statusCode == 200 && sales != null && sales is List) {
-        final salesList = List<Map<String, dynamic>>.from(sales);
+        final salesList = List<Map<String, dynamic>>.from(
+          sales,
+        ).where(_isCompletedSellerReportRow).toList();
 
         double totalCost = 0;
         double totalPaidAmount = 0;
@@ -457,23 +460,29 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
                   child: SingleChildScrollView(
                     child: DataTable(
                       columns: [
-                        DataColumn(label: Text(languageProvider.t('date'))),
-                        DataColumn(label: Text('Ref')),
+                        DataColumn(
+                          label: Text(languageProvider.t('order_date')),
+                        ),
+                        DataColumn(
+                          label: Text(languageProvider.t('order_ref')),
+                        ),
                         DataColumn(
                           label: Text(languageProvider.t('customer_name')),
                         ),
                         DataColumn(label: Text(languageProvider.t('phone'))),
                         DataColumn(label: Text(languageProvider.t('location'))),
-                        DataColumn(label: Text(languageProvider.t('products'))),
+                        DataColumn(label: Text(languageProvider.t('product'))),
                         DataColumn(
                           label: Text(languageProvider.t('returned_product')),
                         ),
-                        DataColumn(label: Text('QTY')),
+                        DataColumn(label: Text(languageProvider.t('quantity'))),
                         DataColumn(label: Text(languageProvider.t('price'))),
                         DataColumn(label: Text(languageProvider.t('paid'))),
-                        DataColumn(label: Text('Ship')),
-                        DataColumn(label: Text('Pay Method')),
-                        DataColumn(label: Text('Seller')),
+                        DataColumn(label: Text(languageProvider.t('shipping'))),
+                        DataColumn(
+                          label: Text(languageProvider.t('pay_method')),
+                        ),
+                        DataColumn(label: Text(languageProvider.t('seller'))),
                       ],
                       rows: _reportData.map((row) {
                         return DataRow(
@@ -499,8 +508,15 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
                             DataCell(
                               Text('\$${_formatMoney(row['shipping'])}'),
                             ),
-                            DataCell(Text(row['payment_method'] ?? 'N/A')),
-                            DataCell(Text(row['seller_name'] ?? 'N/A')),
+                            DataCell(
+                              Text(
+                                _paymentMethodText(
+                                  row['payment_method'],
+                                  languageProvider,
+                                ),
+                              ),
+                            ),
+                            DataCell(Text(_textValue(row['seller_name']))),
                           ],
                         );
                       }).toList(),
@@ -527,18 +543,22 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _buildSummaryItem(
-                    languageProvider.t('price'),
+                    languageProvider.t('total_cost'),
                     _totalCost,
                     Colors.red,
                   ),
                   _buildSummaryItem(
-                    languageProvider.t('paid'),
+                    languageProvider.t('total_paid'),
                     _totalPaidAmount,
                     Colors.blue,
                   ),
-                  _buildSummaryItem('Shipping', _totalShipping, Colors.orange),
                   _buildSummaryItem(
-                    'Profit',
+                    languageProvider.t('total_shipping'),
+                    _totalShipping,
+                    Colors.orange,
+                  ),
+                  _buildSummaryItem(
+                    languageProvider.t('profit'),
                     _totalProfit,
                     _totalProfit >= 0 ? Colors.green : Colors.red,
                   ),
@@ -548,9 +568,13 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildSummaryItem('Sale By Cash', _saleByCash, Colors.green),
                   _buildSummaryItem(
-                    'Sale By KHQR',
+                    languageProvider.t('sale_by_cash'),
+                    _saleByCash,
+                    Colors.green,
+                  ),
+                  _buildSummaryItem(
+                    languageProvider.t('sale_by_khqr'),
                     _saleByKhqr,
                     const Color(0xFF17a2b8),
                   ),
@@ -572,9 +596,7 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
                     ),
                   ),
                   child: Text(
-                    _cashDifference >= 0
-                        ? 'Cash From Boss: \$${_formatMoney(_cashDifference)}'
-                        : 'Cash to Boss! \$${_formatMoney(_cashDifference.abs())}',
+                    _cashDifferenceLine(languageProvider),
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -632,9 +654,44 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
     return num.toStringAsFixed(2);
   }
 
-  String _textValue(dynamic value, {String fallback = 'N/A'}) {
+  String _textValue(dynamic value, {String fallback = '-'}) {
     final text = value?.toString().trim() ?? '';
     return text.isEmpty ? fallback : text;
+  }
+
+  String _reportTitle(LanguageProvider languageProvider) {
+    return '${languageProvider.t('sales_by_seller_report')}: '
+        '${_formatDateForApi(_startDate)} - ${_formatDateForApi(_endDate)}';
+  }
+
+  String _moneyLine(
+    LanguageProvider languageProvider,
+    String labelKey,
+    double amount,
+  ) {
+    return '${languageProvider.t(labelKey)}: \$${_formatMoney(amount)}';
+  }
+
+  String _cashDifferenceLine(LanguageProvider languageProvider) {
+    final labelKey = _cashDifference >= 0 ? 'cash_from_boss' : 'cash_to_boss';
+    return '${languageProvider.t(labelKey)}: '
+        '\$${_formatMoney(_cashDifference.abs())}';
+  }
+
+  String _paymentMethodText(dynamic value, LanguageProvider languageProvider) {
+    final normalized = value?.toString().trim().toLowerCase() ?? '';
+    if (normalized.isEmpty) return '-';
+    if (normalized == 'cash' || normalized == 'cod') {
+      return languageProvider.t('cash');
+    }
+    if (normalized == 'khqr') return languageProvider.t('khqr');
+    return value.toString();
+  }
+
+  bool _isCompletedSellerReportRow(Map<String, dynamic> row) {
+    final status = row['shipping_status']?.toString().trim().toLowerCase();
+    if (status == null || status.isEmpty) return true;
+    return status == 'delivered';
   }
 
   String _customerName(Map<String, dynamic> row) {
@@ -665,7 +722,8 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
   Future<void> _exportPDF() async {
     if (_reportData.isEmpty) return;
 
-    final loading = _showLoading('Exporting PDF...');
+    final languageProvider = context.read<LanguageProvider>();
+    final loading = _showLoading(languageProvider.t('exporting_pdf'));
 
     try {
       final kantumruyData = await rootBundle.load(
@@ -695,81 +753,81 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
 
       final pdf = pw.Document();
       final imageTextCache = <String, _PdfTextImage>{};
-      final columns = const <_PdfColumnSpec>[
+      final columns = <_PdfColumnSpec>[
         _PdfColumnSpec(
-          label: 'Date',
+          label: languageProvider.t('order_date'),
           width: 48,
           alignment: pw.Alignment.centerLeft,
           textAlign: pw.TextAlign.left,
         ),
         _PdfColumnSpec(
-          label: 'Ref',
+          label: languageProvider.t('order_ref'),
           width: 42,
           alignment: pw.Alignment.center,
           textAlign: pw.TextAlign.center,
         ),
         _PdfColumnSpec(
-          label: 'Customer',
+          label: languageProvider.t('customer_name'),
           width: 78,
           alignment: pw.Alignment.centerLeft,
           textAlign: pw.TextAlign.left,
         ),
         _PdfColumnSpec(
-          label: 'Phone',
+          label: languageProvider.t('phone'),
           width: 55,
           alignment: pw.Alignment.centerLeft,
           textAlign: pw.TextAlign.left,
         ),
         _PdfColumnSpec(
-          label: 'Location',
+          label: languageProvider.t('location'),
           width: 95,
           alignment: pw.Alignment.centerLeft,
           textAlign: pw.TextAlign.left,
         ),
         _PdfColumnSpec(
-          label: 'Product',
+          label: languageProvider.t('product'),
           width: 85,
           alignment: pw.Alignment.centerLeft,
           textAlign: pw.TextAlign.left,
         ),
         _PdfColumnSpec(
-          label: 'Returned',
+          label: languageProvider.t('returned_product'),
           width: 65,
           alignment: pw.Alignment.centerLeft,
           textAlign: pw.TextAlign.left,
         ),
         _PdfColumnSpec(
-          label: 'QTY',
+          label: languageProvider.t('quantity'),
           width: 28,
           alignment: pw.Alignment.center,
           textAlign: pw.TextAlign.center,
         ),
         _PdfColumnSpec(
-          label: 'Cost',
+          label: languageProvider.t('price'),
           width: 42,
           alignment: pw.Alignment.centerRight,
           textAlign: pw.TextAlign.right,
         ),
         _PdfColumnSpec(
-          label: 'Paid',
+          label: languageProvider.t('paid'),
           width: 42,
           alignment: pw.Alignment.centerRight,
           textAlign: pw.TextAlign.right,
         ),
         _PdfColumnSpec(
-          label: 'Ship',
+          label: languageProvider.t('shipping'),
           width: 35,
           alignment: pw.Alignment.centerRight,
           textAlign: pw.TextAlign.right,
         ),
         _PdfColumnSpec(
-          label: 'Pay',
+          label: languageProvider.t('pay_method'),
           width: 36,
           alignment: pw.Alignment.center,
           textAlign: pw.TextAlign.center,
         ),
         _PdfColumnSpec(
-          label: 'Seller',
+          label: languageProvider.t('seller'),
           width: 60,
           alignment: pw.Alignment.centerLeft,
           textAlign: pw.TextAlign.left,
@@ -811,8 +869,8 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
                 '\$${_formatMoney(row['product_cost'])}',
                 '\$${_formatMoney(row['paid_amount'])}',
                 '\$${_formatMoney(row['shipping'])}',
-                (row['payment_method'] ?? 'N/A').toString(),
-                (row['seller_name'] ?? 'N/A').toString(),
+                _paymentMethodText(row['payment_method'], languageProvider),
+                _textValue(row['seller_name']),
               ],
               columns,
               imageTextCache,
@@ -822,6 +880,92 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
           ),
         );
       }
+
+      final reportTitle = await _pdfTextWidget(
+        _reportTitle(languageProvider),
+        imageTextCache,
+        textStyle: style(fontSize: 10, color: PdfColors.grey700),
+        fontSize: 10,
+        flutterColor: const Color(0xFF616161),
+        maxWidth: 520,
+        textAlign: pw.TextAlign.right,
+        alignment: pw.Alignment.centerRight,
+      );
+      final footerPageLabel = await _pdfTextWidget(
+        languageProvider.t('page'),
+        imageTextCache,
+        textStyle: style(fontSize: 8),
+        fontSize: 8,
+        maxWidth: 46,
+      );
+      final footerOfLabel = await _pdfTextWidget(
+        languageProvider.t('of'),
+        imageTextCache,
+        textStyle: style(fontSize: 8),
+        fontSize: 8,
+        maxWidth: 28,
+        textAlign: pw.TextAlign.center,
+        alignment: pw.Alignment.center,
+      );
+      final totalCostSummary = await _pdfSummaryItem(
+        _moneyLine(languageProvider, 'total_cost', _totalCost),
+        PdfColors.red,
+        Colors.red,
+        style,
+        imageTextCache,
+      );
+      final totalPaidSummary = await _pdfSummaryItem(
+        _moneyLine(languageProvider, 'total_paid', _totalPaidAmount),
+        PdfColors.blue,
+        Colors.blue,
+        style,
+        imageTextCache,
+      );
+      final totalShippingSummary = await _pdfSummaryItem(
+        _moneyLine(languageProvider, 'total_shipping', _totalShipping),
+        PdfColors.orange,
+        Colors.orange,
+        style,
+        imageTextCache,
+      );
+      final profitSummary = await _pdfSummaryItem(
+        _moneyLine(languageProvider, 'profit', _totalProfit),
+        _totalProfit >= 0 ? PdfColors.green : PdfColors.red,
+        _totalProfit >= 0 ? Colors.green : Colors.red,
+        style,
+        imageTextCache,
+      );
+      final saleByCashSummary = await _pdfSummaryItem(
+        _moneyLine(languageProvider, 'sale_by_cash', _saleByCash),
+        PdfColors.green,
+        Colors.green,
+        style,
+        imageTextCache,
+      );
+      final saleByKhqrSummary = await _pdfSummaryItem(
+        _moneyLine(languageProvider, 'sale_by_khqr', _saleByKhqr),
+        PdfColors.teal,
+        const Color(0xFF00897B),
+        style,
+        imageTextCache,
+      );
+      final cashDifferenceSummary = await _pdfTextWidget(
+        _cashDifferenceLine(languageProvider),
+        imageTextCache,
+        textStyle: style(
+          fontSize: 10,
+          fontWeight: pw.FontWeight.bold,
+          color: _cashDifference >= 0 ? PdfColors.green900 : PdfColors.red900,
+        ),
+        fontSize: 10,
+        flutterFontWeight: FontWeight.w700,
+        flutterColor: _cashDifference >= 0
+            ? const Color(0xFF14532D)
+            : const Color(0xFF7F1D1D),
+        maxWidth: 720,
+        textAlign: pw.TextAlign.center,
+        alignment: pw.Alignment.center,
+      );
 
       pdf.addPage(
         pw.MultiPage(
@@ -833,16 +977,21 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
           ),
           header: (context) => pw.Container(
             alignment: pw.Alignment.centerRight,
-            child: pw.Text(
-              'Sales By Seller Report: ${_formatDateForApi(_startDate)} - ${_formatDateForApi(_endDate)}',
-              style: style(fontSize: 10, color: PdfColors.grey700),
-            ),
+            child: reportTitle,
           ),
           footer: (context) => pw.Container(
             alignment: pw.Alignment.centerRight,
-            child: pw.Text(
-              'Page ${context.pageNumber} of ${context.pagesCount}',
-              style: style(fontSize: 8),
+            child: pw.Row(
+              mainAxisSize: pw.MainAxisSize.min,
+              children: [
+                footerPageLabel,
+                pw.SizedBox(width: 4),
+                pw.Text('${context.pageNumber}', style: style(fontSize: 8)),
+                pw.SizedBox(width: 4),
+                footerOfLabel,
+                pw.SizedBox(width: 4),
+                pw.Text('${context.pagesCount}', style: style(fontSize: 8)),
+              ],
             ),
           ),
           build: (context) => [
@@ -870,43 +1019,16 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
                   pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
                     children: [
-                      _pdfSummaryItem(
-                        'Total Cost: \$${_formatMoney(_totalCost)}',
-                        PdfColors.red,
-                        style,
-                      ),
-                      _pdfSummaryItem(
-                        'Total Paid: \$${_formatMoney(_totalPaidAmount)}',
-                        PdfColors.blue,
-                        style,
-                      ),
-                      _pdfSummaryItem(
-                        'Shipping: \$${_formatMoney(_totalShipping)}',
-                        PdfColors.orange,
-                        style,
-                      ),
-                      _pdfSummaryItem(
-                        'Profit: \$${_formatMoney(_totalProfit)}',
-                        _totalProfit >= 0 ? PdfColors.green : PdfColors.red,
-                        style,
-                      ),
+                      totalCostSummary,
+                      totalPaidSummary,
+                      totalShippingSummary,
+                      profitSummary,
                     ],
                   ),
                   pw.SizedBox(height: 6),
                   pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
-                    children: [
-                      _pdfSummaryItem(
-                        'Sale By Cash: \$${_formatMoney(_saleByCash)}',
-                        PdfColors.green,
-                        style,
-                      ),
-                      _pdfSummaryItem(
-                        'Sale By KHQR: \$${_formatMoney(_saleByKhqr)}',
-                        PdfColors.teal,
-                        style,
-                      ),
-                    ],
+                    children: [saleByCashSummary, saleByKhqrSummary],
                   ),
                   pw.SizedBox(height: 8),
                   pw.Container(
@@ -924,19 +1046,7 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
                             : PdfColors.red,
                       ),
                     ),
-                    child: pw.Text(
-                      _cashDifference >= 0
-                          ? 'Cash From Boss: \$${_formatMoney(_cashDifference)}'
-                          : 'Cash To Boss: \$${_formatMoney(_cashDifference.abs())}',
-                      style: style(
-                        fontSize: 10,
-                        fontWeight: pw.FontWeight.bold,
-                        color: _cashDifference >= 0
-                            ? PdfColors.green900
-                            : PdfColors.red900,
-                      ),
-                      textAlign: pw.TextAlign.center,
-                    ),
+                    child: cashDifferenceSummary,
                   ),
                 ],
               ),
@@ -960,14 +1070,14 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
       await file.writeAsBytes(await pdf.save());
 
       loading.remove();
-      _showSuccess('PDF saved: $fileName');
+      _showSuccess('${languageProvider.t('pdf_saved')}: $fileName');
 
       try {
         await OpenFile.open(filePath);
       } catch (_) {}
     } catch (e) {
       loading.remove();
-      _showError('Failed to export PDF: $e');
+      _showError('${languageProvider.t('failed_export_pdf')}: $e');
     }
   }
 
@@ -1042,6 +1152,43 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
     );
   }
 
+  Future<pw.Widget> _pdfTextWidget(
+    String text,
+    Map<String, _PdfTextImage> imageTextCache, {
+    required pw.TextStyle textStyle,
+    required double fontSize,
+    FontWeight flutterFontWeight = FontWeight.normal,
+    Color flutterColor = Colors.black,
+    double? maxWidth,
+    pw.TextAlign textAlign = pw.TextAlign.left,
+    pw.Alignment alignment = pw.Alignment.centerLeft,
+  }) async {
+    final safeText = text.trim().isEmpty ? '-' : text;
+
+    pw.Widget child;
+    if (_usesKhmer(safeText)) {
+      final rendered = await _renderPdfTextImage(
+        safeText,
+        maxWidth: maxWidth ?? 520,
+        fontSize: fontSize,
+        fontWeight: flutterFontWeight,
+        color: flutterColor,
+        textAlign: _flutterTextAlign(textAlign),
+        cache: imageTextCache,
+      );
+      child = pw.Image(
+        pw.MemoryImage(rendered.bytes),
+        width: rendered.width,
+        height: rendered.height,
+      );
+    } else {
+      child = pw.Text(safeText, style: textStyle, textAlign: textAlign);
+    }
+
+    if (maxWidth == null) return child;
+    return pw.Container(width: maxWidth, alignment: alignment, child: child);
+  }
+
   Future<_PdfTextImage> _renderPdfTextImage(
     String text, {
     required double maxWidth,
@@ -1112,58 +1259,65 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
     return TextAlign.left;
   }
 
-  pw.Widget _pdfSummaryItem(
+  Future<pw.Widget> _pdfSummaryItem(
     String text,
-    PdfColor color,
+    PdfColor pdfColor,
+    Color flutterColor,
     pw.TextStyle Function({
       double fontSize,
       pw.FontWeight fontWeight,
       PdfColor? color,
     })
     styleBuilder,
+    Map<String, _PdfTextImage> imageTextCache,
   ) {
-    return pw.Text(
+    return _pdfTextWidget(
       text,
-      style: styleBuilder(
+      imageTextCache,
+      textStyle: styleBuilder(
         fontSize: 8,
         fontWeight: pw.FontWeight.bold,
-        color: color,
+        color: pdfColor,
       ),
+      fontSize: 8,
+      flutterFontWeight: FontWeight.w700,
+      flutterColor: flutterColor,
+      maxWidth: 145,
+      textAlign: pw.TextAlign.center,
+      alignment: pw.Alignment.center,
     );
   }
 
   Future<void> _exportExcel() async {
     if (_reportData.isEmpty) return;
 
-    final loading = _showLoading('Exporting Excel...');
+    final languageProvider = context.read<LanguageProvider>();
+    final loading = _showLoading(languageProvider.t('exporting_excel'));
 
     try {
       var excel = excel_lib.Excel.createExcel();
-      var sheet = excel['Sales Report'];
+      var sheet = excel[languageProvider.t('sales_by_seller')];
+      final reportTitle = _reportTitle(languageProvider);
 
       // Add title row
-      sheet.appendRow([
-        excel_lib.TextCellValue(
-          'Sales By Seller Report: ${_formatDateForApi(_startDate)} - ${_formatDateForApi(_endDate)}',
-        ),
-      ]);
+      sheet.appendRow([excel_lib.TextCellValue(reportTitle)]);
       sheet.appendRow([]);
 
       // Add headers
       sheet.appendRow([
-        excel_lib.TextCellValue('Date'),
-        excel_lib.TextCellValue('Ref'),
-        excel_lib.TextCellValue('Customer'),
-        excel_lib.TextCellValue('Phone'),
-        excel_lib.TextCellValue('Location'),
-        excel_lib.TextCellValue('Product'),
-        excel_lib.TextCellValue('Returned Product'),
-        excel_lib.TextCellValue('QTY'),
-        excel_lib.TextCellValue('Cost'),
-        excel_lib.TextCellValue('Paid'),
-        excel_lib.TextCellValue('Ship'),
-        excel_lib.TextCellValue('Pay Method'),
-        excel_lib.TextCellValue('Seller'),
+        excel_lib.TextCellValue(languageProvider.t('order_date')),
+        excel_lib.TextCellValue(languageProvider.t('order_ref')),
+        excel_lib.TextCellValue(languageProvider.t('customer_name')),
+        excel_lib.TextCellValue(languageProvider.t('phone')),
+        excel_lib.TextCellValue(languageProvider.t('location')),
+        excel_lib.TextCellValue(languageProvider.t('product')),
+        excel_lib.TextCellValue(languageProvider.t('returned_product')),
+        excel_lib.TextCellValue(languageProvider.t('quantity')),
+        excel_lib.TextCellValue(languageProvider.t('price')),
+        excel_lib.TextCellValue(languageProvider.t('paid')),
+        excel_lib.TextCellValue(languageProvider.t('shipping')),
+        excel_lib.TextCellValue(languageProvider.t('pay_method')),
+        excel_lib.TextCellValue(languageProvider.t('seller')),
       ]);
 
       // Add data rows
@@ -1180,8 +1334,10 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
           excel_lib.TextCellValue(_formatMoney(row['product_cost'])),
           excel_lib.TextCellValue(_formatMoney(row['paid_amount'])),
           excel_lib.TextCellValue(_formatMoney(row['shipping'])),
-          excel_lib.TextCellValue(row['payment_method'] ?? 'N/A'),
-          excel_lib.TextCellValue(row['seller_name'] ?? 'N/A'),
+          excel_lib.TextCellValue(
+            _paymentMethodText(row['payment_method'], languageProvider),
+          ),
+          excel_lib.TextCellValue(_textValue(row['seller_name'])),
         ]);
       }
 
@@ -1189,18 +1345,18 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
       // Summary row 1: labels + values aligned to correct columns
       // Columns: Date | Ref | Customer | Phone | Location | Product | Returned | QTY | Cost | Paid | Ship | Pay Method | Seller
       sheet.appendRow([
-        excel_lib.TextCellValue('SUMMARY'),
+        excel_lib.TextCellValue(languageProvider.t('summary')),
         excel_lib.TextCellValue(''),
         excel_lib.TextCellValue(''),
         excel_lib.TextCellValue(''),
         excel_lib.TextCellValue(''),
-        excel_lib.TextCellValue('Total Cost'),
-        excel_lib.TextCellValue('Total Paid'),
-        excel_lib.TextCellValue('Total Shipping'),
+        excel_lib.TextCellValue(languageProvider.t('total_cost')),
+        excel_lib.TextCellValue(languageProvider.t('total_paid')),
+        excel_lib.TextCellValue(languageProvider.t('total_shipping')),
         excel_lib.TextCellValue(_formatMoney(_totalCost)),
         excel_lib.TextCellValue(_formatMoney(_totalPaidAmount)),
         excel_lib.TextCellValue(_formatMoney(_totalShipping)),
-        excel_lib.TextCellValue('Profit'),
+        excel_lib.TextCellValue(languageProvider.t('profit')),
         excel_lib.TextCellValue(_formatMoney(_totalProfit)),
       ]);
       // Summary row 2: Sale By Cash / Sale By KHQR
@@ -1210,8 +1366,8 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
         excel_lib.TextCellValue(''),
         excel_lib.TextCellValue(''),
         excel_lib.TextCellValue(''),
-        excel_lib.TextCellValue('Sale By Cash'),
-        excel_lib.TextCellValue('Sale By KHQR'),
+        excel_lib.TextCellValue(languageProvider.t('sale_by_cash')),
+        excel_lib.TextCellValue(languageProvider.t('sale_by_khqr')),
         excel_lib.TextCellValue(''),
         excel_lib.TextCellValue(_formatMoney(_saleByCash)),
         excel_lib.TextCellValue(_formatMoney(_saleByKhqr)),
@@ -1221,8 +1377,8 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
       ]);
       // Summary row 3: Cash Difference
       final cashLabel = _cashDifference >= 0
-          ? 'Cash From Boss'
-          : 'Cash To Boss';
+          ? languageProvider.t('cash_from_boss')
+          : languageProvider.t('cash_to_boss');
       sheet.appendRow([
         excel_lib.TextCellValue(''),
         excel_lib.TextCellValue(''),
@@ -1241,9 +1397,7 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
 
       sheet.updateCell(
         excel_lib.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0),
-        excel_lib.TextCellValue(
-          'Sales By Seller Report: ${_formatDateForApi(_startDate)} - ${_formatDateForApi(_endDate)}',
-        ),
+        excel_lib.TextCellValue(reportTitle),
       );
 
       // Save file
@@ -1255,7 +1409,7 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
       await file.writeAsBytes(excel.encode()!);
 
       loading.remove();
-      _showSuccess('Excel saved: $fileName');
+      _showSuccess('${languageProvider.t('excel_saved')}: $fileName');
 
       // Open the file — may fail on iOS Simulator (objective_c.dylib issue),
       // but the file is already saved successfully.
@@ -1266,7 +1420,7 @@ class _SalesBySellerReportScreenState extends State<SalesBySellerReportScreen> {
       }
     } catch (e) {
       loading.remove();
-      _showError('Failed to export Excel: $e');
+      _showError('${languageProvider.t('failed_export_excel')}: $e');
     }
   }
 

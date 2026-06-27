@@ -55,7 +55,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
   int? _ordersIndex;
   int? _alertsIndex;
   int _pendingRecordCount = 0;
-  int _activeOrderCount = 0;
+  int _pendingDeliveryCount = 0;
   int _unreadAlertCount = 0;
   String? _lastBadgeCountToken;
   bool _isRefreshingBadgeCounts = false;
@@ -156,12 +156,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
 
     _lastBadgeCountToken = token;
     if (token == null || token.isEmpty) {
-      if (_pendingRecordCount != 0 || _activeOrderCount != 0) {
+      if (_pendingRecordCount != 0 || _pendingDeliveryCount != 0) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           setState(() {
             _pendingRecordCount = 0;
-            _activeOrderCount = 0;
+            _pendingDeliveryCount = 0;
           });
         });
       }
@@ -189,15 +189,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       if (!mounted || orders == null) return;
 
       final pendingRecords = _toInt(orders['pending']);
-      final activeOrders = _toInt(orders['shipped'] ?? orders['processing']);
+      final pendingDeliveries = _toInt(orders['pending']);
 
       if (_pendingRecordCount == pendingRecords &&
-          _activeOrderCount == activeOrders) {
+          _pendingDeliveryCount == pendingDeliveries) {
         return;
       }
       setState(() {
         _pendingRecordCount = pendingRecords;
-        _activeOrderCount = activeOrders;
+        _pendingDeliveryCount = pendingDeliveries;
       });
     } catch (_) {
     } finally {
@@ -869,11 +869,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
         NavigationDestination(
           icon: _buildBadgeIcon(
             const Icon(Icons.receipt_long_outlined),
-            _activeOrderCount,
+            _pendingDeliveryCount,
           ),
           selectedIcon: _buildBadgeIcon(
             const Icon(Icons.receipt_long_rounded),
-            _activeOrderCount,
+            _pendingDeliveryCount,
           ),
           label: languageProvider.t('orders'),
         ),
@@ -883,7 +883,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
         'icon': Icons.receipt_long_rounded,
         'title': languageProvider.t('orders'),
         'screenIndex': buildIndex,
-        'badgeCount': _activeOrderCount,
+        'badgeCount': _pendingDeliveryCount,
       });
       actionsList.add([
         IconButton(

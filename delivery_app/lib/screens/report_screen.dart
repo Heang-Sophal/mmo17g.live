@@ -84,6 +84,10 @@ class ReportScreenState extends State<ReportScreen> {
 
   void _filterOrdersByDate() {
     final filtered = _allReportOrders.where((order) {
+      if (!widget.recordMode && !_isDeliveredOrder(order)) {
+        return false;
+      }
+
       final dateStr = order['created_at'] ?? order['datetime'];
       if (dateStr == null) return false;
       try {
@@ -249,15 +253,23 @@ class ReportScreenState extends State<ReportScreen> {
         : languageProvider.t('orders');
   }
 
+  bool _isDeliveredOrder(Map<String, dynamic> order) {
+    final status = (order['status'] ?? order['shipping_status'])
+        ?.toString()
+        .trim()
+        .toLowerCase();
+    return status == 'delivered';
+  }
+
   String _pdfFilePrefix() {
     return widget.recordMode ? 'record_report' : 'delivery_report';
   }
 
   Future<void> _exportPDF(LanguageProvider languageProvider) async {
     if (_filteredReportOrders.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('No data to export')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(languageProvider.t('no_data_to_export'))),
+      );
       return;
     }
 
@@ -282,74 +294,63 @@ class ReportScreenState extends State<ReportScreen> {
       final imageTextCache = <String, _PdfTextImage>{};
       final reportTitle =
           '${_reportTitle(languageProvider)}: ${_formatDateForApi(_startDate)} - ${_formatDateForApi(_endDate)}';
-      final renderedReportTitle = _usesKhmer(reportTitle)
-          ? await _renderPdfTextImage(
-              reportTitle,
-              maxWidth: 420,
-              fontSize: 10,
-              fontWeight: FontWeight.normal,
-              color: const Color(0xFF616161),
-              textAlign: TextAlign.right,
-              cache: imageTextCache,
-            )
-          : null;
-      final columns = const <_PdfColumnSpec>[
+      final columns = <_PdfColumnSpec>[
         _PdfColumnSpec(
-          label: 'Date',
+          label: languageProvider.t('order_date'),
           width: 55,
           alignment: pw.Alignment.centerLeft,
           textAlign: pw.TextAlign.left,
         ),
         _PdfColumnSpec(
-          label: 'Ref',
+          label: languageProvider.t('order_ref'),
           width: 50,
           alignment: pw.Alignment.center,
           textAlign: pw.TextAlign.center,
         ),
         _PdfColumnSpec(
-          label: 'Client',
+          label: languageProvider.t('client_name'),
           width: 90,
           alignment: pw.Alignment.centerLeft,
           textAlign: pw.TextAlign.left,
         ),
         _PdfColumnSpec(
-          label: 'Address',
+          label: languageProvider.t('client_address'),
           width: 130,
           alignment: pw.Alignment.centerLeft,
           textAlign: pw.TextAlign.left,
         ),
         _PdfColumnSpec(
-          label: 'Products',
+          label: languageProvider.t('products'),
           width: 130,
           alignment: pw.Alignment.centerLeft,
           textAlign: pw.TextAlign.left,
         ),
         _PdfColumnSpec(
-          label: 'Qty',
+          label: languageProvider.t('qty'),
           width: 35,
           alignment: pw.Alignment.center,
           textAlign: pw.TextAlign.center,
         ),
         _PdfColumnSpec(
-          label: 'Seller',
+          label: languageProvider.t('seller'),
           width: 75,
           alignment: pw.Alignment.centerLeft,
           textAlign: pw.TextAlign.left,
         ),
         _PdfColumnSpec(
-          label: 'Seller Phone',
+          label: languageProvider.t('seller_phone'),
           width: 70,
           alignment: pw.Alignment.centerLeft,
           textAlign: pw.TextAlign.left,
         ),
         _PdfColumnSpec(
-          label: 'Shipping',
+          label: languageProvider.t('shipping_fee'),
           width: 55,
           alignment: pw.Alignment.centerRight,
           textAlign: pw.TextAlign.right,
         ),
         _PdfColumnSpec(
-          label: 'Total',
+          label: languageProvider.t('grand_total'),
           width: 60,
           alignment: pw.Alignment.centerRight,
           textAlign: pw.TextAlign.right,
@@ -400,6 +401,63 @@ class ReportScreenState extends State<ReportScreen> {
         );
       }
 
+      final reportTitleWidget = await _pdfTextWidget(
+        reportTitle,
+        imageTextCache,
+        textStyle: style(fontSize: 10, color: PdfColors.grey700),
+        fontSize: 10,
+        flutterColor: const Color(0xFF616161),
+        maxWidth: 420,
+        textAlign: pw.TextAlign.right,
+        alignment: pw.Alignment.centerRight,
+      );
+      final footerPageLabel = await _pdfTextWidget(
+        languageProvider.t('page'),
+        imageTextCache,
+        textStyle: style(fontSize: 10, color: PdfColors.grey700),
+        fontSize: 10,
+        flutterColor: const Color(0xFF616161),
+        maxWidth: 48,
+      );
+      final footerOfLabel = await _pdfTextWidget(
+        languageProvider.t('of'),
+        imageTextCache,
+        textStyle: style(fontSize: 10, color: PdfColors.grey700),
+        fontSize: 10,
+        flutterColor: const Color(0xFF616161),
+        maxWidth: 28,
+        textAlign: pw.TextAlign.center,
+        alignment: pw.Alignment.center,
+      );
+      final countSummary = await _pdfSummaryItem(
+        '${_reportCountLabel(languageProvider)}: $_totalOrders',
+        PdfColors.blue,
+        Colors.blue,
+        style,
+        imageTextCache,
+      );
+      final shippingSummary = await _pdfSummaryItem(
+        '${languageProvider.t('total_shipping_fee')}: \$${_formatCurrency(_totalShipping)}',
+        PdfColors.amber,
+        Colors.amber,
+        style,
+        imageTextCache,
+      );
+      final grandTotalSummary = await _pdfSummaryItem(
+        '${languageProvider.t('grand_total')}: \$${_formatCurrency(_totalAmount)}',
+        PdfColors.amber,
+        Colors.amber,
+        style,
+        imageTextCache,
+      );
+      final companyPayableSummary = await _pdfSummaryItem(
+        '${languageProvider.t('company_payable')}: \$${_formatCurrency(_companyPayableAmount)}',
+        PdfColors.green,
+        Colors.green,
+        style,
+        imageTextCache,
+      );
+
       pdf.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4.landscape,
@@ -409,22 +467,27 @@ class ReportScreenState extends State<ReportScreen> {
           ),
           header: (context) => pw.Container(
             alignment: pw.Alignment.centerRight,
-            child: renderedReportTitle != null
-                ? pw.Image(
-                    pw.MemoryImage(renderedReportTitle.bytes),
-                    width: renderedReportTitle.width,
-                    height: renderedReportTitle.height,
-                  )
-                : pw.Text(
-                    reportTitle,
-                    style: style(fontSize: 10, color: PdfColors.grey700),
-                  ),
+            child: reportTitleWidget,
           ),
           footer: (context) => pw.Container(
             alignment: pw.Alignment.centerRight,
-            child: pw.Text(
-              'Page ${context.pageNumber} of ${context.pagesCount}',
-              style: style(fontSize: 10, color: PdfColors.grey700),
+            child: pw.Row(
+              mainAxisSize: pw.MainAxisSize.min,
+              children: [
+                footerPageLabel,
+                pw.SizedBox(width: 4),
+                pw.Text(
+                  '${context.pageNumber}',
+                  style: style(fontSize: 10, color: PdfColors.grey700),
+                ),
+                pw.SizedBox(width: 4),
+                footerOfLabel,
+                pw.SizedBox(width: 4),
+                pw.Text(
+                  '${context.pagesCount}',
+                  style: style(fontSize: 10, color: PdfColors.grey700),
+                ),
+              ],
             ),
           ),
           build: (context) => [
@@ -446,38 +509,10 @@ class ReportScreenState extends State<ReportScreen> {
               child: pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
                 children: [
-                  pw.Text(
-                    'Total ${widget.recordMode ? 'Records' : 'Orders'}: $_totalOrders',
-                    style: style(
-                      fontSize: 12,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.blue,
-                    ),
-                  ),
-                  pw.Text(
-                    'Total Shipping: \$${_formatCurrency(_totalShipping)}',
-                    style: style(
-                      fontSize: 12,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.amber,
-                    ),
-                  ),
-                  pw.Text(
-                    'Grand Total: \$${_formatCurrency(_totalAmount)}',
-                    style: style(
-                      fontSize: 12,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.amber,
-                    ),
-                  ),
-                  pw.Text(
-                    'Payable to Company: \$${_formatCurrency(_companyPayableAmount)}',
-                    style: style(
-                      fontSize: 12,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.green,
-                    ),
-                  ),
+                  countSummary,
+                  shippingSummary,
+                  grandTotalSummary,
+                  companyPayableSummary,
                 ],
               ),
             ),
@@ -494,15 +529,19 @@ class ReportScreenState extends State<ReportScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('PDF exported successfully!')),
+          SnackBar(
+            content: Text(languageProvider.t('pdf_exported_successfully')),
+          ),
         );
       }
       OpenFile.open(filePath);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to export PDF: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${languageProvider.t('failed_export_pdf')}: $e'),
+          ),
+        );
       }
     }
   }
@@ -575,6 +614,72 @@ class ReportScreenState extends State<ReportScreen> {
       ),
       alignment: column.alignment,
       child: child,
+    );
+  }
+
+  Future<pw.Widget> _pdfTextWidget(
+    String text,
+    Map<String, _PdfTextImage> imageTextCache, {
+    required pw.TextStyle textStyle,
+    required double fontSize,
+    FontWeight flutterFontWeight = FontWeight.normal,
+    Color flutterColor = Colors.black,
+    double? maxWidth,
+    pw.TextAlign textAlign = pw.TextAlign.left,
+    pw.Alignment alignment = pw.Alignment.centerLeft,
+  }) async {
+    final safeText = text.trim().isEmpty ? '-' : text;
+
+    pw.Widget child;
+    if (_usesKhmer(safeText)) {
+      final rendered = await _renderPdfTextImage(
+        safeText,
+        maxWidth: maxWidth ?? 420,
+        fontSize: fontSize,
+        fontWeight: flutterFontWeight,
+        color: flutterColor,
+        textAlign: _flutterTextAlign(textAlign),
+        cache: imageTextCache,
+      );
+      child = pw.Image(
+        pw.MemoryImage(rendered.bytes),
+        width: rendered.width,
+        height: rendered.height,
+      );
+    } else {
+      child = pw.Text(safeText, style: textStyle, textAlign: textAlign);
+    }
+
+    if (maxWidth == null) return child;
+    return pw.Container(width: maxWidth, alignment: alignment, child: child);
+  }
+
+  Future<pw.Widget> _pdfSummaryItem(
+    String text,
+    PdfColor pdfColor,
+    Color flutterColor,
+    pw.TextStyle Function({
+      double fontSize,
+      pw.FontWeight fontWeight,
+      PdfColor? color,
+    })
+    styleBuilder,
+    Map<String, _PdfTextImage> imageTextCache,
+  ) {
+    return _pdfTextWidget(
+      text,
+      imageTextCache,
+      textStyle: styleBuilder(
+        fontSize: 10,
+        fontWeight: pw.FontWeight.bold,
+        color: pdfColor,
+      ),
+      fontSize: 10,
+      flutterFontWeight: FontWeight.w700,
+      flutterColor: flutterColor,
+      maxWidth: 180,
+      textAlign: pw.TextAlign.center,
+      alignment: pw.Alignment.center,
     );
   }
 
@@ -818,16 +923,18 @@ class ReportScreenState extends State<ReportScreen> {
                         columns: [
                           DataColumn(
                             label: Text(
-                              languageProvider.t('date'),
+                              languageProvider.t('order_date'),
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
-                          const DataColumn(
+                          DataColumn(
                             label: Text(
-                              'Ref',
-                              style: TextStyle(fontWeight: FontWeight.bold),
+                              languageProvider.t('order_ref'),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                           DataColumn(

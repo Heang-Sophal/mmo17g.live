@@ -833,6 +833,10 @@ class ReportController extends BaseController
             ->where('sales.deleted_at', '=', null)
             ->whereBetween('sales.date', [$request->from, $request->to]);
 
+        if ($isMobileRoute || $request->boolean('completed_delivery_only')) {
+            $Sales->whereRaw("LOWER(TRIM(COALESCE(sales.shipping_status, ''))) = ?", ['delivered']);
+        }
+
         // Mobile report must always show only the logged-in seller's data.
         if ($isMobileRoute) {
             $Sales->where('sales.user_id', '=', $user->id);
@@ -1041,6 +1045,7 @@ class ReportController extends BaseController
                     $item['original_paid_amount'] = $paidAmount;
                     $item['shipping']         = $rowShipping;
                     $item['original_shipping'] = $saleShipping;
+                    $item['shipping_status']  = strtolower(trim((string) ($sale->shipping_status ?? '')));
                     $item['shipping_is_free'] = $shippingIsFree;
                     $item['payment_method']   = $sale->payment_method ?? 'N/A';
                     $item['seller_name']      = $sale->user ? $sale->user->username : 'N/A';
@@ -1091,6 +1096,7 @@ class ReportController extends BaseController
                 $item['paid_amount']      = $adjustedPaidAmount;
                 $item['shipping']         = $displayShipping;
                 $item['original_shipping'] = $saleShipping;
+                $item['shipping_status']  = strtolower(trim((string) ($sale->shipping_status ?? '')));
                 $item['shipping_is_free'] = $shippingIsFree;
                 $item['payment_method']   = $sale->payment_method ?? 'N/A';
                 $item['seller_name']      = $sale->user ? $sale->user->username : 'N/A';
@@ -1145,6 +1151,7 @@ class ReportController extends BaseController
                 'sellers'      => $sellers,
                 'customers'    => $customers,
                 'warehouses'   => $warehouses,
+                'completedDeliveryOnly' => $isMobileRoute || $request->boolean('completed_delivery_only'),
                 // FIX #4 & #5: Grand totals computed over ALL pages so frontend footer is always correct
                 'grandTotals'  => [
                     'totalCost'       => round($grandTotalCost, 2),
