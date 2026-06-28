@@ -244,7 +244,7 @@ import {
 
 const SELLER_REPORT_LABELS = {
   en: {
-    SellerReport_Title: 'Sales by seller report',
+    SellerReport_Title: 'Product sales report',
     SellerReport_DateTime: 'Date Time',
     SellerReport_CustomerAddress: 'Customer Address',
     SellerReport_CustomerPhone: 'Customer Phone',
@@ -295,7 +295,7 @@ const SELLER_REPORT_LABELS = {
     SellerReport_ExportingPdf: 'Exporting PDF...',
   },
   kh: {
-    SellerReport_Title: 'របាយការណ៍លក់តាមអ្នកលក់',
+    SellerReport_Title: 'របាយការណ៍លក់ផលិតផល',
     SellerReport_DateTime: 'កាលបរិច្ឆេទ និងម៉ោង',
     SellerReport_CustomerAddress: 'ទីតាំងអតិថិជន',
     SellerReport_CustomerPhone: 'លេខទូរស័ព្ទអតិថិជន',
@@ -1094,21 +1094,24 @@ export default {
       `;
     },
 
-    salesPdfPageHtml({ rows, totals, pageNumber, totalPages, includeSummary }) {
+    salesPdfPageHtml({ rows, totals, pageNumber, totalPages, includeSummary, showHeader }) {
       const title = this.reportLabel('SellerReport_Title');
       const dateRange = `${this.reportLabel('SellerReport_DateRange')}: ${this.fmt(this.startDate)} - ${this.fmt(this.endDate)}`;
       const generatedAt = `${this.reportLabel('SellerReport_GeneratedAt')}: ${moment().format("YYYY-MM-DD HH:mm")}`;
       const hasRows = Array.isArray(rows) && rows.length > 0;
+      const headerHtml = showHeader ? `
+        <header class="seller-pdf-header">
+          <div>
+            <h1>${this.escapeReportHtml(title)}</h1>
+            <p>${this.escapeReportHtml(dateRange)}</p>
+          </div>
+          <div class="generated-at">${this.escapeReportHtml(generatedAt)}</div>
+        </header>
+      ` : "";
 
       return `
         <div class="seller-pdf-page">
-          <header class="seller-pdf-header">
-            <div>
-              <h1>${this.escapeReportHtml(title)}</h1>
-              <p>${this.escapeReportHtml(dateRange)}</p>
-            </div>
-            <div class="generated-at">${this.escapeReportHtml(generatedAt)}</div>
-          </header>
+          ${headerHtml}
           <main class="seller-pdf-body">
             ${hasRows ? this.salesPdfTableHtml(rows) : ""}
             ${includeSummary ? this.salesPdfSummaryHtml(totals) : ""}
@@ -1130,6 +1133,18 @@ export default {
             font-weight: 400;
             font-style: normal;
           }
+          @font-face {
+            font-family: "KantumruyProPDF";
+            src: url("/fonts/KantumruyPro.ttf") format("truetype");
+            font-weight: 400;
+            font-style: normal;
+          }
+          @font-face {
+            font-family: "KoulenPDF";
+            src: url("/fonts/Koulen-Regular.ttf") format("truetype");
+            font-weight: 400;
+            font-style: normal;
+          }
           .sales-pdf-capture-root {
             position: fixed;
             left: -12000px;
@@ -1146,7 +1161,7 @@ export default {
             padding: 30px 32px 24px;
             background: #ffffff;
             color: #1f2937;
-            font-family: "NotoSansKhmerPDF", "Kantumruy Pro", "Noto Sans Khmer", Arial, sans-serif;
+            font-family: "KantumruyProPDF", "NotoSansKhmerPDF", "Kantumruy Pro", "Noto Sans Khmer", Arial, sans-serif;
             display: flex;
             flex-direction: column;
           }
@@ -1156,15 +1171,18 @@ export default {
             border-radius: 8px;
             padding: 17px 22px;
             min-height: 76px;
+            font-family: "KoulenPDF", "NotoSansKhmerPDF", "Koulen", "Kantumruy Pro", "Noto Sans Khmer", Arial, sans-serif;
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
           }
           .seller-pdf-header h1 {
             margin: 0 0 8px;
-            font-size: 22px;
+            font-family: "KoulenPDF", "NotoSansKhmerPDF", "Koulen", "Kantumruy Pro", "Noto Sans Khmer", Arial, sans-serif;
+            font-size: 28px;
             line-height: 1.1;
-            font-weight: 700;
+            font-weight: 400;
+            letter-spacing: 0;
           }
           .seller-pdf-header p,
           .generated-at {
@@ -1294,6 +1312,7 @@ export default {
         pageNumber: index + 1,
         totalPages,
         includeSummary: summaryFitsLastPage && index === chunks.length - 1,
+        showHeader: index === 0,
       }));
 
       if (!summaryFitsLastPage) {
@@ -1303,6 +1322,7 @@ export default {
           pageNumber: totalPages,
           totalPages,
           includeSummary: true,
+          showHeader: false,
         }));
       }
 

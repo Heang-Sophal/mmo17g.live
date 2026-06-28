@@ -867,7 +867,7 @@ return [
     'product_report' => 'Products report',
     'product_sales_report' => 'Product sales report',
     'SalesBySellerReport' => 'Sales by seller report',
-    'SellerReport_Title' => 'Sales by seller report',
+    'SellerReport_Title' => 'Product sales report',
     'SellerReport_DateTime' => 'Date Time',
     'SellerReport_CustomerAddress' => 'Customer Address',
     'SellerReport_CustomerPhone' => 'Customer Phone',

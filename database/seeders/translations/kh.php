@@ -867,7 +867,7 @@ return [
     'product_report' => 'របាយការណ៍ផលិតផល',
     'product_sales_report' => 'របាយការណ៍លក់ផលិតផល',
     'SalesBySellerReport' => 'របាយការណ៍លក់តាមអ្នកលក់',
-    'SellerReport_Title' => 'របាយការណ៍លក់តាមអ្នកលក់',
+    'SellerReport_Title' => 'របាយការណ៍លក់ផលិតផល',
     'SellerReport_DateTime' => 'កាលបរិច្ឆេទ និងម៉ោង',
     'SellerReport_CustomerAddress' => 'ទីតាំងអតិថិជន',
     'SellerReport_CustomerPhone' => 'លេខទូរស័ព្ទអតិថិជន',
